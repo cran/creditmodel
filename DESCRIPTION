@@ -1,0 +1,27 @@
+Package: creditmodel
+Version: 1.0
+Date: 2019-04-05
+Title: Build Binary Classification Models in One Integrated Offering
+Authors@R: c(person(given = "Dongping", family = "Fan",email = "fdp@pku.edu.cn",role = c("aut", "cre")))
+Maintainer: Dongping Fan <fdp@pku.edu.cn>
+Description: Provides a toolkit for building predictive models in one integrated offering. Contains infrastructure functionalities such as data exploration and preparation, missing values treatment, outliers treatment, variable derivation, variable selection, dimensionality reduction, grid search for hyperparameters, data mining and visualization, model evaluation, strategy analysis etc. 'creditmodel' is designed to make the development of binary classification models (machine learning based models as well as credit scorecard) simpler and faster.
+Depends: R(>= 3.3.0)
+Imports:
+        data.table,dplyr,randomForest,xgboost,glmnet,gbm,gridExtra,ggplot2(>=
+        1.0.1),car,foreach,doParallel,ggcorrplot,pmml,XML,rpart,
+        sqldf,stringr
+Suggests: knitr,testthat
+VignetteBuilder: knitr
+URL: https://github.com/FanHansen/automodel
+BugReports: https://github.com/FanHansen/automodel/issues
+Encoding: UTF-8
+ByteCompile: yes
+LazyData: yes
+LazyLoad: yes
+License: AGPL-3
+RoxygenNote: 6.1.1
+NeedsCompilation: no
+Packaged: 2019-04-27 17:23:24 UTC; HANSEN
+Author: Dongping Fan [aut, cre]
+Repository: CRAN
+Date/Publication: 2019-04-28 07:30:03 UTC
