@@ -1,10 +1,10 @@
 #' Data Cleaning
 #'
 #'
-#'The \code{cleaning_data} function is a simpler wrapper for data cleaning functions, such as delete variables that values are all NAs;checking dat and target format.;delete low variance variables.;replace null or NULL or blank with NA; encode variables which NAs &  miss value rate is more than 95% as 1,0 ;encode variables which unique value  rate is  more than 95% as 1,0; merge categories of character variables that  is more than 8; transfer time variables to dateformation; remove duplicated observations;process outliers;process NAs.
+#'The \code{data_cleansing} function is a simpler wrapper for data cleaning functions, such as delete variables that values are all NAs;checking dat and target format.;delete low variance variables.;replace null or NULL or blank with NA; encode variables which NAs &  miss value rate is more than 95% as 1,0 ;encode variables which unique value  rate is  more than 95% as 1,0; merge categories of character variables that  is more than 8; transfer time variables to dateformation; remove duplicated observations;process outliers;process NAs.
 #' @param dat A data frame with x and target.
 #' @param target The name of target variable.
-#' @param miss_values  Other extreme value might be used to represent missing values, e.g: -9999, -9998. These miss_values will be encoded to -1 or "Unknown".
+#' @param miss_values  Other extreme value might be used to represent missing values, e.g: -9999, -9998. These miss_values will be encoded to -1 or "Missing".
 #' @param x_list  A list of x variables.
 #' @param ex_cols  A list of excluded variables. Default is NULL.
 #' @param obs_id  The name of ID of observations.Default is NULL.
@@ -12,26 +12,25 @@
 #' @param pos_flag The value of positive class of target variable, default: "1".
 #' @param outlier_proc  Logical, process outliers or not. Default is TRUE.
 #' @param missing_proc  Logical, process nas or not. Default is TRUE.
-#' @param default_miss Logical. If TRUE, assigning the missing values to -1 or "Unknown", otherwise ,processing the missing values according to the results of missing analysis.
 #' @param low_var  Logical, delete low variance variables or not. Default is TRUE.
+#' @param one_hot  Logical. If TRUE, one-hot_encoding  of category variables. Default is FASLE.
 #' @param parallel  Logical, parallel computing or not. Default is FALSE.
 #' @param note Logical. Outputs info. Default is TRUE.
 #' @param save_data  Logical, save the result or not. Default is FALSE.
 #' @param file_name  The name for periodically saved data file. Default is NULL.
-#' @param dir_path The path for periodically saved data file. Default is "./data".
+#' @param dir_path The path for periodically saved data file. Default is tempdir().
 #'
 #' @return A preprocessed data.frame
 #' @seealso
 #' \code{\link{remove_duplicated}},
 #' \code{\link{null_blank_na}},
-#' \code{\link{entry_rate_max}},
 #' \code{\link{entry_rate_na}},
 #' \code{\link{low_variance_filter}},
 #' \code{\link{process_nas}},
 #' \code{\link{process_outliers}}
 #' @examples
 #' #data cleaning
-#' dat_cl <- cleaning_data(dat = UCICreditCard[1:2000,],
+#' dat_cl <- data_cleansing(dat = UCICreditCard[1:2000,],
 #'                        target = "default.payment.next.month",
 #'                        x_list = NULL,
 #'                        obs_id = "ID",
@@ -39,7 +38,7 @@
 #'                        ex_cols = c("PAY_6|BILL_"),
 #'                        outlier_proc = TRUE,
 #'                        missing_proc = TRUE,
-#'                        default_miss = FALSE,
+#'                       one_hot = FALSE,
 #'                        low_var = TRUE,
 #'                        save_data = FALSE)
 #'
@@ -49,49 +48,64 @@
 
 
 
-cleaning_data <- function(dat, target = NULL, x_list = NULL, obs_id = NULL, occur_time = NULL,
+data_cleansing <- function(dat, target = NULL, x_list = NULL, obs_id = NULL, occur_time = NULL,
                           pos_flag = NULL, miss_values = NULL, ex_cols = NULL,
-                          outlier_proc = TRUE, missing_proc = TRUE, default_miss = TRUE,
-                          low_var = TRUE,
+                          outlier_proc = TRUE, missing_proc = TRUE, 
+                          low_var = TRUE, one_hot = FALSE,
                           parallel = FALSE, note = FALSE,
-                          save_data = FALSE, dir_path = tempdir(), file_name = NULL) {
+                          save_data = FALSE, file_name = NULL, dir_path = tempdir()) {
     #delete variables that values are all nas.
-    opt = options("warn" = -1, scipen = 100, stringsAsFactors = FALSE, digits = 10) # suppress warnings
-
+    opt = options("warn" = -1, stringsAsFactors = FALSE, digits = 10) # suppress warnings
+    dat = checking_data(dat = dat, target = target, pos_flag = pos_flag,
+                            occur_time = occur_time, note = note)
     if (save_data) {
-        dir_path = ifelse(is.null(dir_path) || !is.character(dir_path) || !grepl('.|/|:', dir_path),
-                      tempdir(), dir_path)
+        dir_path = ifelse(!is.character(dir_path), tempdir(), dir_path)
         if (!dir.exists(dir_path)) dir.create(dir_path)
         if (!is.character(file_name)) file_name = NULL
         }
-    if (note)cat("[NOTE] start cleaning data.\n")
+    if (note) cat("[NOTE] data cleansing.\n")
+
+    x_list = get_names(dat = dat,
+                              types = c('logical', 'factor', 'character', 'numeric',
+                                        'integer', 'double', "Date", "POSIXlt", "POSIXct", "POSIXt"),
+                              ex_cols = ex_cols, get_ex = FALSE)
+    ex_x_cols = ex_x_cols2 = NULL
+    ex_x_cols = get_names(dat = dat,
+                              types = c('logical', 'factor', 'character', 'numeric',
+                                        'integer', 'double', "Date", "POSIXlt", "POSIXct", "POSIXt"),
+                              ex_cols = ex_cols, get_ex = TRUE)
     if (length(dat) > 0) {
         if (!is.null(x_list)) {
             dat = dat[unique(c(obs_id, target, occur_time, x_list))]
         }
+        
+        dat =  null_blank_na(dat = dat, miss_values = miss_values, note = note)
+
         #delete variables that all nas.
         if (low_var) {
-            dat = dat[!colAllnas(dat)]
-            dat = low_variance_filter(dat = dat, lvp = 0.98, note = note)
+            #delecte low vaiance variables
+            dat = dat[!colAllnas(dat)] %>%
+                      low_variance_filter(lvp = 0.98, note = note) 
+            x_list_2 = get_names(dat = dat,
+                              types = c('logical', 'factor', 'character', 'numeric',
+                                        'integer', 'double', "Date", "POSIXlt", "POSIXct", "POSIXt"),
+                              ex_cols = ex_cols, get_ex = FALSE)
+            ex_x_cols2 = setdiff(x_list, x_list_2)
+            ex_x_cols = unique(c(ex_x_cols, ex_x_cols2))
         }
-
-        #checking dat and target format.
-        dat = checking_data(dat = dat, target = target, pos_flag = pos_flag,
-                            occur_time = occur_time, note = note) %>% #delecte low vaiance variables
-        null_blank_na(miss_values = miss_values, note = note) %>%
-          time_transfer(date_cols = NULL,
-                        ex_cols = c(obs_id, target, occur_time, ex_cols),
+        if (length(ex_x_cols) > 0) {
+            cat(paste("[NOTE] exclued variables : ", paste(ex_x_cols, collapse = " , "), ".\n",
+                      sep = "", collapse = "\n"))
+        }
+        #transfer time variables to date formation
+        dat = time_transfer(dat = dat, date_cols = NULL,
+        ex_cols = c(obs_id, target, occur_time, ex_cols),
                         note = note) %>%
           char_to_num(ex_cols = c(obs_id, target, occur_time, ex_cols), note = note) %>%
-          #merge categories of character variables that  is more than 8
-          merge_category(ex_cols = c(obs_id, target, occur_time, ex_cols),
-                         p = 0.001, m = 20, note = note) %>%
-        entry_rate_max(rt = 0.95, note = note) %>%
-        entry_rate_na(nr = 0.97, note = note) %>%
-        #transfer time variables to date formation
-
-        remove_duplicated(target = target, obs_id = obs_id, occur_time = occur_time, note = note)
-
+        remove_duplicated(target = target, obs_id = obs_id, occur_time = occur_time, note = note) %>% entry_rate_na(nr = 0.95, note = note) %>%
+        #merge categories of character variables that  is more than 8
+        merge_category(ex_cols = c(obs_id, target, occur_time, ex_cols),
+                         p = 0.001, m = 20, note = note)
         char_x_list = get_names(dat = dat,
                                 types = c('factor', 'character'),
                                 ex_cols = c(obs_id, target, occur_time, ex_cols),
@@ -104,34 +118,37 @@ cleaning_data <- function(dat, target = NULL, x_list = NULL, obs_id = NULL, occu
                                 types = c("Date", "POSIXlt", "POSIXct", "POSIXt"),
                                 ex_cols = c(obs_id, target, occur_time, ex_cols),
                                 get_ex = FALSE)
-        ex_x_list = get_names(dat = dat,
-                              types = c('logical', 'factor', 'character', 'numeric',
-                                        'integer', 'double', "Date", "POSIXlt", "POSIXct", "POSIXt"),
-                              ex_cols = ex_cols, get_ex = TRUE)
-        class(dat$apply_date)
         flag_list = get_names(dat = dat,
                               types = c('logical', 'factor', 'character', 'numeric',
                                         'integer', 'double', "Date", "POSIXlt", "POSIXct", "POSIXt"),
                               ex_cols = c(obs_id, occur_time, target),
                               get_ex = TRUE)
         dat = dat[, c(flag_list, date_x_list, char_x_list, num_x_list)]
-        if (length(ex_x_list) > 0  ) {
-            cat(paste("[NOTE] exclued: ", paste(ex_x_list, collapse = " , "), ".\n",
-                      sep = "", collapse = "\n"))
+       re_x_list = gsub("-|\\$|\\*|\\+|\\?|\\[|\\^|\\{|\\}|\\\\|\\(|\\)|\\|\\)|\\]", "", c(char_x_list, num_x_list))
+        if (one_hot & length(char_x_list) > 0) {
+            dat = one_hot_encoding(dat = dat, cat_vars = char_x_list,
+                                  na_act = FALSE, note = note)
         }
         if (outlier_proc) {
             dat = process_outliers(dat = dat, target = target,
                                    x_list = num_x_list, ex_cols = c(obs_id, occur_time, target),
-                                   parallel = parallel, note = note)
+                                   parallel = parallel, note = note, save_data = save_data, file_name = file_name,dir_path = dir_path)
         }
         if (missing_proc) {
             dat = process_nas(dat = dat, class_var = FALSE, x_list = c(num_x_list, char_x_list),
                               ex_cols = c(obs_id, occur_time, target),
-                              default_miss = default_miss, parallel = parallel,
-                              method = "median", note = note)
+                              default_miss = FALSE, parallel = parallel,
+                              method = "median", note = note, save_data = save_data, file_name = file_name, dir_path = dir_path)
+        } else {
+            dat = process_nas(dat = dat, class_var = FALSE, x_list = c(num_x_list, char_x_list),
+                              ex_cols = c(obs_id, occur_time, target),
+                              default_miss = TRUE, parallel = parallel,
+                              method = "median", note = note, save_data = save_data, file_name = file_name, dir_path = dir_path)
         }
+        re_x_list = gsub("-|\\$|\\*|\\+|\\?|\\[|\\^|\\{|\\}|\\\\|\\(|\\)|\\|\\)|\\]", "_", c(char_x_list, num_x_list))
+        dat = re_name(dat, oldname = c(char_x_list, num_x_list), newname = re_x_list)
         if (save_data) {
-            save_dt(dat, dir_path = dir_path, file_name = ifelse(is.null(file_name), "dat.proc", paste(file_name, "dat.proc", sep = ".")), append = FALSE, note = note)
+            save_dt(dat, dir_path = dir_path, file_name = ifelse(is.null(file_name), "dat.cl", paste(file_name, "dat.cl", sep = ".")), append = FALSE, note = note)
         }
     }
     options(opt) # reset warnings
@@ -216,7 +233,7 @@ remove_duplicated <- function(dat = dat, obs_id = NULL, occur_time = NULL,
 #' \code{null_blank_na} is the function to  replace null ,NULL, blank or other missing vaules with NA.
 #'
 #' @param dat A data frame with x and target.
-#' @param miss_values  Other extreme value might be used to represent missing values, e.g: -9999, -9998. These miss_values will be encoded to -1 or "Unknown".
+#' @param miss_values  Other extreme value might be used to represent missing values, e.g: -9999, -9998. These miss_values will be encoded to -1 or "Missing".
 #' @param note   Logical.Outputs info.Default is TRUE.
 #'
 #' @return  A data.frame
@@ -236,37 +253,9 @@ null_blank_na <- function(dat, miss_values = NULL, note = FALSE) {
 }
 
 
-#' Max Percent of Unique Values
+#' Max Percent of Missing Value
 #'
-#' \code{entry_rate_max} is the function to encode variables which unique value  rate is  more than 95% as 1,0
-#'
-#' @param dat A data frame with x and target.
-#' @param rt  The maximum percent of unique value.
-#' @param note   Logical.Outputs info.Default is TRUE.
-#'
-#' @return  A data.frame
-#'
-#' @examples
-#' datss = entry_rate_max(dat = UCICreditCard[1:1000, ] , rt  = 0.98)
-#' @export
-
-entry_rate_max <- function(dat, rt = 0.95, note = FALSE) {
-    if (note) cat("[NOTE]", "process unique value which rate is  more than 95% \n")
-    n_row <- nrow(dat)
-    max_rate = vapply(dat,
-                      function(x) max(table(x, useNA = "no")) / n_row,
-                      FUN.VALUE = numeric(1))
-    dat[which(max_rate > rt)] <- vapply(dat[which(max_rate > rt)], function(x) {
-        ifelse(is.na(x), NA,
-               ifelse(as.character(x) == names(table(x, useNA = "no")[which.max(table(x, useNA = "no"))]) ,
-                                    names(table(x, useNA = "no")[which.max(table(x, useNA = "no"))]), NA))
-    }, FUN.VALUE = numeric(n_row))
-    return(dat)
-}
-
-#' Max Percent of NAs
-#'
-#' \code{entry_rate_na} is the function to encode variables which NAs &  miss value rate is more than 95%.
+#' \code{entry_rate_na} is the function to recode variables which NAs or  miss value rate is more than 95%.
 #'
 #' @param dat A data frame with x and target.
 #' @param nr  The maximum percent of NAs.
@@ -278,17 +267,23 @@ entry_rate_max <- function(dat, rt = 0.95, note = FALSE) {
 #' datss = entry_rate_na(dat = lendingclub[1:1000, ], nr = 0.98)
 #' @export
 
+
 entry_rate_na <- function(dat, nr = 0.95, note = FALSE) {
     if(note)cat("[NOTE]","process NAs & special value rate is more than 95%\n")
     n_row <- nrow(dat)
     NAs_rate <- vapply(dat, function(x) {
         sum(is.na(x)) / n_row
     }, FUN.VALUE = numeric(1))
-    dat[which(NAs_rate > nr )] <- vapply(dat[which(NAs_rate > nr)], function(x) {
-        ifelse(is.na(x), NA , 1)
-    }, FUN.VALUE = numeric(n_row))
+    dat[which(NAs_rate > nr)] <- lapply(dat[which(NAs_rate > nr)], function(x) {
+        if (is.element(class(x), c('numeric', 'integer', 'double'))) {
+            ifelse( is.na(x), -1,  0)
+        } else {
+                x
+        }
+    })
     return(dat)
 }
+
 
 
 #'  Filtering Low Variance Variables

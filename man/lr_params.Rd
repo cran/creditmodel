@@ -4,10 +4,10 @@
 \alias{lr_params}
 \title{Logistic Regression & Scorecard Parameters}
 \usage{
-lr_params(tree_control = list(p = 0.02, cp = 0.00000001, xval = 5,
-  maxdepth = 10), bins_control = list(bins_num = 10, bins_pct = 0.05,
-  b_chi = 0.02, b_odds = 0.1, b_psi = 0.03, b_gb = 0.15, mono = 0.2, gb_psi
-  = 0.15, kc = 1), best_lambda = "lambda.sim_sign", sp_values = NULL,
+lr_params(tree_control = list(p = 0.02, cp = 1e-08, xval = 5, maxdepth =
+  10), bins_control = list(bins_num = 10, bins_pct = 0.05, b_chi = 0.02,
+  b_odds = 0.1, b_psi = 0.03, b_or = 0.15, mono = 0.2, odds_psi = 0.15, kc
+  = 1), best_lambda = "lambda.sim_sign", sp_values = NULL,
   forced_in = NULL, obsweight = c(1, 1), lasso = TRUE,
   vars_plot = TRUE, step_wise = TRUE, score_card = TRUE,
   cor_p = 0.8, iv_i = 0.02, psi_i = 0.1, ...)
@@ -17,13 +17,13 @@ lr_params(tree_control = list(p = 0.02, cp = 0.00000001, xval = 5,
 
 \item{bins_control}{the list of parameters to control merging initial breaks. See details at: \code{\link{select_best_breaks}},\code{\link{select_best_class}}}
 
-\item{best_lambda}{Metheds of best lanmbda stardards using to filter variables by LASSO.There are four methods: ("lambda.min", "lambda.1se", "lambda.05se" , "lambda.sim_sign") . Default is  "lambda.sim_sign". See details at: \code{\link{get_best_lambda}}}
+\item{best_lambda}{Metheds of best lanmbda stardards using to filter variables by LASSO. There are 3 methods: ("lambda.auc", "lambda.ks", "lambda.sim_sign") . Default is  "lambda.auc".}
 
-\item{sp_values}{Vaules will be in separate bins.e.g. list(-1, "Unknown")  means that -1 & Unknown as special values.Default is NULL.}
+\item{sp_values}{Vaules will be in separate bins.e.g. list(-1, "Missing")  means that -1 & Missing as special values.Default is NULL.}
 
 \item{forced_in}{Names of forced input variables. Default is NULL.}
 
-\item{obsweight}{An optional vector of  'prior weights' to be used in the fitting process. Should be NULL or a numeric vector. If you oversample or cluster diffrent datasets to training the LR model, you need to set this parameter to ensure that the probability of logistic regression output is the same as that before oversampling or segmentation. e.g.:There are 10,000 good obs and 500 bad obs before oversampling or under-sampling, 5,000 good obs and 3,000 bad obs after oversampling. Then this parameter should be set to c(10000/5000, 500/3000). Default is NULL..}
+\item{obsweight}{An optional vector of  'prior weights' to be used in the fitting process. Should be NULL or a numeric vector. If you oversample or cluster diffrent datasets to training the LR model, you need to set this parameter to ensure that the probability of logistic regression output is the same as that before oversampling or segmentation. e.g.:There are 10,000 0 obs and 500 1 obs before oversampling or under-sampling, 5,000 0 obs and 3,000 1 obs after oversampling. Then this parameter should be set to c(10000/5000, 500/3000). Default is NULL..}
 
 \item{lasso}{Logical, if TRUE, variables filtering by LASSO. Default is TRUE.}
 

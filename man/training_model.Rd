@@ -4,13 +4,13 @@
 \alias{training_model}
 \title{Training model}
 \usage{
-training_model(model_name = "mymodel", dat_train, dat_test = NULL,
+training_model(model_name = "mymodel", dat, dat_test = NULL,
   target = NULL, occur_time = NULL, obs_id = NULL, x_list = NULL,
   ex_cols = NULL, pos_flag = NULL, prop = 0.7, preproc = TRUE,
-  miss_values = NULL, outlier_proc = TRUE, missing_proc = TRUE,
-  default_miss = FALSE, feature_filter = list(filter = c("IV", "PSI",
+  one_hot = FALSE, miss_values = NULL, outlier_proc = TRUE,
+  missing_proc = TRUE, feature_filter = list(filter = c("IV", "PSI",
   "COR", "XGB"), iv_cp = 0.02, psi_cp = 0.1, xgb_cp = 0, cv_folds = 1,
-  hopper = FALSE), algorithm = list("LR", "XGB"),
+  hopper = FALSE), algorithm = list("LR", "XGB", "GBM", "RF"),
   LR.params = lr_params(), XGB.params = xgb_params(),
   GBM.params = gbm_params(), RF.params = rf_params(),
   breaks_list = NULL, parallel = FALSE, cores_num = NULL,
@@ -20,7 +20,7 @@ training_model(model_name = "mymodel", dat_train, dat_test = NULL,
 \arguments{
 \item{model_name}{A string, name of the project. Default is "mymodel"}
 
-\item{dat_train}{A data.frame with independent variables and target variable.}
+\item{dat}{A data.frame with independent variables and target variable.}
 
 \item{dat_test}{A data.frame of test data. Default is NULL.}
 
@@ -40,13 +40,13 @@ training_model(model_name = "mymodel", dat_train, dat_test = NULL,
 
 \item{preproc}{Logical. Preprocess data. Default is TRUE}
 
-\item{miss_values}{Other extreme value might be used to represent missing values, e.g: -9999, -9998. These miss_values will be encoded to -1 or "Unknown".}
+\item{one_hot}{Logical. If TRUE, one-hot_encoding  of category variables. Default is FASLE.}
+
+\item{miss_values}{Other extreme value might be used to represent missing values, e.g: -9999, -9998. These miss_values will be encoded to -1 or "Missing".}
 
 \item{outlier_proc}{Logical. If TRUE,  Outliers processing using Kmeans and Local Outlier Factor. Default is TRUE}
 
 \item{missing_proc}{Logical. If TRUE, missing value analysis and process missing value by knn imputation or central impulation or random imputation. Default is TRUE}
-
-\item{default_miss}{Logical. If TRUE, assigning the missing values to -1 or "Unknown", otherwise, processing the missing values according to the results of missing analysis. See details at: \code{\link{process_nas}}}
 
 \item{feature_filter}{Parameters for selecting important and stable features.See details at: \code{\link{feature_select_wrapper}}}
 
@@ -56,10 +56,10 @@ training_model(model_name = "mymodel", dat_train, dat_test = NULL,
 \itemize{
   \item \code{tree_control} the list of parameters to control cutting initial breaks by decision tree. See details at: \code{\link{get_tree_breaks}}
   \item \code{bins_control} the list of parameters to control merging initial breaks. See details at: \code{\link{select_best_breaks}},\code{\link{select_best_class}}
-  \item \code{best_lambda} Metheds of best lanmbda stardards using to filter variables by LASSO.There are four methods: ("lambda.min", "lambda.1se", "lambda.05se" , "lambda.sim_sign") . Default is  "lambda.sim_sign". See details at: \code{\link{get_best_lambda}}
-  \item \code{obsweight} An optional vector of  'prior weights' to be used in the fitting process. Should be NULL or a numeric vector. If you oversample or cluster diffrent datasets to training the LR model, you need to set this parameter to ensure that the probability of logistic regression output is the same as that before oversampling or segmentation. e.g.:There are 10,000 good obs and 500 bad obs before oversampling or under-sampling, 5,000 good obs and 3,000 bad obs after oversampling. Then this parameter should be set to c(10000/5000, 500/3000). Default is NULL..
+  \item \code{best_lambda} Metheds of best lanmbda stardards using to filter variables by LASSO. There are 3 methods: ("lambda.auc", "lambda.ks", "lambda.sim_sign") . Default is  "lambda.sim_sign".
+  \item \code{obsweight} An optional vector of  'prior weights' to be used in the fitting process. Should be NULL or a numeric vector. If you oversample or cluster diffrent datasets to training the LR model, you need to set this parameter to ensure that the probability of logistic regression output is the same as that before oversampling or segmentation. e.g.:There are 10,000 0 obs and 500 1 obs before oversampling or under-sampling, 5,000 0 obs and 3,000 1 obs after oversampling. Then this parameter should be set to c(10000/5000, 500/3000). Default is NULL..
   \item \code{forced_in}Names of forced input variables. Default is NULL.
-  \item \code{sp_values} Vaules will be in separate bins.e.g. list(-1, "Unknown")  means that -1 & Unknown as special values.Default is NULL.
+  \item \code{sp_values} Vaules will be in separate bins.e.g. list(-1, "Missing")  means that -1 & Missing as special values.Default is NULL.
   \item \code{step_wise} Logical, stepwise method. Default is TRUE.
   \item \code{score_card} Logical, transfer woe to a standard scorecard. If TRUE, Output scorecard, and score prediction, otherwise output probability. Default is TRUE.
   \item \code{cor_p} The maximum threshold of correlation.0 <= cor_p <=1; 0.5 to 0.8 usually work.  Default: 0.7.
@@ -99,14 +99,14 @@ A list containing Model Objects.
 sub = cv_split(UCICreditCard, k = 40)[[1]]
 dat = UCICreditCard[sub,]
 dat = re_name(dat, "default.payment.next.month", "target")
-dat = cleaning_data(dat, target = "target", obs_id = "ID", 
+dat = data_cleansing(dat, target = "target", obs_id = "ID", 
 occur_time = "apply_date", miss_values = list("", -1, -2))
 train_test <- train_test_split(dat, split_type = "OOT", prop = 0.7,
                                 occur_time = "apply_date")
 dat_train = train_test$train
 dat_test = train_test$test
-x_list = c("PAY_0", "LIMIT_BAL", "PAY_AMT5", "PAY_3", "PAY_2")
-B_model = training_model(dat_train = dat_train,
+x_list = c("PAY_0", "LIMIT_BAL", "PAY_AMT5", "PAY_3")
+B_model = training_model(dat = dat_train,
 model_name = "UCICreditCard", target = "target", x_list = x_list,
 occur_time = "apply_date", obs_id = "ID", dat_test = dat_test,
                            preproc = FALSE,
@@ -122,5 +122,5 @@ occur_time = "apply_date", obs_id = "ID", dat_test = dat_test,
                            seed = 46)
 }
 \seealso{
-\code{\link{train_test_split}},\code{\link{cleaning_data}}, \code{\link{feature_select_wrapper}},   \code{\link{lr_params}}, \code{\link{xgb_params}}, \code{\link{gbm_params}}, \code{\link{rf_params}},\code{\link{fast_high_cor_filter}},\code{\link{get_breaks_all}},\code{\link{lasso_filter}}, \code{\link{woe_trans_all}}, \code{\link{get_logistic_coef}}, \code{\link{score_transfer}},\code{\link{get_score_card}}, \code{\link{model_key_index}},\code{\link{ks_psi_plot}},\code{\link{get_plots}},\code{\link{ks_table_plot}}
+\code{\link{train_test_split}},\code{\link{data_cleansing}}, \code{\link{feature_select_wrapper}},   \code{\link{lr_params}}, \code{\link{xgb_params}}, \code{\link{gbm_params}}, \code{\link{rf_params}},\code{\link{fast_high_cor_filter}},\code{\link{get_breaks_all}},\code{\link{lasso_filter}}, \code{\link{woe_trans_all}}, \code{\link{get_logistic_coef}}, \code{\link{score_transfer}},\code{\link{get_score_card}}, \code{\link{model_key_index}},\code{\link{ks_psi_plot}},\code{\link{get_plots}},\code{\link{ks_table_plot}}
 }
