@@ -4,7 +4,8 @@
 \alias{get_names}
 \title{Get Variable Names}
 \usage{
-get_names(dat, types = c("numeric", "integer", "double"),
+get_names(dat, types = c("logical", "factor", "character", "numeric",
+  "integer", "double", "Date", "POSIXlt", "POSIXct", "POSIXt"),
   ex_cols = NULL, get_ex = FALSE)
 }
 \arguments{

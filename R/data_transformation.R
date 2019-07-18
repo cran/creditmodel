@@ -916,4 +916,3 @@ char_to_num <- function(dat, note = FALSE, ex_cols = "date$|id$|time$|DATA$|ID$|
     return(dat)
 }
 
-

@@ -1,11 +1,11 @@
-5abcf53b4ac44739d4786a0ac2662201 *DESCRIPTION
+83c8b7bdd0014f2d6b7facf2cc242f0a *DESCRIPTION
 2cce5428fbbed86bd1017e0e53d80129 *NAMESPACE
-fea460eec3b88960d4d4f405df853daa *NEWS.md
+136220ba011b8cf84253e27691df2249 *NEWS.md
 b3b8632850bce22eba61b5182025c9e0 *R/data_anaylsis.R
 e5c9a3c94e642a5873f9d34188070738 *R/data_cleansing.R
 57ac19955519cce37058fae1e1a08b22 *R/data_exploration.R
-96fa01766f5818ed4db6c58f826b25c3 *R/data_process_tools.R
-a8f3981eacfee4eee9bdba68b8d72791 *R/data_transformation.R
+3d93356b252d5f44b9149b579724a305 *R/data_process_tools.R
+b280c1ae7dbc3894c030bf5155b98713 *R/data_transformation.R
 264b0f90150de9356b7331ac75b34a54 *R/data_visualization.R
 dad449ca627f77b0f35b7684c5bb5494 *R/essential_algorithms.R
 ecebfc51bd239c65e4fc18403618febe *R/example_data.r
@@ -19,7 +19,7 @@ a76f3a602a7b51d6f634ce3e3e120ca8 *R/model_training.R
 67d48c6d9f17646711b883ac9dab5c2f *data/datalist
 a0eb2b4e840fe67d34279653e48ac02d *data/lendingclub.rda
 bfc4d3ae4a74127ed35c34aef31a7d2d *inst/doc/demo.R
-4d8875301e409bfa5eec3879f2844fba *inst/doc/demo.html
+5c674cd3b03bf179e3481eaaed74dd83 *inst/doc/demo.html
 e3348fe3045c00203ba0077be814dc3f *inst/doc/demo.rmd
 cb7abbc13fea745d0e571010e015ec40 *man/PCA_reduce.Rd
 40271a51348c079bc91fb5fe00f582bb *man/UCICreditCard.Rd
@@ -64,7 +64,7 @@ ae01a2b5332fb73a42a9d5004201caa1 *man/get_correlation_group.Rd
 555caf3b407d594f6e5887dcfaa3b7b7 *man/get_iv_all.Rd
 8bca1ba1d694b8780535630c458269a7 *man/get_logistic_coef.Rd
 5f9629a86923550f4a5a7dea3697c822 *man/get_median.Rd
-2b34670b71e8ecb55ac2c599614c98be *man/get_names.Rd
+6e4c75ec5104941e2cd0059079435b4e *man/get_names.Rd
 72b3eefa0242716096057fa6ea44ae87 *man/get_nas_random.Rd
 995f5b70df0652fe0cc998286ce0d906 *man/get_plots.Rd
 30d01e3775c4acfffddcacde1c19a927 *man/get_psi_all.Rd
@@ -122,5 +122,6 @@ fc4575bf423f33a317606f5df16a8d98 *man/xgb_filter.Rd
 1005a48c5b377cb04c26e02a602a7b7e *man/xgb_params.Rd
 b0883aab3f69193b710796ccccbbbc86 *tests/testthat.R
 2c713939fbd459249fb85ae8b9042e27 *tests/testthat/test.R
+7446b436b11d1afe7abae00069366345 *vignettes/Untitled.md
 f6c300576da407ed45a327ebbbaff154 *vignettes/cran_comments.md
 e3348fe3045c00203ba0077be814dc3f *vignettes/demo.rmd

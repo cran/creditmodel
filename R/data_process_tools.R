@@ -253,21 +253,23 @@ save_dt <- function(dt, file_name = "dat", dir_path = getwd(),
 #' @export
 
 
-
-digits_num <- function(dat_x) {
+digits_num =function(dat_x) {
     options(scipen = 100)
     digits1 = digits2 = 10
     dat_x = sample(unlist(dat_x[!is.na(dat_x)]), 100, replace = FALSE)
-    if (any(is.element(class(dat_x), c("integer", "numeric", "double")))) {
+    if (any(is.element(class(dat_x), c("integer", "numeric",
+        "double")))) {
         digits1 = vapply(dat_x, function(num) {
-            char_num = as.character(gsub("-", "", num))
+            char_num = as.character(gsub("-", "",
+                num))
             n_num = as.numeric(char_num) %% 1
             if (!is.null(n_num) && !is.na(n_num) && is.numeric(n_num)) {
                 if (n_num == 0) {
                     t_lens = nchar(char_num)
                     left_comma = t_lens
                     right_comma = t_lens - left_comma
-                } else {
+                }
+                else {
                     comma_p = gregexpr("[.]", char_num)[[1]][1]
                     t_lens = nchar(char_num)
                     left_comma = comma_p - 1
@@ -276,7 +278,7 @@ digits_num <- function(dat_x) {
                 right_comma
             }
         }, FUN.VALUE = numeric(1))
-        digits2 = get_median(digits1)
+        digits2 = max(digits1)
     }
     digits2
 }
@@ -543,16 +545,23 @@ colMaxMins <- function(x, na.rm = FALSE) {
  #' ex_cols = c("default.payment.next.month", "ID$|SEX "), get_ex = FALSE)
 #' @export
 
-get_names <- function(dat, types = c('numeric', 'integer', 'double'), ex_cols = NULL, get_ex = FALSE) {
+
+
+get_names <- function(dat, types = c('logical', 'factor', 'character', 'numeric',
+                                        'integer', 'double', "Date", "POSIXlt", "POSIXct", "POSIXt"), ex_cols = NULL, get_ex = FALSE) {
     if (is.null(types)) {
         stop("types is missing!")
     }
     if (is.null(ex_cols)) {
-        sel_names = names(dat)[sapply(dat, function(x)any(is.element(class(x), types)))]
+        sel_names = names(dat)[sapply(dat, function(x) any(is.element(class(x), types)))]
         ex_names = names(dat)[!(sapply(dat, function(x) any(is.element(class(x), types))))]
     } else {
         var_names = names(dat)[sapply(dat, function(x) any(is.element(class(x), types)))]
-        ex_vars = names(dat)[colnames(dat) %alike% ex_cols]
+        if (length(ex_cols) > 1 || !grepl("\\$|\\*|\\+|\\?|\\[|\\^|\\{|\\}|\\\\|\\|\\)|\\]", ex_cols) ) {
+            ex_vars = names(dat)[colnames(dat) %in% ex_cols]
+        } else {
+            ex_vars = names(dat)[colnames(dat) %alike% ex_cols]
+        }
         ex_types = names(dat)[!(sapply(dat, function(x) any(is.element(class(x), types))))]
         ex_names = unique(c(ex_vars, ex_types))
         sel_names = setdiff(var_names, ex_names)

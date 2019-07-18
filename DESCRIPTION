@@ -1,6 +1,6 @@
 Package: creditmodel
-Version: 1.1.0
-Date: 2019-05-17
+Version: 1.1.1
+Date: 2019-07-18
 Title: Build Binary Classification Models in One Integrated Offering
 Authors@R: c(person(given = "Dongping", family = "Fan",email = "fdp@pku.edu.cn",role = c("aut", "cre")))
 Maintainer: Dongping Fan <fdp@pku.edu.cn>
@@ -24,7 +24,7 @@ LazyLoad: yes
 License: AGPL-3
 RoxygenNote: 6.1.1
 NeedsCompilation: no
-Packaged: 2019-05-18 14:59:11 UTC; HANSEN
+Packaged: 2019-07-18 05:54:05 UTC; HANSEN
 Author: Dongping Fan [aut, cre]
 Repository: CRAN
-Date/Publication: 2019-05-18 23:10:24 UTC
+Date/Publication: 2019-07-18 08:54:07 UTC
