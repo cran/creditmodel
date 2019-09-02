@@ -2,27 +2,59 @@
 % Please edit documentation in R/model_training.R
 \name{xgb_params}
 \alias{xgb_params}
-\title{Logistic Regression & Scorecard Parameters}
+\alias{xgb_params_search}
+\title{XGboost Parameters}
 \usage{
-xgb_params(nrounds = 1000, params = list(max.depth = 6, eta = 0.1,
-  min_child_weight = 1, subsample = 1, colsample_bytree = 1, gamma = 0,
-  max_delta_step = 0, eval_metric = "auc", objective = "binary:logistic"),
-  early_stopping_rounds = 100, ...)
+xgb_params(nrounds = 1000, params = list(max.depth = 6, eta = 0, gamma
+  = 0, min_child_weight = 1, subsample = 1, colsample_bytree = 1,
+  max_delta_step = 0), early_stopping_rounds = 100,
+  method = "random_search", iters = 10, eval = "auc", nfold = 1,
+  nthread = 2, ...)
+
+xgb_params_search(dat_train, target, dat_test = NULL, x_list = NULL,
+  prop = 0.7, occur_time = NULL, method = "random_search",
+  iters = 10, nrounds = 100, early_stopping_rounds = 10,
+  params = list(max.depth = 6, eta = 0, gamma = 0, min_child_weight = 1,
+  subsample = 1, colsample_bytree = 1, max_delta_step = 0), eval = "auc",
+  nfold = 1, nthread = 2, ...)
 }
 \arguments{
 \item{nrounds}{Max number of boosting iterations.}
 
-\item{params}{A list contains parameters of xgboost.The complete list of parameters is available at: \url{ http://xgboost.readthedocs.io/en/latest/parameter.html}}
+\item{params}{List of contains parameters of xgboost. The complete list of parameters is available at: \url{ http://xgboost.readthedocs.io/en/latest/parameter.html}}
 
 \item{early_stopping_rounds}{If NULL, the early stopping function is not triggered. If set to an integer k, training with a validation set will stop if the performance doesn't improve for k rounds.}
 
+\item{method}{Method of searching optimal parameters."random_search","grid_search","local_search" are available.}
+
+\item{iters}{Number of iterations of "random_search" optimal parameters.}
+
+\item{eval}{Custimized evaluation function,"ks" & "auc" are available.}
+
+\item{nfold}{Number of the cross validation of xgboost}
+
+\item{nthread}{Number of threads}
+
 \item{...}{Other parameters}
+
+\item{dat_train}{A data.frame of train data. Default is NULL.}
+
+\item{target}{Name of target variable.}
+
+\item{dat_test}{A data.frame of test data. Default is NULL.}
+
+\item{x_list}{Names of independent variables. Default is NULL.}
+
+\item{prop}{Percentage of train-data after the partition. Default: 0.7.}
+
+\item{occur_time}{The name of the variable that represents the time at which each observation takes place.Default is NULL.}
 }
 \value{
 A list of parameters.
 }
 \description{
-\code{xgb_params} is the list of parameters to train a LR model or Scorecard using in \code{\link{training_model}}.
+\code{xgb_params} is the list of parameters to train a XGB model using in \code{\link{training_model}}.
+\code{xgb_params_search} is for searching the optimal parameters of xgboost,if any parameters of params in \code{\link{xgb_params}} is more than one.
 }
 \seealso{
 \code{\link{training_model}}, \code{\link{lr_params}},\code{\link{gbm_params}}, \code{\link{rf_params}}

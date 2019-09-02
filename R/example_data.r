@@ -336,6 +336,6 @@ NULL
 #' @keywords datasets
 #' @format A data frame with 63532 rows and 145 variables.
 #' @name lendingclub
-#' @source \url{https://www.lendingclub.com/info/download:data.action}
+#' @source \url{https://www.lendingclub.com}
 #' @seealso \code{\link{UCICreditCard}}
 NULL

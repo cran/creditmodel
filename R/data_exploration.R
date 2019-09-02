@@ -79,7 +79,7 @@ data_exploration <- function(dat, target = NULL, save_data = FALSE, file_name = 
         if (length(unique(dat1[, target])) > 10) {
             dat1[, target] = split_bins(dat = dat1, x = target, bins_no = FALSE)
         }
-        dat1[char_x_list] = merge_category(dat1[char_x_list], m = 10)
+        dat1[char_x_list] = merge_category(dat1[char_x_list], m = 10,note = FALSE)
         Corr_dt = data.frame(Feature = char_x_list, NMiss = unlist(lapply(char_x_list, function(x) sum(is.na(dat1[, x])))))
         view_char1 = merge(view_char1, Corr_dt)
         view_char1[is.na(view_char1)] = "--"

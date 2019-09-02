@@ -8,7 +8,7 @@ lasso_filter(dat_train, dat_test = NULL, target = NULL,
   x_list = NULL, pos_flag = NULL, ex_cols = NULL,
   sim_sign = "negtive", best_lambda = "lambda.auc",
   save_data = FALSE, plot.it = TRUE, seed = 46, file_name = NULL,
-  dir_path = tempdir())
+  dir_path = tempdir(), note = FALSE)
 }
 \arguments{
 \item{dat_train}{A data.frame with independent variables and target variable.}
@@ -36,6 +36,8 @@ lasso_filter(dat_train, dat_test = NULL, target = NULL,
 \item{file_name}{The name for periodically saved results files. Default is "Feature_selected_LASSO".}
 
 \item{dir_path}{The path for periodically saved results files. Default is "./variable".}
+
+\item{note}{Logical, outputs info. Default is FALSE.}
 }
 \value{
 A list of filtered x variables by lasso.
@@ -49,7 +51,7 @@ A list of filtered x variables by lasso.
  dat = re_name(dat, "default.payment.next.month", "target")
  dat = data_cleansing(dat, target = "target", obs_id = "ID", occur_time = "apply_date",
   miss_values = list("", -1))
- 
+
  train_test <- train_test_split(dat, split_type = "OOT", prop = 0.7,
                                   occur_time = "apply_date")
  dat_train = train_test$train

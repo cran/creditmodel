@@ -4,11 +4,26 @@
 # if (!dir.exists("c:/test_model")) dir.create("c:/test_model")
 # setwd("c:/test_model")
 # library(creditmodel)
-# #set parameters
-# LR.params = lr_params(
-# bins_control = list(bins_num = 8, bins_pct = 0.05, b_chi = 0.02, b_odds = 0.1, b_psi = 0.02, b_gb = 0.15, mono = 0.3, gb_psi = 0.05, kc = 1),score_card = TRUE, cor_p = 0.7, iv_i = 0.02, psi_i = 0.1)
-# XGB.params = xgb_params(nrounds = 10000, params = list(max.depth = 4, eta = 0.01, min_child_weight = 50, subsample = 0.5, colsample_bytree = 0.6, gamma = 0, max_delta_step = 1, eval_metric = "auc", objective = "binary:logistic"), early_stopping_rounds = 300)
-# #training model
-# Lending_model = training_model( dat_train = lendingclub, model_name = "lendingclub", target = "loan_status", occur_time = "issue_d",ex_cols = c("last_credit_pull_d", "next_pymnt_d", "prncp|recoveries|rec_|funded_amnt|pymnt|fee$"),obs_id = "id", prop = 0.7,feature_filter = list(filter = c("IV", "PSI", "COR", "XGB"), cv_folds = 1, iv_cp = 0.02,psi_cp = 0.1, cor_cp = 0.8, xgb_cp = 0, hopper = TRUE), algorithm = list("LR", "XGB"),LR.params = LR.params, XGB.params = XGB.params, parallel = FALSE,save_pmml = FALSE,  plot_show = FALSE, seed = 46)
-# })
-#
+# sub = cv_split(UCICreditCard, k = 3)[[1]]
+# dat = UCICreditCard[sub,]
+# dat = re_name(dat, "default.payment.next.month", "target")
+# dat = data_cleansing(dat, target = "target", obs_id = "ID", occur_time = "apply_date", miss_values = list("", -1, -2))
+# train_test <- train_test_split(dat, split_type = "OOT", prop = 0.7, occur_time = "apply_date")
+# dat_train = train_test$train
+# dat_test = train_test$test
+# x_list = c("PAY_0", "LIMIT_BAL", "PAY_AMT5", "PAY_3")
+# B_model = training_model(dat = dat_train,
+#                         model_name = "UCICreditCard", target = "target", x_list = x_list,
+#                        occur_time = "apply_date", obs_id = "ID", dat_test = dat_test,
+#                         preproc = FALSE,
+#                         feature_filter = NULL,
+#                         algorithm = list("RF","LR","XGB","GBM"),
+#                         LR.params = lr_params(lasso = TRUE,
+#                                               step_wise = TRUE, vars_plot = FALSE),
+#                        XGB.params = xgb_params(),
+#                         breaks_list = NULL,
+#                        parallel = FALSE, cores_num = NULL,
+#                         save_pmml = FALSE, plot_show = FALSE,
+#                         model_path = getwd(),
+#                         seed = 46)# })
+# 

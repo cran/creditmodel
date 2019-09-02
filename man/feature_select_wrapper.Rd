@@ -66,7 +66,7 @@ A list of selected features
 \code{feature_select_wrapper} This function uses four different methods (IV, PSI, correlation, xgboost) in order to select important features.The correlation algorithm must be used with IV.
 }
 \examples{
-feature_select_wrapper(dat_train = UCICreditCard[1:1000,c(8:12,26)],
+feature_select_wrapper(dat_train = UCICreditCard[1:1000,c(2,8:12,26)],
                       dat_test = NULL, target = "default.payment.next.month",
                       occur_time = "apply_date", filter = c("IV", "PSI"),
                       cv_folds = 1, iv_cp = 0.01, psi_cp = 0.1, xgb_cp = 0, cor_cp = 0.98,

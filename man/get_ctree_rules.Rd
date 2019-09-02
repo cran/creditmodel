@@ -5,7 +5,7 @@
 \title{Parse party ctree rules}
 \usage{
 get_ctree_rules(tree_fit = NULL, train_dat = NULL, target = NULL,
-  test_dat = NULL, tree_control = list(p = 0.05, cp = 1e-04, xval = 1,
+  test_dat = NULL, tree_control = list(p = 0.05, cp = 0.0001, xval = 1,
   maxdepth = 10), seed = 46)
 }
 \arguments{

@@ -25,7 +25,7 @@ ks_value(dat_pred = NULL, target = NULL, score = NULL, g = 20,
 sub = cv_split(UCICreditCard, k = 30)[[1]]
 dat = UCICreditCard[sub,]
 dat = re_name(dat, "default.payment.next.month", "target")
-dat = data_cleansing(dat, target = "target", obs_id = "ID", 
+dat = data_cleansing(dat, target = "target", obs_id = "ID",
 occur_time = "apply_date", miss_values = list("", -1))
 
 train_test <- train_test_split(dat, split_type = "OOT", prop = 0.7,

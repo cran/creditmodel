@@ -49,7 +49,18 @@ data_cleansing(dat, target = NULL, x_list = NULL, obs_id = NULL,
 A preprocessed data.frame
 }
 \description{
-The \code{data_cleansing} function is a simpler wrapper for data cleaning functions, such as delete variables that values are all NAs;checking dat and target format.;delete low variance variables.;replace null or NULL or blank with NA; encode variables which NAs &  miss value rate is more than 95% as 1,0 ;encode variables which unique value  rate is  more than 95% as 1,0; merge categories of character variables that  is more than 8; transfer time variables to dateformation; remove duplicated observations;process outliers;process NAs.
+The \code{data_cleansing} function is a simpler wrapper for data cleaning functions, such as 
+delete variables that values are all NAs;
+checking dat and target format.
+delete low variance variables
+replace null or NULL or blank with NA; 
+encode variables which NAs &  miss value rate is more than 95% as 1,0 ;
+encode variables which unique value  rate is  more than 95% as 1,0;
+merge categories of character variables that  is more than 8; 
+transfer time variables to dateformation;
+remove duplicated observations;
+process outliers;
+process NAs.
 }
 \examples{
 #data cleaning

@@ -63,7 +63,7 @@ dat_test = train_test$test
 #get breaks of all predictive variables
 x_list = c("PAY_0", "LIMIT_BAL", "PAY_AMT5", "EDUCATION", "PAY_3", "PAY_2")
 breaks_list <- get_breaks_all(dat = dat_train, target = "target",
-                              x_list = x_list, occur_time = "apply_date", ex_cols = "ID", 
+                              x_list = x_list, occur_time = "apply_date", ex_cols = "ID",
 save_data = FALSE, note  = FALSE)
 #woe transform
 train_woe = woe_trans_all(dat = dat_train,

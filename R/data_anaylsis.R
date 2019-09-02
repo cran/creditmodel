@@ -42,20 +42,21 @@ customer_segmentation <- function(dat, x_list = NULL, ex_cols = NULL,
                                                       minbucket = nrow(dat) / (kc + 1)),
                                   save_data = FALSE,
                                   file_name = NULL, dir_path = tempdir()) {
-
-  opt = options(stringsAsFactors = FALSE, digits = 6)
-
+  opt = options(scipen = 200, stringsAsFactors = FALSE, digits = 6) #
     x_list = get_x_list(x_list = x_list, dat_train = dat, ex_cols = ex_cols)
     dir_path = ifelse(is.null(dir_path) | !is.character(dir_path) || !grepl(".|/", dir_path),
                       "./segmentation", dir_path)
     file_name = ifelse(is.null(file_name) | !is.character(file_name), "customer_seg", file_name)
     if (!dir.exists(dir_path)) dir.create(dir_path)
-    if (any(is.na(dat[x_list]))) {
+	if (any(is.na(dat[x_list]))) {
         dat = process_nas(dat = dat, x_list = x_list, default_miss = TRUE, ex_cols =  ex_cols, parallel = FALSE, method = "median",note = FALSE)
     }
-    dat = one_hot_encoding(dat)
-    dat = low_variance_filter(dat, lvp = 0.9)
+    dat = one_hot_encoding(dat[x_list])
+    dat = low_variance_filter(dat, lvp = 0.98)
     dat_s <- apply(dat, 2, min_max_norm)
+	if (any(is.na(dat_s))) {
+        dat_s = process_nas(dat = dat_s, x_list = x_list, default_miss = TRUE, ex_cols =  ex_cols, parallel = FALSE, method = "median",note = FALSE)
+    }
     meth = ifelse(!is.null(cluster_control[["meth"]]), cluster_control[["meth"]], "FCM")
     nstart = ifelse(!is.null(cluster_control[["nstart"]]), cluster_control[["nstart"]], 1)
     epsm = ifelse(!is.null(cluster_control[["epsm"]]), cluster_control[["epsm"]], 1e-06)
@@ -92,16 +93,17 @@ customer_segmentation <- function(dat, x_list = NULL, ex_cols = NULL,
         summary(fit, digits = getOption("digits"),
             file = paste0(dir_path, "/", ifelse(is.null(file_name), "segment.tree.txt", paste(file_name, "segment.tree.txt", sep = "."))))
     }
-    options(opt) # reset
+
     return(list(fit,cluster_res))
+	options(opt) # reset
 }
 
-#' vintage_function
-#' \code{vintage_function} is for vintage analysis.
+#' cohort_analysis
+#' \code{cohort_function} is for cohort(vintage) analysis.
 #'
 #' This function is not intended to be used by end user.
 #'
-#' @param  dat  A data.frame contained id, occur_time, mob, status ...
+#' @param dat  A data.frame contained id, occur_time, mob, status ...
 #' @param obs_id  The name of ID of observations or key variable of data. Default is NULL.
 #' @param occur_time The name of the variable that represents the time at which each observation takes place.
 #' @param MOB  Mobility of book
@@ -116,140 +118,193 @@ customer_segmentation <- function(dat, x_list = NULL, ex_cols = NULL,
 #' @importFrom data.table dcast melt fread fwrite
 #' @export
 
-vintage_function <- function(dat, obs_id = NULL, occur_time = NULL, MOB = NULL,
-                             period = "monthly", status = NULL, amount = NULL, by_out = "cnt",
-                             start_date = NULL, end_date = NULL, dead_status = 30) {
-    dat = checking_data(dat = dat, occur_time = occur_time)
-    dat = time_transfer(dat, date_cols = occur_time)
-    ID = aging = cohort = sta = amt = NULL
-    if (!is.null(occur_time) && is.null(start_date)) {
-        start_date = date_cut(dat_time = dat[, occur_time], pct = 0)
-    }
-    if (!is.null(occur_time) && is.null(end_date)) {
-        end_date = date_cut(dat_time = dat[, occur_time], pct = 1)
-    }
-    dat = dat[which(dat[, occur_time] >= start_date & dat[, occur_time] <= end_date),]
-    if (!is.null(MOB)) {
-        dat$aging = as.numeric(dat[, MOB])
-    } else {
-        if (!is.null(obs_id)) {
-            dat$ID = dat[, obs_id]
-            dat = dat %>%
-              dplyr::group_by(ID) %>%
-              mutate(aging = seq(1, length(ID)) - 1) %>%
-              ungroup()
-        } else {
-            stop("MOB & obs_id  are both missing.\n")
-        }
-    }
-    if (!is.null(status)) {
-        dat$sta = dat[, status]
-    }
-    dat <- dat %>% filter(aging != 'NA')
-    if (period == "weekly") {
-        dat$cohort <- cut(dat[, occur_time], breaks = "week")
-    } else {
-        dat$cohort = cut(dat[, occur_time], breaks = "month")
-    }
-    if (by_out == "amt" && !is.null(amount)) {
-        #amount
-        dat$amt = as.numeric(dat[, amount])
-        dat1 = dat %>%
-          dplyr::group_by(cohort, aging) %>%
-          dplyr::summarise(n = round(sum(amt, na.rm = TRUE), 0))
-        dat1 = data.table::dcast(dat1, cohort ~ aging, value.var = "n")
-        if (length(unique(dat$sta)) > 1) {
-            if (!is.null(dead_status)) {
-                if (is.numeric(dead_status)) {
-                    dat$sta = as.numeric(dat$sta)
-                    dat2 = dat %>%
-                      dplyr::filter(sta > dead_status) %>%
-                      dplyr::group_by(cohort, aging) %>%
-                      dplyr::summarise(n = round(sum(amt, na.rm = TRUE), 0))
-                } else {
-                    if (is.character(dead_status)) {
-                        if (is.element(dead_status, unique(dat$sta))) {
-                            dat2 = dat %>%
-                              dplyr::filter(status == dead_status) %>%
-                              dplyr::group_by(cohort, aging) %>%
-                              dplyr::summarise(n = round(sum(amt, na.rm = TRUE), 0))
-                        } else {
-                            stop("dead_status is not one of status.\n")
-                        }
-                    } else {
-                        stop("dead_status is neither numeric nor character.\n")
-                    }
-                }
-            } else {
-                stop("dead_status is missing.\n")
-            }
-        } else {
-            stop("the unique value of status is less than one.\n")
-        }
+cohort_analysis = function(dat, obs_id = NULL, occur_time = NULL, MOB = NULL,
+         period = "monthly", status = NULL, amount = NULL, by_out = "cnt",
+         start_date = NULL, end_date = NULL, dead_status = 30) {
+  dat = checking_data(dat = dat, occur_time = occur_time)
+  dat = time_transfer(dat, date_cols = occur_time)
+  ID = Cohort_Period = Cohort_Group = sta = amt = NULL
+  Cohort_Group= Cohort_Period =Events= Events_rate= Opening_Total= Retention_Total =cohor_dat= final_Events =m_a= max_age=NULL
+  if (!is.null(occur_time) && is.null(start_date)) {
+    start_date = date_cut(dat_time = dat[, occur_time], pct = 0)
+  }
+  if (!is.null(occur_time) && is.null(end_date)) {
+    end_date = date_cut(dat_time = dat[, occur_time], pct = 1)
+  }
+  dat = dat[which(dat[, occur_time] >= start_date & dat[, occur_time] <= end_date),]
+  if (period == "weekly") {
+    dat$Cohort_Group <- cut(dat[, occur_time], breaks = "week")
+  } else {
+    if(period == "monthly"){
+      dat$Cohort_Group = cut(dat[, occur_time], breaks = "month")
+    }else{
 
-        dat2 = data.table::dcast(dat2, cohort ~ aging, value.var = "n")
+      dat$Cohort_Group = cut(dat[, occur_time], breaks = "day")
+    }
+
+  }
+  if (!is.null(MOB)) {
+    dat$Cohort_Period = as.numeric(dat[, MOB])
+  } else {
+    if (!is.null(obs_id)) {
+      dat$ID = dat[, obs_id]
+      dat = dat %>%
+        dplyr::group_by(ID) %>%
+        dplyr::mutate(Cohort_Period = seq(1, length(ID)) - 1,max_age = max(Cohort_Period) ) %>%
+        dplyr::ungroup() %>%
+        dplyr::group_by(Cohort_Group) %>% dplyr::mutate(m_a = median(max_age)) %>%
+        dplyr::ungroup() %>%
+        dplyr::filter(Cohort_Period <= m_a) %>%
+        dplyr::select(-m_a,-max_age)%>% as.data.frame
+
     } else {
-        #count
-        dat1 = dat %>% dplyr::group_by(cohort, aging) %>% dplyr::count(cohort, aging)
-        dat1 = data.table::dcast(dat1, cohort ~ aging, value.var = "n")
-        if (length(unique(dat$sta)) > 1) {
-            if (!is.null(dead_status)) {
-                if (is.numeric(dead_status)) {
-                    dat$sta = as.numeric(dat$sta)
-                    dat2 = dat %>%
-                      dplyr::filter(sta > dead_status) %>%
-                      dplyr::group_by(cohort, aging) %>%
-                      dplyr::count(cohort, aging)
-                } else {
-                    if (is.character(dead_status)) {
-                        if (is.element(dead_status, unique(dat$sta))) {
-                            dat2 = dat %>%
-                              dplyr::filter(sta == dead_status) %>%
-                              dplyr::group_by(cohort, aging) %>%
-                              dplyr::count(cohort, aging)
-                        } else {
-                            stop("dead_status is not one of status.\n")
-                        }
-                    } else {
-                        stop("dead_status is neither numeric nor character.\n")
-                    }
-                }
-            } else {
-                stop("dead_status is missing.\n")
-            }
+      stop("MOB & obs_id  are both missing.\n")
+    }
+  }
+
+  dat <- dat %>% filter(Cohort_Period != 'NA') %>% as.data.frame
+
+  if (!is.null(status)) {
+    dat$sta = dat[, status]
+  if (by_out == "amt" && !is.null(amount)) {
+    #amount
+    dat$amt = as.numeric(dat[, amount])
+    dat1 = dat %>%
+      dplyr::group_by(Cohort_Group, Cohort_Period) %>%
+      dplyr::summarise(Retention_Total = round(sum(amt, na.rm = TRUE), 0))
+
+    if (length(unique(dat$sta)) > 1) {
+      if (!is.null(dead_status)) {
+        if (is.numeric(dead_status)) {
+          dat$sta = as.numeric(dat$sta)
+          dat2 = dat %>%
+            dplyr::filter(sta > dead_status) %>%
+            dplyr::group_by(Cohort_Group, Cohort_Period) %>%
+            dplyr::summarise( Events = round(sum(amt, na.rm = TRUE), 0))
         } else {
-            stop("the unique value of status is less than one.\n")
+          if (is.character(dead_status)) {
+            if (is.element(dead_status, unique(dat$sta))) {
+              dat2 = dat %>%
+                dplyr::filter(status == dead_status) %>%
+                dplyr::group_by(Cohort_Group, Cohort_Period) %>%
+                dplyr::summarise(Events = round(sum(amt, na.rm = TRUE), 0))
+            } else {
+              stop("dead_status is not one of status.\n")
+            }
+          } else {
+            stop("dead_status is neither numeric nor character.\n")
+          }
         }
-        dat2 = data.table::dcast(dat2, cohort ~ aging, value.var = "n")
-    }
-    dat3 = dplyr::left_join(dat1, dat2, by = "cohort")
-    M = colnames(dat1[3:length(dat1)])
-    N = colnames(dat2[2:length(dat2)])
-    A = matrix(dat3[3:length(dat1)])
-    A = sapply(A, function(x) gsub("^0$", NA, x))
-    B = matrix(dat3[(length(dat1) + 1):length(dat3)])
-    rownames(B) = N
-    MN <- matrix(lapply(1:length(setdiff(M, N)), function(i) runif(dim(dat3)[1], 0, 0)))
-    rownames(MN) = setdiff(M, N)
-    B = rbind(MN, B)
-    B = as.matrix(B[order(as.numeric(rownames(B))),])
-    B = sapply(B, function(x) ifelse(is.na(x), 0, x))
-    dat4 = data.frame(B / as.numeric(A))
-    dat4[dim(dat4)[1], 1] = ""
-    dat4 = data.frame(lapply(dat4, function(x) as_percent(x, 4)), stringsAsFactors = FALSE)
-    dat5 = data.frame(dat3[1:2], dat4)
-    dat5 = data.frame(lapply(dat5, function(x) sub("NA|NaN|Inf", "", as.character(x))), stringsAsFactors = FALSE)
-    dat5[is.na(dat5)] = ""
-    if (by_out == "amt") {
-        for (i in 1:(length(dat5) - 2)) {
-            names(dat5) = c("cohort", "total_amt", 1:i)
-        }
+      } else {
+        stop("dead_status is missing.\n")
+      }
     } else {
-        for (i in 1:(length(dat5) - 2)) {
-            names(dat5) = c("cohort", "total_cnt", 1:i)
-        }
+      stop("the unique value of status is less than one.\n")
     }
-    return(dat5)
+
+  } else {
+    #count
+    dat1 = dat %>% dplyr::group_by(Cohort_Group, Cohort_Period) %>%
+      dplyr::count(Cohort_Group, Cohort_Period,name = "Retention_Total") %>%
+      as.data.frame
+
+    if (length(unique(dat$sta)) > 1) {
+      if (!is.null(dead_status)) {
+        if (is.numeric(dead_status)) {
+          dat$sta = as.numeric(dat$sta)
+          dat2 = dat %>%
+            dplyr::filter(sta > dead_status) %>%
+            dplyr::group_by(Cohort_Group, Cohort_Period) %>%
+            dplyr::count(Cohort_Group, Cohort_Period,name = "Events") %>%
+            as.data.frame
+        } else {
+          if (is.character(dead_status)) {
+            if (is.element(dead_status, unique(dat$sta))) {
+              dat2 = dat %>%
+                dplyr::filter(sta == dead_status) %>%
+                dplyr::group_by(Cohort_Group, Cohort_Period) %>%
+                dplyr::count(Cohort_Group, Cohort_Period, name = "Events") %>%
+                as.data.frame
+            } else {
+              stop("dead_status is not one of status.\n")
+            }
+          } else {
+            stop("dead_status is neither numeric nor character.\n")
+          }
+        }
+      } else {
+        stop("dead_status is missing.\n")
+      }
+
+    } else {
+      stop("the unique value of status is less than one.\n")
+    }
+
+  }
+  dat3 = dplyr::left_join(dat1, dat2, by = c("Cohort_Group","Cohort_Period"))
+  dat4 = dat3 %>% group_by(Cohort_Group)%>% filter(Cohort_Period == min(Cohort_Period))  %>%
+    summarise(Opening_Total = Retention_Total )   %>%
+    ungroup
+  dat5 = dat3 %>% group_by(Cohort_Group) %>% filter(Cohort_Period == max(Cohort_Period))  %>%
+    summarise(final_Events = Events ) %>%
+    ungroup
+  dat6 = merge(dat4, dat5, by = c("Cohort_Group"), all.x =TRUE) %>%
+    mutate(Current_rate = round(final_Events/Opening_Total,4))
+  dat7 = merge(dat3, dat6,by = c("Cohort_Group"), all.x =TRUE) %>%
+    mutate(Events_rate = round(Events/Opening_Total, 4),
+           Retention_rate = round(Retention_Total/Opening_Total, 4))
+
+  }else{
+    if (by_out == "amt" && !is.null(amount)) {
+      #amount
+      dat$amt = as.numeric(dat[, amount])
+      dat1 = dat %>%
+        dplyr::group_by(Cohort_Group, Cohort_Period) %>%
+        dplyr::summarise(Retention_Total = round(sum(amt, na.rm = TRUE), 0))
+    }else{
+      #count
+      dat1 = dat %>% dplyr::group_by(Cohort_Group, Cohort_Period) %>%
+        dplyr::count(Cohort_Group, Cohort_Period,name = "Retention_Total") %>%
+        as.data.frame
+    }
+    dat4 = dat1 %>% group_by(Cohort_Group)%>% filter(Cohort_Period == min(Cohort_Period))  %>%
+      summarise(Opening_Total = Retention_Total )   %>%
+      ungroup
+    dat7 = merge(dat1, dat4,by = c("Cohort_Group"), all.x =TRUE) %>%
+      mutate(Retention_rate = round(Retention_Total/Opening_Total, 4))
+
+  }
+  return(dat7)
+}
+
+#' cohort_table
+#'
+#' @rdname cohort_analysis
+#' @export
+
+cohort_table = function(dat, obs_id = NULL, occur_time = NULL, MOB = NULL,
+                        period = "monthly", status = NULL, amount = NULL, by_out = "cnt",
+                        start_date = NULL, end_date = NULL, dead_status = 30){
+  Cohort_Group= Cohort_Period =Events= Events_rate= Opening_Total= Retention_Total =cohor_dat= final_Events =m_a= max_age=NULL					
+  dat1 = cohort_analysis(dat = dat , obs_id = obs_id,
+                         occur_time = occur_time, MOB = MOB,
+                         period =period, status = status,
+                         amount = amount, by_out = by_out,
+                         start_date = start_date, end_date = end_date,
+                         dead_status = dead_status)
+	if(!is.null(status)){
+	  value_var = "Events_rate"
+	}else{
+	 value_var = "Retention_rate"
+	}
+                      					 
+  dat4 = data.table::dcast(dat1, Cohort_Group ~ Cohort_Period,
+                           value.var = value_var) %>% as.data.frame
+  dat4[-1] = data.frame(lapply(dat4[-1], function(x){
+    x = as_percent(x, 4)
+    sub("NA|NaN|Inf", "", as.character(x))
+  }), stringsAsFactors = FALSE)
+ return(dat4)
 }
 
 #' Parse party ctree rules
@@ -281,7 +336,8 @@ vintage_function <- function(dat, obs_id = NULL, occur_time = NULL, MOB = NULL,
 get_ctree_rules = function(tree_fit = NULL, train_dat = NULL, target = NULL, test_dat = NULL,
                            tree_control = list(p = 0.05, cp = 0.0001,
                                                          xval = 1, maxdepth = 10), seed = 46) {
-    rules_list = split_rule = terminal_nodes = nodes_no = depth = node_rules = NULL
+      opt = options(scipen = 200, stringsAsFactors = FALSE, digits = 6) #
+	rules_list = split_rule = terminal_nodes = nodes_no = depth = node_rules = NULL
 
     if (is.null(tree_fit)) {
         cp = ifelse(!is.null(tree_control[["cp"]]), tree_control[["cp"]], 0.00001)
@@ -445,6 +501,7 @@ get_ctree_rules = function(tree_fit = NULL, train_dat = NULL, target = NULL, tes
                                     "%test_cum_1", "%test_cum_0", "psi")]
     }
     return(dt_rules_k)
+	options(opt) # reset
 }
 
 #' Table of Binning
@@ -483,8 +540,8 @@ get_bins_table_all <- function(dat, x_list = NULL, target = NULL, pos_flag = NUL
                                ex_cols = NULL, breaks_list = NULL, parallel = FALSE,
                                note = FALSE, occur_time = NULL, oot_pct = 0.7,
                                save_data = FALSE, file_name = NULL, dir_path = tempdir()) {
-    cat(paste("[NOTE] start processing Bins Table ...."), "\n")
-    opt = options(stringsAsFactors = FALSE) #
+    if (note)cat(paste("processing bins table...."), "\n")
+    opt = options(scipen = 200, stringsAsFactors = FALSE) #
     if (is.null(x_list)) {
         if (!is.null(breaks_list)) {
             x_list = unique(as.character(breaks_list[, "Feature"]))
@@ -518,7 +575,7 @@ get_bins_table <- function(dat, x, target = NULL, pos_flag = NULL,
                            breaks = NULL, breaks_list = NULL,
                            occur_time = NULL, oot_pct = 0.7, note = FALSE) {
 
-    opt = options(stringsAsFactors = FALSE) #
+    opt = options(scipen = 200, stringsAsFactors = FALSE) #
     good = bad = NULL
     if (is.null(breaks)) {
         if (!is.null(breaks_list)) {
@@ -553,7 +610,7 @@ get_bins_table <- function(dat, x, target = NULL, pos_flag = NULL,
     best_bins = split_bins(dat = dat, x = x, breaks = breaks, bins_no = TRUE)
     dt_bins <- table(best_bins, dat[, target])
     rm(best_bins)
-    dt_bins[which(dt_bins == 0)] <- 1
+
     dt_bins = data.frame(unclass(dt_bins))
     if (all(names(dt_bins) == c("X0", "X1"))) {
         names(dt_bins) = c("good", "bad")
@@ -570,13 +627,13 @@ get_bins_table <- function(dat, x, target = NULL, pos_flag = NULL,
         Feature = names(dat[x])
         cuts = breaks[1:nrow(dt_bins)]
         total = good + bad
-        `%total` = as_percent((good + bad) / (sum(good) + sum(bad)), digits = 3)
+        `%total` = as_percent((good + bad) / (sum(good,na.rm = TRUE) + sum(bad,na.rm = TRUE)), digits = 3)
         `%good` = as_percent(good / sum(good), 2)
         `%bad` = as_percent(bad / sum(bad), 2)
-        bad_rate = as_percent(bad / (good + bad), digits = 3)
-        `GB_index` = round(((good / bad) / (sum(good) / sum(bad))) * 100, 0)
-        woe = round(log((good / sum(good)) / (bad / sum(bad))), 4)
-        iv = round(((good / sum(good)) - (bad / sum(bad))) * woe, 4)
+        bad_rate = as_percent(bad / (ifelse(good>0, good,1) + bad), digits = 3)
+        `GB_index` = round(((ifelse(good > 0,good,1) / ifelse(bad >0, bad, 1)) / (sum(good,na.rm = TRUE) / sum(bad,na.rm = TRUE))) * 100, 0)
+        woe = round(log((ifelse(good > 0, good,1) / sum(good,na.rm = TRUE)) / (ifelse(bad >0 ,bad,1) / sum(bad,na.rm = TRUE))), 4)
+        iv = round(((ifelse(good >0, good,1) / sum(good,na.rm = TRUE)) - (ifelse(bad>0,bad,1) / sum(bad,na.rm = TRUE))) * woe, 4)
     })
     rm(dt_bins)
 
@@ -612,6 +669,7 @@ get_bins_table <- function(dat, x, target = NULL, pos_flag = NULL,
 }
 
 
+
 #' Calculate IV & PSI
 #'
 #'
@@ -637,7 +695,7 @@ get_bins_table <- function(dat, x, target = NULL, pos_flag = NULL,
 #' @param as_table Logical, output results in a table. Default is TRUE.
 #' @param bins_no Logical, add serial numbers to bins. Default is FALSE.
 #' @param parallel Logical, parallel computing. Default is FALSE.
-#' @param note   Logical, outputs info. Default is TRUE.
+#' @param note Logical, outputs info. Default is TRUE.
 #' @seealso \code{\link{get_iv}},\code{\link{get_iv_all}},\code{\link{get_psi}},\code{\link{get_psi_all}}
 #' @examples
 #' iv_list = get_psi_iv_all(dat = UCICreditCard[1:1000, ],
@@ -650,12 +708,10 @@ get_bins_table <- function(dat, x, target = NULL, pos_flag = NULL,
 
 get_psi_iv_all <- function(dat, dat_test = NULL, x_list = NULL, target, ex_cols = NULL, pos_flag = NULL,
 breaks_list = NULL, occur_time = NULL, oot_pct = 0.7, equal_bins = FALSE, tree_control = NULL, bins_control = NULL,
-bins_total = FALSE, best = TRUE, g = 10, as_table = TRUE, note = FALSE, parallel = FALSE, bins_no = FALSE) {
+bins_total = FALSE, best = TRUE, g = 10, as_table = TRUE, note = FALSE, parallel = FALSE, bins_no = TRUE) {
     dat <- checking_data(dat = dat, target = target, pos_flag = pos_flag)
-    opt = options(stringsAsFactors = FALSE) #
-    if (note) {
-        cat(paste("[NOTE] start calculating IV & PSI...."), "\n")
-    }
+    opt = options(scipen = 200, stringsAsFactors = FALSE) #
+    if (note)cat(paste("calculating IV & PSI...."), "\n")
     dat = checking_data(dat = dat, target = target, pos_flag = pos_flag)
     if (is.null(x_list)) {
         if (is.null(x_list)) {
@@ -682,137 +738,139 @@ bins_total = FALSE, best = TRUE, g = 10, as_table = TRUE, note = FALSE, parallel
 #' @rdname get_psi_iv_all
 #' @export
 
-get_psi_iv <- function(dat, dat_test = NULL, x, target, pos_flag = NULL, breaks = NULL, breaks_list = NULL,
-occur_time = NULL, oot_pct = 0.7, equal_bins = FALSE, tree_control = NULL, bins_control = NULL,
-bins_total = FALSE, best = TRUE, g = 10, as_table = TRUE, note = FALSE, bins_no = FALSE) {
-    opt = options(stringsAsFactors = FALSE) #
-    if (is.null(target)) {
-        stop("target is missing!")
+get_psi_iv <- function(dat, dat_test = NULL, x, target, pos_flag = NULL, breaks = NULL, breaks_list = NULL, 
+                       occur_time = NULL, oot_pct = 0.7, equal_bins = FALSE, tree_control = NULL, bins_control = NULL,
+                       bins_total = FALSE, best = TRUE, g = 10, as_table = TRUE, note = FALSE, bins_no = TRUE) {
+  opt = options(scipen = 200, stringsAsFactors = FALSE) #
+  if (is.null(target)) {
+    stop("target is missing!")
+  }
+  if (is.null(breaks)) {
+    if (!is.null(breaks_list)) {
+      breaks = breaks_list[which(as.character(breaks_list[, "Feature"]) == names(dat[x])), "cuts"]
     }
     if (is.null(breaks)) {
-        if (!is.null(breaks_list)) {
-            breaks = breaks_list[which(as.character(breaks_list[, "Feature"]) == names(dat[x])), "cuts"]
-        }
-        if (is.null(breaks)) {
-            breaks = get_breaks(dat = dat, x = x, target = target, pos_flag = pos_flag, bins_control = bins_control,
-            occur_time = occur_time, oot_pct = oot_pct, equal_bins = equal_bins,
-            best = best, tree_control = tree_control, g = g, note = FALSE)
-        }
+      breaks = get_breaks(dat = dat, x = x, target = target, pos_flag = pos_flag, bins_control = bins_control,
+                          occur_time = occur_time, oot_pct = oot_pct, equal_bins = equal_bins,
+                          best = best, tree_control = tree_control, g = g, note = FALSE)
     }
-    if (all(unique(dat[, target]) != c("0", "1"))) {
-        if (!is.null(pos_flag)) {
-            dat$target = ifelse(dat[, target] %in% pos_flag, "1", "0")
-        } else {
-            pos_flag = list("1", 1, "bad", "positive")
-            dat$target = ifelse(dat[, target] %in% pos_flag, "1", "0")
-        }
-        if (length(unique(dat$target)) == 1) {
-            stop("pos_flag is missing.\n")
-        }
+  }
+  if (all(unique(dat[, target]) != c("0", "1"))) {
+    if (!is.null(pos_flag)) {
+      dat$target = ifelse(dat[, target] %in% pos_flag, "1", "0")
     } else {
-        dat$target = dat[, target]
+      pos_flag = list("1", 1, "bad", "positive")
+      dat$target = ifelse(dat[, target] %in% pos_flag, "1", "0")
     }
-    if (is.null(dat_test)) {
-        df_bins <- split_bins(dat = dat, x = x, breaks = breaks, bins_no = bins_no)
-        df_bins = as.data.frame(cbind(dat[occur_time], bins = df_bins, target = dat$target))
-        train_test = train_test_split(dat = df_bins, prop = oot_pct, split_type = "OOT",
-        occur_time = occur_time, save_data = FALSE, note = FALSE)
-        dfe <- train_test$train
-        dfa <- train_test$test
-        dfa$ae = "actual"
-        dfe$ae = "expected"
-
-        df_ae = rbind(dfa, dfe)
+    if (length(unique(dat$target)) == 1) {
+      stop("pos_flag is missing.\n")
+    }
+  } else {
+    dat$target = dat[, target]
+  }
+  if (is.null(dat_test)) {
+    df_bins <- split_bins(dat = dat, x = x, breaks = breaks, bins_no = bins_no)
+    df_bins = as.data.frame(cbind(dat[occur_time], bins = df_bins, target = dat$target))
+    train_test = train_test_split(dat = df_bins, prop = oot_pct, split_type = "OOT",
+                                  occur_time = occur_time, save_data = FALSE, note = FALSE)
+    dfe <- train_test$train
+    dfa <- train_test$test
+    dfa$ae = "actual"
+    dfe$ae = "expected"
+    
+    df_ae = rbind(dfa, dfe)
+  } else {
+    if (all(unique(dat_test[, target]) != c("0", "1"))) {
+      if (!is.null(pos_flag)) {
+        dat_test$target = ifelse(dat_test[, target] %in% pos_flag, "1", "0")
+      } else {
+        pos_flag = list("1", 1, "bad", "positive")
+        dat_test$target = ifelse(dat_test[, target] %in% pos_flag, "1", "0")
+      }
+      if (length(unique(dat_test$target)) == 1) {
+        stop("pos_flag is missing.\n")
+      }
     } else {
-        if (all(unique(dat_test[, target]) != c("0", "1"))) {
-            if (!is.null(pos_flag)) {
-                dat_test$target = ifelse(dat_test[, target] %in% pos_flag, "1", "0")
-            } else {
-                pos_flag = list("1", 1, "bad", "positive")
-                dat_test$target = ifelse(dat_test[, target] %in% pos_flag, "1", "0")
-            }
-            if (length(unique(dat_test$target)) == 1) {
-                stop("pos_flag is missing.\n")
-            }
-        } else {
-            dat_test$target = as.character(dat_test[, target])
-        }
-        dfe_bins <- split_bins(dat = dat, x = x, breaks = breaks, bins_no = bins_no)
-        dfe = as.data.frame(cbind(bins = dfe_bins, target = dat$target))
-        dfa_bins <- split_bins(dat = dat_test, x = x, breaks = breaks, bins_no = bins_no)
-        dfa = as.data.frame(cbind(bins = dfa_bins, target = dat_test$target))
-
-        dfa$ae = "actual"
-        dfe$ae = "expected"
-        df_ae = rbind(dfa, dfe)
+      dat_test$target = as.character(dat_test[, target])
     }
-
-    bins_psi_iv <- data.table::dcast(df_ae, bins ~ ae + target, fun.aggregate = length, value.var = "ae")
-
-    bins_psi_iv$actual_0[which(bins_psi_iv$actual_0 == 0 | is.na(bins_psi_iv$actual_0))] = 1
-    bins_psi_iv$actual_1[which(bins_psi_iv$actual_1 == 0 | is.na(bins_psi_iv$actual_1))] = 1
-    bins_psi_iv$expected_0[which(bins_psi_iv$expected_0 == 0 | is.na(bins_psi_iv$expected_0))] = 1
-    bins_psi_iv$expected_1[which(bins_psi_iv$expected_1 == 0 | is.na(bins_psi_iv$expected_1))] = 1
-
-    bins_psi_iv <- within(bins_psi_iv, {
-        cuts = breaks[1:nrow(bins_psi_iv)]
-        actual_0 = as.numeric(actual_0)
-        expected_0 = as.numeric(expected_0)
-        actual_1 = as.numeric(actual_1)
-        expected_1 = as.numeric(expected_1)
-        Feature = names(dat[x])
-        `#total` = actual_0 + expected_0 + actual_1 + expected_1
-        `%total` = round((actual_0 + expected_0 + actual_1 + expected_1) / sum(`#total`), 2)
-        `%total_1` = round((actual_1 + expected_1) / `#total`, 2)
-        total_0_pct = (actual_0 + expected_0) / sum(actual_0 + expected_0)
-        total_1_pct = (actual_1 + expected_1) / sum(actual_1 + expected_1)
-        `#actual` = actual_1 + actual_0
-        `%actual` = round((actual_1 + actual_0) / sum(`#actual`), 2)
-        `#expected` = expected_1 + expected_0
-        `%expected` = round((expected_1 + expected_0) / sum(`#expected`), 2)
-        actual_pct_1 = (actual_1) / sum(actual_1)
-        expected_pct_1 = (expected_1) / sum(expected_1)
-        `%expected_1` = round(expected_1 / (expected_1 + expected_0), 2)
-        `%actual_1` = round(actual_1 / (actual_1 + actual_0), 2)
-        odds_ratio = round(((actual_0 + expected_0) / (actual_1 + expected_1)) / (sum((actual_0 + expected_0)) / sum((actual_1 + expected_1))), 3)
-        odds_ratio_s = round(((expected_0 / expected_1) / (sum(expected_0 / expected_1)) -
-                         (actual_0 / actual_1) / (sum(actual_0 / actual_1))) * log(((expected_0 / expected_1) / (sum(expected_0 / expected_1))) / ((actual_0 / actual_1) / (sum(actual_0 / actual_1)))), 3)
-        PSIi = round((`#actual` / sum(`#actual`) - `#expected` / sum(`#expected`)) * log((`#actual` / sum(`#actual`)) / (`#expected` / sum(`#expected`))), 3)
-        IVi = round((total_0_pct - total_1_pct) * log(total_0_pct / total_1_pct), 3)
-    })
-    if (as_table) {
-        df_psi_iv = bins_psi_iv[c("Feature", "bins", "cuts", "#total", "#expected", "expected_0", "expected_1",
-        "#actual", "actual_0", "actual_1", "%total", "%expected", "%actual", "%total_1",
-        "%expected_1", "%actual_1", "odds_ratio","odds_ratio_s", "PSIi", "IVi")]
-        if (bins_total) {
-            total <- c("Total",
-              "--", "--",
-               sum(bins_psi_iv$`#total`, na.rm = TRUE),
-               sum(bins_psi_iv$`#expected`, na.rm = TRUE),
-               sum(bins_psi_iv$expected_0, na.rm = TRUE),
-               sum(bins_psi_iv$expected_1, na.rm = TRUE),
-               sum(bins_psi_iv$`#actual`, na.rm = TRUE),
-               sum(bins_psi_iv$actual_0, na.rm = TRUE),
-               sum(bins_psi_iv$actual_1, na.rm = TRUE),
-              1,1, 1,
-              round(sum(bins_psi_iv$expected_1 + bins_psi_iv$actual_1) / sum(bins_psi_iv$`#total`), 2),
-             round(sum(bins_psi_iv$expected_1) / sum(bins_psi_iv$`#expected`), 2),
-             round(sum(bins_psi_iv$actual_1) / sum(bins_psi_iv$`#actual`), 2),
-            1,
-           sum(bins_psi_iv$odds_ratio_s),
-           sum(bins_psi_iv$PSIi),
-           sum(bins_psi_iv$IVi))
-            df_psi_iv = rbind(df_psi_iv, total)
-        }
-    } else {
-        df_psi_iv = data.frame(Feature = x, IV = as.numeric(sum(bins_psi_iv$IVi)), PSI = as.numeric(sum(bins_psi_iv$PSIi)))
+    dfe_bins <- split_bins(dat = dat, x = x, breaks = breaks, bins_no = bins_no)
+    dfe = as.data.frame(cbind(bins = dfe_bins, target = dat$target))
+    dfa_bins <- split_bins(dat = dat_test, x = x, breaks = breaks, bins_no = bins_no)
+    dfa = as.data.frame(cbind(bins = dfa_bins, target = dat_test$target))
+    
+    dfa$ae = "actual"
+    dfe$ae = "expected"
+    df_ae = rbind(dfa, dfe)
+  }
+ 
+  bins_psi_iv <- data.table::dcast(df_ae, bins ~ ae + target, fun.aggregate = length, value.var = "ae")
+  
+  
+  bins_psi_iv <- within(bins_psi_iv, {
+    cuts = breaks[1:nrow(bins_psi_iv)]
+    actual_0 = as.numeric(actual_0)
+    expected_0 = as.numeric(expected_0)
+    actual_1 = as.numeric(actual_1)
+    expected_1 = as.numeric(expected_1)
+    Feature = names(dat[x])
+    `#total` = actual_0 + expected_0 + actual_1 + expected_1
+    `%total` = round((actual_0 + expected_0 + actual_1 + expected_1) / sum(`#total`), 2)
+    `%total_1` = round((actual_1 + expected_1) / `#total`, 2)
+    total_0_pct = (actual_0 + expected_0) / sum(actual_0 + expected_0)
+    total_1_pct = (actual_1 + expected_1) / sum(actual_1 + expected_1)
+    `#actual` = actual_1 + actual_0
+    `%actual` = round((actual_1 + actual_0) / sum(`#actual`), 2)
+    `#expected` = expected_1 + expected_0
+    `%expected` = round((expected_1 + expected_0) / sum(`#expected`), 2)
+    actual_pct_1 = (actual_1) / sum(actual_1)
+    expected_pct_1 = (expected_1) / sum(expected_1)
+    `%expected_1` = ifelse(`#expected` > 0,round(expected_1 / (expected_1 + expected_0), 2),0)
+    `%actual_1` = ifelse(`#actual` > 0 , round(actual_1 / (actual_1 + actual_0), 2),0)
+    odds_ratio = round(((actual_0 + expected_0) / ifelse(actual_1 + expected_1>0 , actual_1 + expected_1 , 1)) / 
+                         (sum(actual_0 + expected_0) / 
+                            sum(ifelse(actual_1 + expected_1 > 0 ,actual_1 + expected_1 , 1))), 3)
+    odds_rotio_e = (ifelse(expected_0 > 0,expected_0,1) / ifelse(expected_1 > 0,expected_1,1))/ (sum(ifelse(expected_0 > 0,expected_0,1)) / sum(ifelse(expected_1 > 0,expected_1,1)))
+    odds_rotio_a = (ifelse(actual_0 > 0,actual_0,1) / ifelse(actual_1 > 0,actual_1,1)) / (sum(ifelse(actual_0 > 0,actual_0,1))/ sum(ifelse(actual_1 > 0,actual_1,1)))
+    odds_ratio_s = round((odds_rotio_e -odds_rotio_a) * 
+                           log(odds_rotio_e/odds_rotio_a),3)
+    PSIi = round((ifelse(`#actual` > 0, `#actual`, 1) / sum(ifelse(`#actual` > 0, `#actual`, 1)) - ifelse(`#expected` > 0, `#expected`, 1) / sum(ifelse(`#expected` > 0, `#expected`, 1)))* 
+                   log((ifelse(`#actual` > 0, `#actual`, 1) / sum(ifelse(`#actual` > 0, `#actual`, 1))) / (ifelse(`#expected` > 0, `#expected`, 1) / sum(ifelse(`#expected` > 0, `#expected`, 1)))), 3)
+    WOEi = log(total_0_pct / ifelse(total_1_pct > 0, total_1_pct, 1))
+    IVi = round((total_0_pct - total_1_pct) *WOEi, 3)
+  })
+  if (as_table) {
+    df_psi_iv = bins_psi_iv[c("Feature", "bins", "cuts", "#total", "#expected", "expected_0", "expected_1",
+                              "#actual", "actual_0", "actual_1", "%total", "%expected", "%actual", "%total_1",
+                              "%expected_1", "%actual_1", "odds_ratio","odds_ratio_s", "PSIi", "IVi")]
+    if (bins_total) {
+      total <- c("Total",
+                 "--", "--",
+                 sum(bins_psi_iv$`#total`, na.rm = TRUE),
+                 sum(bins_psi_iv$`#expected`, na.rm = TRUE),
+                 sum(bins_psi_iv$expected_0, na.rm = TRUE),
+                 sum(bins_psi_iv$expected_1, na.rm = TRUE),
+                 sum(bins_psi_iv$`#actual`, na.rm = TRUE),
+                 sum(bins_psi_iv$actual_0, na.rm = TRUE),
+                 sum(bins_psi_iv$actual_1, na.rm = TRUE),
+                 1,1, 1,
+                 round(sum(bins_psi_iv$expected_1 + bins_psi_iv$actual_1) / sum(bins_psi_iv$`#total`), 2),
+                 round(sum(bins_psi_iv$expected_1) / sum(bins_psi_iv$`#expected`), 2),
+                 round(sum(bins_psi_iv$actual_1) / sum(bins_psi_iv$`#actual`), 2),
+                 1,
+                 sum(bins_psi_iv$odds_ratio_s),
+                 sum(bins_psi_iv$PSIi),
+                 sum(bins_psi_iv$IVi))
+      df_psi_iv = rbind(df_psi_iv, total)
     }
-    if (note) {
-        cat(paste(x, " IV :", as.numeric(sum(bins_psi_iv$IVi)), "PSI: ", as.numeric(sum(bins_psi_iv$PSIi)), sep = "   "), "\n")
-    }
-
-    return(df_psi_iv)
-    options(opt) # reset
+  } else {
+    df_psi_iv = data.frame(Feature = x, IV = as.numeric(sum(bins_psi_iv$IVi)), PSI = as.numeric(sum(bins_psi_iv$PSIi)))
+  }
+  if (note) {
+    cat(paste(x, " IV :", as.numeric(sum(bins_psi_iv$IVi)), "PSI: ", as.numeric(sum(bins_psi_iv$PSIi)), sep = "   "), "\n")
+  }
+  
+  return(df_psi_iv)
+  options(opt) # reset
 }
 
 
@@ -856,13 +914,11 @@ bins_total = FALSE, best = TRUE, g = 10, as_table = TRUE, note = FALSE, bins_no 
 
 get_iv_all <- function(dat, x_list = NULL, ex_cols = NULL, breaks_list = NULL,
                        target = NULL, pos_flag = NULL, best = TRUE,
-equal_bins = FALSE, tree_control = NULL, bins_control = NULL,
-g = 10, parallel = FALSE, note = FALSE) {
+					   equal_bins = FALSE, tree_control = NULL, bins_control = NULL,
+					   g = 10, parallel = FALSE, note = FALSE) {
     dat = checking_data(dat = dat, target = target, pos_flag = pos_flag)
-    opt = options(stringsAsFactors = FALSE) #
-    if (note) {
-        cat(paste("[NOTE] start calculating IV...."), "\n")
-    }
+    opt = options(scipen = 200, stringsAsFactors = FALSE) #
+    if (note)cat(paste("calculating IV...."), "\n")
     x_list = get_x_list(x_list = x_list, dat_train = dat, dat_test = NULL, ex_cols = c(target, ex_cols))
     iv_list = loop_function(func = get_iv, x_list = x_list, args = list(dat = dat, breaks = NULL,
     breaks_list = breaks_list, target = target, pos_flag = pos_flag, best = best,
@@ -921,8 +977,7 @@ get_iv <- function(dat, x, target = NULL, pos_flag = NULL, breaks = NULL, breaks
     best_bins <- split_bins(dat = dat, x = x, breaks = breaks, bins_no = TRUE)
     dt_bins <- table(best_bins, dat[, target])
     rm(best_bins)
-    dt_bins[which(dt_bins == 0)] = 1
-    dt_bins[which(is.na(dt_bins))] = 1
+
     bins_df = data.frame(unclass(dt_bins))
     rm(dt_bins)
     if (all(names(bins_df) == c("X0", "X1"))) {
@@ -936,8 +991,8 @@ get_iv <- function(dat, x, target = NULL, pos_flag = NULL, breaks = NULL, breaks
     }
     #IV
     bins_df = within(bins_df, {
-        `%totalG` = G / sum(G)
-        `%totalB` = B / sum(B)
+        `%totalG` = ifelse(G >0 ,G,1) / sum(G,na.rm = TRUE)
+        `%totalB` = ifelse(B>0,B ,1)/ sum(B,na.rm = TRUE)
         IVi = round((`%totalG` - `%totalB`) * log(`%totalG` / `%totalB`), 3)
     })
     iv_df = data.frame(Feature = x, IV = as.numeric(sum(bins_df$IVi)))
@@ -965,6 +1020,7 @@ get_iv <- function(dat, x, target = NULL, pos_flag = NULL, breaks = NULL, breaks
 #' @param dat A data.frame with independent variables and target variable.
 #' @param dat_test  A data.frame of test data. Default is NULL.
 #' @param x_list Names of independent variables.
+#' @param target The name of target variable.
 #' @param x  The name of an independent variable.
 #' @param ex_cols Names of excluded variables. Regular expressions can also be used to match variable names. Default is NULL.
 #' @param pos_flag Value of positive class, Default is "1".
@@ -1004,104 +1060,158 @@ get_iv <- function(dat, x, target = NULL, pos_flag = NULL, breaks = NULL, breaks
 
 
 
-get_psi_all <- function(dat, x_list = NULL, dat_test = NULL, breaks_list = NULL, occur_time = NULL,
-start_date = NULL, cut_date = NULL, oot_pct = 0.7, pos_flag = NULL,
-parallel = FALSE, ex_cols = NULL, as_table = FALSE, g = 10, bins_no = TRUE, note = FALSE) {
-    if (note) {
-        cat(paste("[NOTE] start calculating PSI...."), "\n")
+get_psi_all <- function(dat, x_list = NULL,target = NULL, dat_test = NULL, breaks_list = NULL, occur_time = NULL,
+                        start_date = NULL, cut_date = NULL, oot_pct = 0.7, pos_flag = NULL,
+                        parallel = FALSE, ex_cols = NULL, as_table = FALSE, g = 10, bins_no = TRUE, note = FALSE) {
+  if (note)cat(paste("calculating PSI...."), "\n")
+  opt = options(scipen = 200, stringsAsFactors = FALSE) #
+  if (is.null(x_list)) {
+    if (!is.null(breaks_list)) {
+      x_list = unique(as.character(breaks_list[, "Feature"]))
+    } else {
+      x_list = get_x_list(x_list = x_list, dat_train = dat, dat_test = dat_test, ex_cols = c(target, occur_time, ex_cols))
     }
-    opt = options(stringsAsFactors = FALSE) #
-    if (is.null(x_list)) {
-        if (!is.null(breaks_list)) {
-            x_list = unique(as.character(breaks_list[, "Feature"]))
-        } else {
-            x_list = get_x_list(x_list = x_list, dat_train = dat, dat_test = dat_test, ex_cols = c(occur_time, ex_cols))
-        }
+  }
+  if (is.null(dat_test) && !is.null(occur_time) && any(names(dat) == occur_time)) {
+    if (!is_date(dat[, occur_time])) {
+      dat = time_transfer(dat, date_cols = occur_time, note = FALSE)
     }
-    if (is.null(dat_test) && !is.null(occur_time) && any(names(dat) == occur_time)) {
-        if (!is_date(dat[, occur_time])) {
-            dat = time_transfer(dat, date_cols = occur_time, note = FALSE)
-        }
-        if (is_date(dat[, occur_time])) {
-            if (is.null(cut_date)) {
-                cut_date = date_cut(dat_time = dat[, occur_time], pct = oot_pct)
-            }
-            if (is.null(start_date)) {
-                start_date = date_cut(dat_time = dat[, occur_time], pct = 0)
-            }
-        } else {
-            stop(paste(occur_time, "is not Date or Time"))
-        }
+    if (is_date(dat[, occur_time])) {
+      if (is.null(cut_date)) {
+        cut_date = date_cut(dat_time = dat[, occur_time], pct = oot_pct)
+      }
+      if (is.null(start_date)) {
+        start_date = date_cut(dat_time = dat[, occur_time], pct = 0)
+      }
+    } else {
+      stop(paste(occur_time, "is not Date or Time"))
     }
-    psi_list = loop_function(func = get_psi, x_list = x_list, args = list(dat = dat, dat_test = dat_test,
-    breaks = NULL, breaks_list = breaks_list, occur_time = occur_time, start_date = start_date, cut_date = cut_date,
-    oot_pct = oot_pct, pos_flag = pos_flag, as_table = as_table, g = g, note = note, bins_no = bins_no), bind = "rbind", parallel = parallel)
-    options(opt) # reset
-    return(psi_list)
+  }
+  psi_list = loop_function(func = get_psi, x_list = x_list, 
+                           args = list(dat = dat, dat_test = dat_test,
+                                       breaks = NULL, breaks_list = breaks_list, 
+                                       occur_time = occur_time, start_date = start_date,
+                                       cut_date = cut_date,oot_pct = oot_pct, 
+                                       target = target, pos_flag = pos_flag, 
+                                       as_table = as_table, g = g, note = note,
+                                       bins_no = bins_no), bind = "rbind", 
+                           parallel = parallel)
+  options(opt) # reset
+  return(psi_list)
 }
 
 
 #' @rdname get_psi_all
 #' @export
 
-get_psi <- function(dat, x, dat_test = NULL, occur_time = NULL, start_date = NULL, cut_date = NULL,
- pos_flag = NULL, breaks = NULL, breaks_list = NULL, oot_pct = 0.7, g = 10,
- as_table = TRUE, note = FALSE, bins_no = TRUE) {
-    bins = PSI = actual = expected = NULL
-    if (!is.null(breaks_list)) {
-        breaks = breaks_list[which(as.character(breaks_list[, "Feature"]) == names(dat[x])), "cuts"]
-    }
-    if (is.null(breaks)) {
-        breaks = get_breaks(dat = dat, x = x, pos_flag = pos_flag, equal_bins = TRUE, best = FALSE, g = g, note = FALSE)
-    }
 
-    if (is.null(dat_test)) {
-        dat$bins = split_bins(dat = dat, x = x, breaks = breaks, bins_no = bins_no)
-        df_ae = train_test_split(dat = dat, prop = oot_pct, split_type = "OOT", occur_time = occur_time,
-        start_date = start_date, cut_date = cut_date, save_data = FALSE, note = FALSE)
-        dfe = df_ae$train
-        dfa = df_ae$test
-        dfa$ae = "actual"
-        dfe$ae = "expected"
-        df_ae = rbind(dfa, dfe)
-    } else {
-        dat$ae = "expected"
-        dat_test$ae = "actual"
-        dat$bins = split_bins(dat = dat, x = x, breaks = breaks, bins_no = bins_no)
-        dat_test$bins = split_bins(dat = dat_test, x = x, breaks = breaks, bins_no = bins_no)
-        dfe = dat[, c("ae", "bins")]
-        dfa = dat_test[, c("ae", "bins")]
-        df_ae = rbind(dfa, dfe)
+get_psi = function(dat, x, target = NULL, dat_test = NULL, occur_time = NULL, start_date = NULL, cut_date = NULL,
+         pos_flag = NULL, breaks = NULL, breaks_list = NULL, oot_pct = 0.7, g = 10,
+         as_table = TRUE, note = FALSE, bins_no = TRUE) {
+  bins = PSI = actual = expected = actual_1= actual_0= expected_1= expected_0 = NULL
+  if (!is.null(breaks_list)) {
+    breaks = breaks_list[which(as.character(breaks_list[, "Feature"]) == names(dat[x])), "cuts"]
+  }
+  if (is.null(breaks)) {
+    breaks = get_breaks(dat = dat, x = x,target = target, pos_flag = pos_flag, equal_bins = TRUE, best = FALSE, g = g, note = FALSE)
+  }
+  
+  if (is.null(dat_test)) {
+    dat$bins = split_bins(dat = dat, x = x, breaks = breaks, bins_no = bins_no)
+    if(!is.null(target)){
+      dat$target = dat[,target]
     }
-    df_psi = data.table::dcast(df_ae, bins ~ ae, fun.aggregate = length, value.var = "ae")
+    df_ae = train_test_split(dat = dat, prop = oot_pct, split_type = "OOT", occur_time = occur_time,
+                             start_date = start_date, cut_date = cut_date, save_data = FALSE, note = FALSE)
+    dfe = df_ae$train
+    dfa = df_ae$test
+    dfa$ae = "actual"
+    dfe$ae = "expected"
+    df_ae = rbind(dfa, dfe)
+  } else {
+    dat$ae = "expected"
+    dat_test$ae = "actual"
+    if(!is.null(target)){
+      dat$target = dat[,target]
+      dat_test$target = dat_test[,target]
+    }
+    dat$bins = split_bins(dat = dat, x = x, breaks = breaks, bins_no = bins_no)
+    dat_test$bins = split_bins(dat = dat_test, x = x, breaks = breaks, bins_no = bins_no)
 
-    df_psi$actual[which(df_psi$actual == 0 | is.na(df_psi$actual))] = 1
-    df_psi$expected[which(df_psi$expected == 0 | is.na(df_psi$expected))] = 1
+    
+    dfe = dat[, c("ae", "bins",target)]
+    dfa = dat_test[, c("ae", "bins",target)]
+    
+    df_ae = rbind(dfa, dfe)
+  }
 
+
+
+  if(!is.null(target)){
+    df_ae$target =df_ae[,target]
+    df_psi = data.table::dcast(df_ae, bins~ ae + target, fun.aggregate = length, value.var = "ae")
     df_psi = within(df_psi, {
-        Ac_pct = actual / sum(actual)
-        Ex_pct = expected / sum(expected)
-        PSI_i = round((Ac_pct - Ex_pct) * log(Ac_pct / Ex_pct), 3)
+      actual = actual_1 + actual_0
+      expected = expected_1 + expected_0 
+      Ac_pct_1 = actual_1/ifelse(actual > 0, actual, 1)
+      Ex_pct_1 = expected_1/ifelse(expected > 0,expected, 1)
+      cos_s = round(cos_sim(Ex_pct_1, Ac_pct_1, margin = 2 ),3)
+      Ac_pct = actual / sum(actual,na.rm = TRUE)
+      Ex_pct = expected/ sum(expected, na.rm = TRUE)
+      PSI_i = round((Ac_pct - Ex_pct) * log(Ac_pct / Ex_pct), 3)
     })
-
+    
     if (as_table) {
-        dat_psi = data.frame(Feature = x, Bins = df_psi$bins, actual = df_psi$actual, expected = df_psi$expected,
-                        Ac_pct = as_percent(df_psi$Ac_pct, digits = 3), Ex_pct = as_percent(df_psi$Ex_pct, digits = 3),
-                        PSI_i = df_psi$PSI_i, PSI = as.numeric(sum(df_psi$PSI_i)))
+      dat_psi = data.frame(Feature = x, Bins = df_psi$bins, 
+                           actual = df_psi$actual,
+                           expected = df_psi$expected,
+                           Ac_pct = as_percent(df_psi$Ac_pct, digits = 3),
+                           Ex_pct = as_percent(df_psi$Ex_pct, digits = 3),
+                           PSI_i = df_psi$PSI_i, 
+                           PSI = as.numeric(sum(df_psi$PSI_i,na.rm = TRUE)),
+                           COS = df_psi$cos_s )
     } else {
-        dat_psi = data.frame(Feature = x, PSI = as.numeric(sum(df_psi$PSI_i)))
+      dat_psi = data.frame(Feature = x, PSI = as.numeric(sum(df_psi$PSI_i,na.rm = TRUE)),
+                           COS = max(df_psi$cos_s,na.rm = TRUE))
     }
     dt_psi <- within(dat_psi, {
-        stability = "Great change"
-        stability[PSI <= 0.02] <- "Very stable"
-        stability[PSI > 0.02 & PSI <= 0.1] <- "Stable"
-        stability[PSI > 0.1 & PSI <= 0.2] <- "Unstable"
-        stability[PSI > 0.2 & PSI <= 0.5] <- "Change"
-        stability[PSI > 0.5] <- "Great change"
+      stability = "Great change"
+      stability[PSI <= 0.02] <- "Very stable"
+      stability[PSI > 0.02 & PSI <= 0.1] <- "Stable"
+      stability[PSI > 0.1 & PSI <= 0.2] <- "Unstable"
+      stability[PSI > 0.2 & PSI <= 0.5] <- "Change"
+      stability[PSI > 0.5] <- "Great change"
     })
     if (note) {
-        cat(paste(x, " PSI :", as.numeric(dt_psi$PSI[1]), dt_psi$stability[1], sep = "  "), "\n")
+      cat(paste(x, " PSI :", as.numeric(dt_psi$PSI[1]), dt_psi$stability[1], sep = "  "), "\n")
     }
-    rm(df_psi, dt_psi)
-    return(dat_psi)
+  }else{
+    df_psi = data.table::dcast(df_ae, bins~ ae, fun.aggregate = length, value.var = "ae")
+    df_psi = within(df_psi, {
+      Ac_pct = ifelse(actual > 0, actual, 1) / sum(actual)
+      Ex_pct = ifelse(expected > 0,expected, 1) / sum(expected)
+      PSI_i = round((Ac_pct - Ex_pct) * log(Ac_pct / Ex_pct), 3)
+    })
+    if (as_table) {
+      dat_psi = data.frame(Feature = x, Bins = df_psi$bins, actual = df_psi$actual, expected = df_psi$expected,
+                           Ac_pct = as_percent(df_psi$Ac_pct, digits = 3), Ex_pct = as_percent(df_psi$Ex_pct, digits = 3),
+                           PSI_i = df_psi$PSI_i, PSI = as.numeric(sum(df_psi$PSI_i)))
+    } else {
+      dat_psi = data.frame(Feature = x, PSI = as.numeric(sum(df_psi$PSI_i)))
+    }
+    dt_psi <- within(dat_psi, {
+      stability = "Great change"
+      stability[PSI <= 0.02] <- "Very stable"
+      stability[PSI > 0.02 & PSI <= 0.1] <- "Stable"
+      stability[PSI > 0.1 & PSI <= 0.2] <- "Unstable"
+      stability[PSI > 0.2 & PSI <= 0.5] <- "Change"
+      stability[PSI > 0.5] <- "Great change"
+    })
+    if (note) {
+      cat(paste(x, " PSI :", as.numeric(dt_psi$PSI[1]), dt_psi$stability[1], sep = "  "), "\n")
+    }
+  }
+  
+  rm(df_psi, dt_psi)
+  return(dat_psi)
 }

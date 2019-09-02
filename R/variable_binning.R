@@ -13,15 +13,15 @@
 
 
 split_bins <- function(dat, x, breaks = NULL,  bins_no = TRUE) {
-    digits_x = digits_num(dat[ ,x])
-    opt = options(stringsAsFactors = FALSE, digits = digits_x) #
+
+    opt = options(scipen = 200, stringsAsFactors = FALSE) #
     if (length(breaks) < 1) {
         breaks = get_breaks(dat, x, target = NULL, best = FALSE, equal_bins = TRUE, g = 5,note = FALSE)
     }
     sp_value_num = sp_value_char = NULL
     if (any(c("integer", "numeric", "double") == class(dat[, x])[1])) {
         breaks = sort(unlist(unique(c(-Inf, breaks, Inf))))
-        bins_1 = cut(round(dat[, x], digits = digits_x),breaks = unique(breaks), dig.lab = digits_x,
+        bins_1 = cut(dat[, x],breaks = unique(breaks), dig.lab = 12,
                      ordered = TRUE, include.lowest = FALSE, right = TRUE)
         if (bins_no) {
             bins_0 = paste("0", as.numeric(bins_1), sep = "")
@@ -55,8 +55,8 @@ split_bins <- function(dat, x, breaks = NULL,  bins_no = TRUE) {
         }
         bins = dat[, x]
     }
-    options(opt) # reset
     return(bins)
+	options(opt) # reset
 }
 
 
@@ -140,10 +140,10 @@ get_breaks_all <- function(dat, target = NULL, x_list = NULL, ex_cols = NULL,
                                                odds_psi = 0.2, kc = 1),
                            parallel = FALSE, note = FALSE, save_data = FALSE,
                            file_name = NULL, dir_path = tempdir(), ...) {
-    opt = options(stringsAsFactors = FALSE)
+    opt = options(scipen = 200, stringsAsFactors = FALSE)
     dat <- checking_data(dat = dat, target = target, pos_flag = pos_flag)
     if (note) {
-        cat(paste("[NOTE]", "start cutting breaks ...."), "\n")
+        cat(paste("cutting breaks..."), "\n")
     }
     if (is.null(x_list)) {
         x_list = get_names(dat = dat, types = c('factor', 'character', 'numeric', 'integer', 'double'),
@@ -206,7 +206,7 @@ get_breaks <- function(dat, x, target = NULL, pos_flag = NULL,
     } else {
         breaks = tree_breaks
     }
-    if (note) cat(paste0(x, "   :   ", paste(breaks, sep = ",", collapse = ","), sep = "\t\t", collapse = "\t"), "\n")
+    if (note)cat(paste0(x, "   :   ", paste(breaks, sep = ",", collapse = ","), sep = "\t\t", collapse = "\t"), "\n")
     return(breaks)
 }
 
@@ -241,7 +241,7 @@ get_tree_breaks <- function(dat, x, target, pos_flag = NULL,
                             sp_values = NULL) {
 
     dat = checking_data(dat = dat, target = target, pos_flag = pos_flag)
-    opt = options(stringsAsFactors = FALSE, digits = 10) #
+    opt = options(scipen = 200, stringsAsFactors = FALSE, digits = 10) #
     sp_value_char = sp_value_num = tree_breaks = NULL
     x_miss = any(dat[, x] %in% sp_values)
     if (!is.null(sp_values) && x_miss) {
@@ -320,7 +320,7 @@ get_tree_breaks <- function(dat, x, target, pos_flag = NULL,
 
 cut_equal <- function(dat_x, g = 10, sp_values = list(-1, "Missing")) {
     digits_x = digits_num(dat_x)
-    opt = options(stringsAsFactors = FALSE, digits = digits_x + 1) #
+    opt = options(scipen = 200, stringsAsFactors = FALSE, digits = digits_x + 1) #
     sp_value_char = sp_value_num = NULL
     dat_x = unlist(dat_x)
     x_miss = any(dat_x %in% sp_values)
@@ -407,13 +407,13 @@ cut_equal <- function(dat_x, g = 10, sp_values = list(-1, "Missing")) {
 #'      \item 1.The increasing or decreasing trend of variables is consistent with the actual business experience.(The percent of Non-monotonic intervals of which are not head or tail is less than 0.35)
 #'      \item 2.Maximum 10 intervals for a single variable.
 #'      \item 3.Each interval should cover more than 2% of the model development samples.
-#'      \item 4. Each interval needs at least 30 or 1%  1 samples. .
+#'      \item 4.Each interval needs at least 30 or 1% positive samples. .
 #'      \item 5.Combining the values of blank, missing or other special value into the same interval called Missing.
-#'      \item 6.The difference of Chi effect size between intervals should be at least 0.03 or more.
+#'      \item 6.The difference of Chi effect size between intervals should be at least 0.02 or more.
 #'      \item 7.The difference of absolute odds ratio between intervals should be at least 0.1 or more.
-#'      \item 8.The difference of 1 rate between intervals should be at least 1/10 of the total 1 rate..
+#'      \item 8.The difference of positive rate between intervals should be at least 1/10 of the total positive rate.
 #'      \item 9.The difference of G/B index between intervals should be at least 15 or more.
-#'      \item 10.The PSI of each interval should be less than 0.05.
+#'      \item 10.The PSI of each interval should be less than 0.1.
 #'   }
 #' @seealso
 #' \code{\link{get_tree_breaks}},
@@ -571,19 +571,10 @@ select_best_class <- function(dat, x, target, breaks = NULL, occur_time = NULL, 
             dt_iv = get_iv(dat = dat_test, x = x, target = target, pos_flag = pos_flag,
                            breaks = break_class, note = FALSE)
             iv_list_sub[[k]] = unlist(dt_iv[, "IV"])
-            if (is.null(dt_bins)) {
-                dt_bins = get_psi_iv(dat = dat_train, x = x, dat_test = dat_test,
-                                     target = target, pos_flag = pos_flag,
-                                     breaks = break_class, breaks_list = NULL,
-                                     occur_time = occur_time, oot_pct = oot_pct,
-                                     bins_total = FALSE, note = FALSE, bins_no = TRUE)
-            }
-            psi_list_sub[[k]] = sum(dt_bins[, "PSIi"])
             breaks_cv[[k]] = break_class
         }
-        max_iv = unlist(iv_list_sub) / ifelse(max(unlist(iv_list_sub)) == 0, 1, max(unlist(iv_list_sub)))
-        min_psi = (1 - unlist(psi_list_sub)) / (1 - min(unlist(psi_list_sub)))
-        best_ind = which.max(max_iv * 0.8 + min_psi * 0.2)
+        max_iv =  ifelse(max(unlist(iv_list_sub)) == 0, unlist(iv_list_sub), unlist(iv_list_sub) / max(unlist(iv_list_sub)))
+        best_ind = which.max(max_iv)
         best_class = unique(breaks_cv[[best_ind]])
         if (length(best_ind) > 0) {
             best_class = unique(breaks_cv[[best_ind]])
@@ -656,7 +647,7 @@ select_best_breaks <- function(dat, x, target, breaks = NULL, pos_flag = NULL,
                 bins_odds_ratio_s = dt_bins[, "odds_ratio_s"]
                 gb_index = dt_bins[, "odds_ratio"]
                 gb_percent = dt_bins[, "%expected"]
-                effect_sz = odds_ratio = dif_gb = c()
+                effect_sz = odds = dif_gb = c()
                 for (brk in 1:(dim(gb)[1] - 1)) {
                     cross_table = rbind(gb[brk,], gb[brk + 1,])
                     a = cross_table[1, 1]
@@ -665,11 +656,11 @@ select_best_breaks <- function(dat, x, target, breaks = NULL, pos_flag = NULL,
                     d = cross_table[2, 2]
                     if (any(is.na(cross_table)) | any(cross_table < 30) | any(cross_table[, 2] / (cross_table[, 1] + cross_table[, 2]) < 0.01)) {
                         effect_sz[brk] = 0
-                        odds_ratio[brk] = 1
+                        odds[brk] = 1
                         dif_gb[brk] = 0
                     } else {
                         effect_sz[brk] = ((a * d - b * c) / 10000) / ((sqrt((a + b)) / 10000) * sqrt((c + d)) * sqrt((a + c)) * sqrt((b + d)))
-                        odds_ratio[brk] = (a * d / 10000) / (b * c / 10000)
+                        odds[brk] = (a * d / 10000) / (b * c / 10000)
                         dif_gb[brk] = gb_index[brk] - gb_index[brk + 1]
                     }
                 }
@@ -679,10 +670,10 @@ select_best_breaks <- function(dat, x, target, breaks = NULL, pos_flag = NULL,
                         gb_single[i] = (gb_index[i] > gb_index[i - 1] &
                                           gb_index[i] > gb_index[i + 1]) | (gb_index[i] < gb_index[i - 1] &
                                                                               gb_index[i] < gb_index[i + 1])
-                   
+
                     }
 
-                    gb_single_break = which(gb_single)                 
+                    gb_single_break = which(gb_single)
                     gb_single_pct = length(gb_single_break) / (length(gb_index))
                     if (length(gb_single_break)>0 && gb_single_pct > mono) {
                         non_mono_break = sort(gb_single_break)
@@ -696,8 +687,8 @@ select_best_breaks <- function(dat, x, target, breaks = NULL, pos_flag = NULL,
                         min_chi_bin = which.min(abs(effect_sz))
                         break_points = break_points[-c(min_chi_bin)]
                     } else {
-                        if (any(abs(odds_ratio - 1) < b_odds)) {
-                            min_odds_bin = which.min(abs(odds_ratio - 1))
+                        if (any(abs(odds - 1) < b_odds)) {
+                            min_odds_bin = which.min(abs(odds - 1))
                             break_points = break_points[-c(min_odds_bin)]
                         } else {
                             if (any(abs(dif_gb) < b_or)) {
@@ -754,19 +745,10 @@ select_best_breaks <- function(dat, x, target, breaks = NULL, pos_flag = NULL,
             dt_iv = get_iv(dat = dat_test, x = x, target = target, pos_flag = pos_flag,
                            breaks = break_points, note = FALSE)
             iv_list_sub[[k]] = unlist(dt_iv[, "IV"])
-            if (is.null(dt_bins)) {
-                dt_bins = get_psi_iv(dat = dat_train, dat_test = dat_test, x = x,
-                                     target = target, pos_flag = pos_flag,
-                                     breaks = break_points, breaks_list = NULL,
-                                     occur_time = occur_time, oot_pct = oot_pct,
-                                     bins_total = FALSE, note = FALSE, bins_no = TRUE)
-            }
-            psi_list_sub[[k]] = sum(dt_bins[, "PSIi"])
             breaks_cv[[k]] = break_points
         }
-        max_iv = unlist(iv_list_sub) / ifelse(max(unlist(iv_list_sub)) == 0, 1, max(unlist(iv_list_sub)))
-        min_psi = (1 - unlist(psi_list_sub)) / (1 - min(unlist(psi_list_sub)))
-        best_ind = which.max(max_iv * 0.8 + min_psi * 0.2)
+        max_iv = ifelse(max(unlist(iv_list_sub)) == 0,unlist(iv_list_sub),unlist(iv_list_sub) /  max(unlist(iv_list_sub)))
+        best_ind = which.max(max_iv)
         best_class = unique(breaks_cv[[best_ind]])
         if (length(best_ind) > 0) {
             best_breaks = sort(unlist(unique(c(breaks_cv[[best_ind]], Inf))))

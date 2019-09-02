@@ -4,7 +4,7 @@
 \alias{char_to_num}
 \title{character to number}
 \usage{
-char_to_num(dat, note = FALSE,
+char_to_num(dat, note = TRUE,
   ex_cols = "date$|id$|time$|DATA$|ID$|TIME$")
 }
 \arguments{

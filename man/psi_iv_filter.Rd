@@ -7,7 +7,7 @@
 psi_iv_filter(dat, dat_test = NULL, target, x_list = NULL,
   breaks_list = NULL, pos_flag = NULL, ex_cols = NULL,
   occur_time = NULL, oot_pct = 0.7, psi_i = 0.1, iv_i = 0.01,
-  vars_name = FALSE, note = TRUE, parallel = FALSE,
+  cos_i = 0.9, vars_name = FALSE, note = TRUE, parallel = FALSE,
   save_data = FALSE, file_name = NULL, dir_path = tempdir(), ...)
 }
 \arguments{
@@ -33,6 +33,8 @@ psi_iv_filter(dat, dat_test = NULL, target, x_list = NULL,
 
 \item{iv_i}{The minimum threshold of IV. 0 < iv_i ; 0.01 to 0.1 usually work. Default: 0.01}
 
+\item{cos_i}{cos_similarity of posive rate of train and test. 0.7 to 0.9 usually work.Default: 0.5.}
+
 \item{vars_name}{Logical, output a list of filtered variables or table with detailed IV and PSI value of each variable. Default is FALSE.}
 
 \item{note}{Logical, outputs info. Default is TRUE.}
@@ -52,7 +54,8 @@ A list with the following elements:
 \itemize{
   \item \code{Feature} Selected variables.
   \item \code{IV} IV of variables.
-  \item \code{ PSI} PSI of variables.
+  \item \code{PSI} PSI of variables.
+  \item \code{COS} cos_similarity of posive rate of train and test.
 }
 }
 \description{

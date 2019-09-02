@@ -6,7 +6,7 @@
 \title{Lending Club data}
 \format{A data frame with 63532 rows and 145 variables.}
 \source{
-\url{https://www.lendingclub.com/info/download:data.action}
+\url{https://www.lendingclub.com}
 }
 \description{
 This data contains complete loan data for all loans issued through the time period stated, including the current loan status (Current, Late, Fully Paid, etc.) and latest payment information. 

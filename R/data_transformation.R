@@ -24,7 +24,7 @@
 #' dat = re_name(dat, "default.payment.next.month", "target")
 #' dat = data_cleansing(dat, target = "target", obs_id = "ID", occur_time = "apply_date",
 #' miss_values =  list("", -1))
-#' 
+#'
 #' train_test <- train_test_split(dat, split_type = "OOT", prop = 0.7,
 #'                                 occur_time = "apply_date")
 #' dat_train = train_test$train
@@ -32,7 +32,7 @@
 #' #get breaks of all predictive variables
 #' x_list = c("PAY_0", "LIMIT_BAL", "PAY_AMT5", "EDUCATION", "PAY_3", "PAY_2")
 #' breaks_list <- get_breaks_all(dat = dat_train, target = "target",
-#'                               x_list = x_list, occur_time = "apply_date", ex_cols = "ID", 
+#'                               x_list = x_list, occur_time = "apply_date", ex_cols = "ID",
 #' save_data = FALSE, note  = FALSE)
 #' #woe transform
 #' train_woe = woe_trans_all(dat = dat_train,
@@ -51,11 +51,9 @@ woe_trans_all <- function(dat, x_list = NULL, ex_cols = NULL, bins_table = NULL,
                           save_data = FALSE, parallel = FALSE, woe_name = FALSE,
                           file_name = NULL, dir_path = tempdir(), ...) {
 
-    if (note) {
-        cat(paste("[NOTE]  converting all variables to woe...."), "\n")
-    }
+    if (note)cat(paste("converting all variables to woe...."), "\n")
 
-    opt = options(stringsAsFactors = FALSE) #
+    opt = options(scipen = 200, stringsAsFactors = FALSE) #
     if (is.null(x_list)) {
         if (!is.null(bins_table)) {
             x_list = unique(bins_table[which(as.character(bins_table[, "Feature"]) != "Total"), "Feature"])
@@ -136,7 +134,7 @@ woe_trans <- function(dat, x, bins_table = NULL, target = NULL, breaks_list = NU
 #' @export
 one_hot_encoding = function(dat, cat_vars = NULL, ex_cols = NULL,
                             merge_cat = TRUE, na_act = TRUE, note = FALSE) {
-    if (note) cat("[NOTE]  one-hot encoding for charactor or factor.\n")
+    if (note)cat("one-hot encoding for charactor or factor.\n")
     if (class(dat)[1] != "data.frame") {
         dat <- as.data.frame(dat)
     }
@@ -153,7 +151,7 @@ one_hot_encoding = function(dat, cat_vars = NULL, ex_cols = NULL,
         for (i in cat_vars) {
             if (is.factor(dat[, i]) || is.character(dat[, i])) {
                 col_name = i
-                dat[, i] = sapply(dat[, i], function(x) gsub(" |\"|\\$|\\*|\\?|\\[|\\^|\\{|\\}|\\\\|\\(|\\)|\\|\\)|\\]|\\.|\\-", "_", x))
+                dat[, i] = sapply(dat[, i], function(x) gsub(" |\"|\\$|\\*|\\?|\\[|\\^|\\{|\\}|\\\\|\\(|\\)|\\|\\)|\\]|\\.|\\-|,|\\'", "_", x))
                 cat_list <- unique(dat[, i])
                 encode_cols <- length(cat_list)
                 #Create individual column for every unique value in the variable
@@ -190,7 +188,7 @@ one_hot_encoding = function(dat, cat_vars = NULL, ex_cols = NULL,
 #' @export
 
 de_one_hot_encoding = function(dat_one_hot, cat_vars = NULL, na_act = TRUE, note = FALSE) {
-    if (note) cat("[NOTE] recovery one-hot encoding for charactor or factor.\n")
+    if (note) cat("recoverying one-hot encoding for charactor or factor.\n")
     if (class(dat_one_hot)[1] != "data.frame") {
         dat_one_hot <- as.data.frame(dat_one_hot)
     }
@@ -260,9 +258,7 @@ de_one_hot_encoding = function(dat_one_hot, cat_vars = NULL, na_act = TRUE, note
 time_transfer <- function(dat, date_cols = "DATE$|time$|date$|timestamp$|stamp$",
                           ex_cols = NULL, note = FALSE) {
     dat <- checking_data(dat)
-    if (note) {
-        cat("[NOTE] format time variables.\n")
-    }
+    if (note)cat("formating time variables.\n")
     x_list = get_x_list(x_list = NULL, dat_train = dat, dat_test = NULL, ex_cols = ex_cols)
     date_cols1 = NULL
     if (!is.null(date_cols)) {
@@ -330,13 +326,14 @@ time_transfer <- function(dat, date_cols = "DATE$|time$|date$|timestamp$|stamp$"
 #'
 #' This function is used for derivating behavioral variables and is not intended to be used by end user.
 #'
-#' @param  dat  A data.frame contained only predict variables.
-#' @param  grx  Regular expressions used to match variable names.
-#' @param  grx_x  Regular expression used to match a group of variable names.
-#' @param  td  Number of variables to derivate.
-#' @param  der  Variables to derivate
-#' @param  parallel Logical, parallel computing. Default is FALSE.
-#' @details  The key to creating a good model is not the power of a specific modelling technique, but the breadth and depth of derived variables that represent a higher level of knowledge about the phenomena under examination. 
+#' @param dat  A data.frame contained only predict variables.
+#' @param grx  Regular expressions used to match variable names.
+#' @param grx_x  Regular expression used to match a group of variable names.
+#' @param td  Number of variables to derivate.
+#' @param der  Variables to derivate
+#' @param parallel Logical, parallel computing. Default is FALSE.
+#' @param note Logical, outputs info. Default is TRUE.
+#' @details  The key to creating a good model is not the power of a specific modelling technique, but the breadth and depth of derived variables that represent a higher level of knowledge about the phenomena under examination.
 #' @importFrom data.table setDT :=  rbindlist
 #' @export
 
@@ -344,8 +341,8 @@ derived_ts_vars <- function(dat, grx, td = 12,
                             der = c("cvs", "sums", "means", "maxs", "max_mins",
                                     "time_intervals", "cnt_intervals", "total_pcts",
                                     "cum_pcts", "partial_acfs"),
-                            parallel = TRUE) {
-    cat(paste("derived variables of", paste(der), ". \n"))
+                            parallel = TRUE,note = TRUE) {
+    if(note)cat(paste("derived variables of", paste(der), ". \n"))
     if (parallel) {
         parallel <- start_parallel_computing(parallel)
         stopCluster <- TRUE
@@ -734,7 +731,7 @@ variable_process <- function(add) {
 
 #' derived_interval
 #'
-#' This function is not intended to be used by end user. 
+#' This function is not intended to be used by end user.
 #'
 #' @param  dat_s  A data.frame contained only predict variables.
 #' @param interval_type  Available of c("cnt_interval", "time_interval")
@@ -766,7 +763,7 @@ derived_interval <- function(dat_s, interval_type = c("cnt_interval", "time_inte
 
 #' derived_pct
 #'
-#' This function is not intended to be used by end user. 
+#' This function is not intended to be used by end user.
 #'
 #' @param  dat_s  A data.frame contained only predict variables.
 #' @param pct_type  Available of "total_pct"
@@ -787,7 +784,7 @@ derived_pct <- function(dat_s, pct_type = "total_pct") {
 
 #' derived_partial_acf
 #'
-#' This function is not intended to be used by end user. 
+#' This function is not intended to be used by end user.
 #'
 #' @param  dat_s  A data.frame
 #' @export
@@ -801,7 +798,7 @@ derived_partial_acf <- function(dat_s) {
 
 #' sim_str
 #'
-#' This function is not intended to be used by end user. 
+#' This function is not intended to be used by end user.
 #'
 #' @param a A string
 #' @param b  A string
@@ -845,11 +842,9 @@ de_percent <- function(x, digits = 2) {
 #' str(dat[,char_list])
 #' @export
 
-merge_category <- function(dat, ex_cols = "date$|id$|time$|DATA$|ID$|TIME$", p = 0.01, m = 10, note = FALSE) {
-    opt = options("warn" = -1) # suppress warnings
-    if (note) {
-        (cat("[NOTE] merge categories which percent is less than 0.001 or  obs number is less than 10.\n"))
-    }
+merge_category <- function(dat, ex_cols = "date$|id$|time$|DATA$|ID$|TIME$", p = 0.01, m = 10, note = TRUE) {
+    opt = options(scipen = 200, stringsAsFactors = FALSE, "warn" = -1) # suppress warnings
+    if (note)(cat("\nmerging categories which percent is less than 0.001 or  obs number is less than 10.\n"))
     char_list = get_names(dat = dat,
                           types = c('factor', 'character'),
                           ex_cols = ex_cols, get_ex = FALSE)
@@ -889,11 +884,9 @@ merge_category <- function(dat, ex_cols = "date$|id$|time$|DATA$|ID$|TIME$", p =
 #' str(dat_sub)
 #' @export
 
-char_to_num <- function(dat, note = FALSE, ex_cols = "date$|id$|time$|DATA$|ID$|TIME$") {
-    opt = options("warn" = -1) # suppress warnings
-    if (note) {
-        cat("[NOTE] transfer character variables which are actually numerical to numeric.\n")
-    }
+char_to_num <- function(dat, note = TRUE, ex_cols = "date$|id$|time$|DATA$|ID$|TIME$") {
+    opt = options(scipen = 200, "warn" = -1, stringsAsFactors = FALSE) # suppress warnings
+    if (note) cat("transfering character variables which are actually numerical to numeric.\n")
     char_list = get_names(dat = dat,
                           types = c('factor', 'character'),
                           ex_cols = ex_cols, get_ex = FALSE)

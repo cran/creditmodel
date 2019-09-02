@@ -36,7 +36,7 @@ sub = cv_split(UCICreditCard, k = 30)[[1]]
 dat = UCICreditCard[sub,]
 #rename the target variable
 dat = re_name(dat, "default.payment.next.month", "target")
-dat = data_cleansing(dat, target = "target", obs_id = "ID", 
+dat = data_cleansing(dat, target = "target", obs_id = "ID",
 occur_time = "apply_date", miss_values =  list("", -1))
 #train_ test pliting
 train_test <- train_test_split(dat, split_type = "OOT", prop = 0.7,
@@ -46,7 +46,7 @@ dat_test = train_test$test
 #get breaks of all predictive variables
 x_list = c("PAY_0", "LIMIT_BAL", "PAY_AMT5", "EDUCATION", "PAY_3", "PAY_2")
 breaks_list <- get_breaks_all(dat = dat_train, target = "target",
-                              x_list = x_list, occur_time = "apply_date", ex_cols = "ID", 
+                              x_list = x_list, occur_time = "apply_date", ex_cols = "ID",
 save_data = FALSE, note = FALSE)
 #woe transforming
 train_woe = woe_trans_all(dat = dat_train,

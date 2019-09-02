@@ -14,8 +14,8 @@ training_model(model_name = "mymodel", dat, dat_test = NULL,
   LR.params = lr_params(), XGB.params = xgb_params(),
   GBM.params = gbm_params(), RF.params = rf_params(),
   breaks_list = NULL, parallel = FALSE, cores_num = NULL,
-  save_pmml = FALSE, plot_show = FALSE, model_path = tempdir(),
-  seed = 46, ...)
+  save_pmml = FALSE, plot_show = FALSE, vars_plot = TRUE,
+  model_path = tempdir(), seed = 46, ...)
 }
 \arguments{
 \item{model_name}{A string, name of the project. Default is "mymodel"}
@@ -52,20 +52,7 @@ training_model(model_name = "mymodel", dat, dat_test = NULL,
 
 \item{algorithm}{Algorithms for training a model. list("LR", "XGB", "GBDT", "RF") are available.}
 
-\item{LR.params}{Parameters of logistic regression & scorecard. See details at :  \code{\link{lr_params}}.
-\itemize{
-  \item \code{tree_control} the list of parameters to control cutting initial breaks by decision tree. See details at: \code{\link{get_tree_breaks}}
-  \item \code{bins_control} the list of parameters to control merging initial breaks. See details at: \code{\link{select_best_breaks}},\code{\link{select_best_class}}
-  \item \code{best_lambda} Metheds of best lanmbda stardards using to filter variables by LASSO. There are 3 methods: ("lambda.auc", "lambda.ks", "lambda.sim_sign") . Default is  "lambda.sim_sign".
-  \item \code{obsweight} An optional vector of  'prior weights' to be used in the fitting process. Should be NULL or a numeric vector. If you oversample or cluster diffrent datasets to training the LR model, you need to set this parameter to ensure that the probability of logistic regression output is the same as that before oversampling or segmentation. e.g.:There are 10,000 0 obs and 500 1 obs before oversampling or under-sampling, 5,000 0 obs and 3,000 1 obs after oversampling. Then this parameter should be set to c(10000/5000, 500/3000). Default is NULL..
-  \item \code{forced_in}Names of forced input variables. Default is NULL.
-  \item \code{sp_values} Vaules will be in separate bins.e.g. list(-1, "Missing")  means that -1 & Missing as special values.Default is NULL.
-  \item \code{step_wise} Logical, stepwise method. Default is TRUE.
-  \item \code{score_card} Logical, transfer woe to a standard scorecard. If TRUE, Output scorecard, and score prediction, otherwise output probability. Default is TRUE.
-  \item \code{cor_p} The maximum threshold of correlation.0 <= cor_p <=1; 0.5 to 0.8 usually work.  Default: 0.7.
-  \item \code{iv_i} The minimum threshold of IV. 0 < iv_i ; 0.01 to 0.1 usually work. Default: 0.01
-  \item \code{psi_i} The maximum threshold of PSI.  0 <= psi_i <=1; 0.05 to 0.2 usually work. Default: 0.1
-}}
+\item{LR.params}{Parameters of logistic regression & scorecard. See details at :  \code{\link{lr_params}}.}
 
 \item{XGB.params}{Parameters of xgboost. See details at :  \code{\link{xgb_params}}.}
 
@@ -83,6 +70,8 @@ training_model(model_name = "mymodel", dat, dat_test = NULL,
 
 \item{plot_show}{Logical, show model performance in current graphic device. Default is FALSE.}
 
+\item{vars_plot}{Logical, if TRUE, plot distribution ,correlation or partial dependence of model input variables . Default is TRUE.}
+
 \item{model_path}{The path for periodically saved data file. Default is \code{tempdir()}.}
 
 \item{seed}{Random number seed. Default is 46.}
@@ -96,28 +85,28 @@ A list containing Model Objects.
 \code{training_model} Model builder
 }
 \examples{
-sub = cv_split(UCICreditCard, k = 40)[[1]]
+sub = cv_split(UCICreditCard, k = 60)[[1]]
 dat = UCICreditCard[sub,]
 dat = re_name(dat, "default.payment.next.month", "target")
-dat = data_cleansing(dat, target = "target", obs_id = "ID", 
+dat = data_cleansing(dat, target = "target", obs_id = "ID",
 occur_time = "apply_date", miss_values = list("", -1, -2))
 train_test <- train_test_split(dat, split_type = "OOT", prop = 0.7,
                                 occur_time = "apply_date")
 dat_train = train_test$train
 dat_test = train_test$test
-x_list = c("PAY_0", "LIMIT_BAL", "PAY_AMT5", "PAY_3")
+x_list = c("PAY_0", "LIMIT_BAL", "PAY_AMT5")
 B_model = training_model(dat = dat_train,
 model_name = "UCICreditCard", target = "target", x_list = x_list,
 occur_time = "apply_date", obs_id = "ID", dat_test = dat_test,
                            preproc = FALSE,
                            feature_filter = NULL,
                            algorithm = list("LR"),
-                           LR.params = lr_params(lasso = FALSE, 
-                           step_wise = FALSE, vars_plot = FALSE),
-                           XGB.params = xgb_params(),
+                           LR.params = lr_params(lasso = FALSE,
+                           step_wise = FALSE),
                            breaks_list = NULL,
                            parallel = FALSE, cores_num = NULL,
                            save_pmml = FALSE, plot_show = FALSE,
+                           vars_plot = FALSE,
                            model_path = tempdir(),
                            seed = 46)
 }

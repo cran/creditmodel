@@ -7,7 +7,7 @@
 \usage{
 derived_ts_vars(dat, grx, td = 12, der = c("cvs", "sums", "means",
   "maxs", "max_mins", "time_intervals", "cnt_intervals", "total_pcts",
-  "cum_pcts", "partial_acfs"), parallel = TRUE)
+  "cum_pcts", "partial_acfs"), parallel = TRUE, note = TRUE)
 
 derived_ts(dat = dat, grx_x = NULL, td = 12, der = c("cvs", "sums",
   "means", "maxs", "max_mins", "time_intervals", "cnt_intervals",
@@ -23,6 +23,8 @@ derived_ts(dat = dat, grx_x = NULL, td = 12, der = c("cvs", "sums",
 \item{der}{Variables to derivate}
 
 \item{parallel}{Logical, parallel computing. Default is FALSE.}
+
+\item{note}{Logical, outputs info. Default is TRUE.}
 
 \item{grx_x}{Regular expression used to match a group of variable names.}
 }

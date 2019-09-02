@@ -58,13 +58,13 @@ The folloiwing is the list of Reference Principles
      \item 1.The increasing or decreasing trend of variables is consistent with the actual business experience.(The percent of Non-monotonic intervals of which are not head or tail is less than 0.35)
      \item 2.Maximum 10 intervals for a single variable.
      \item 3.Each interval should cover more than 2% of the model development samples.
-     \item 4. Each interval needs at least 30 or 1%  1 samples. .
+     \item 4.Each interval needs at least 30 or 1% positive samples. .
      \item 5.Combining the values of blank, missing or other special value into the same interval called Missing.
-     \item 6.The difference of Chi effect size between intervals should be at least 0.03 or more.
+     \item 6.The difference of Chi effect size between intervals should be at least 0.02 or more.
      \item 7.The difference of absolute odds ratio between intervals should be at least 0.1 or more.
-     \item 8.The difference of 1 rate between intervals should be at least 1/10 of the total 1 rate..
+     \item 8.The difference of positive rate between intervals should be at least 1/10 of the total positive rate.
      \item 9.The difference of G/B index between intervals should be at least 15 or more.
-     \item 10.The PSI of each interval should be less than 0.05.
+     \item 10.The PSI of each interval should be less than 0.1.
   }
 }
 \examples{

@@ -7,8 +7,8 @@
 \alias{model_key_index}
 \title{ks_table & plot}
 \usage{
-ks_table(train_pred, test_pred, target = NULL, score = "score",
-  g = 10, breaks = NULL, pos_flag = NULL)
+ks_table(train_pred, test_pred = NULL, target = NULL, score = NULL,
+  g = 10, breaks = NULL, pos_flag = list("1", "1", "Bad", 1))
 
 ks_table_plot(train_pred, test_pred, target = "target",
   score = "score", g = 10, plot_show = TRUE, g_width = 12,
@@ -59,7 +59,7 @@ model_key_index(tb_pred)
 sub = cv_split(UCICreditCard, k = 30)[[1]]
 dat = UCICreditCard[sub,]
 dat = re_name(dat, "default.payment.next.month", "target")
-dat = data_cleansing(dat, target = "target", obs_id = "ID", 
+dat = data_cleansing(dat, target = "target", obs_id = "ID",
 occur_time = "apply_date", miss_values = list("", -1))
 
 train_test <- train_test_split(dat, split_type = "OOT", prop = 0.7,

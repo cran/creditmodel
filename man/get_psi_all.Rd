@@ -7,12 +7,13 @@
 \code{get_psi} is used to calculate Population Stability Index (PSI)  of an independent variable.
 \code{get_psi_all} can loop through PSI for all specified independent variables.}
 \usage{
-get_psi_all(dat, x_list = NULL, dat_test = NULL, breaks_list = NULL,
-  occur_time = NULL, start_date = NULL, cut_date = NULL,
-  oot_pct = 0.7, pos_flag = NULL, parallel = FALSE, ex_cols = NULL,
-  as_table = FALSE, g = 10, bins_no = TRUE, note = FALSE)
+get_psi_all(dat, x_list = NULL, target = NULL, dat_test = NULL,
+  breaks_list = NULL, occur_time = NULL, start_date = NULL,
+  cut_date = NULL, oot_pct = 0.7, pos_flag = NULL,
+  parallel = FALSE, ex_cols = NULL, as_table = FALSE, g = 10,
+  bins_no = TRUE, note = FALSE)
 
-get_psi(dat, x, dat_test = NULL, occur_time = NULL,
+get_psi(dat, x, target = NULL, dat_test = NULL, occur_time = NULL,
   start_date = NULL, cut_date = NULL, pos_flag = NULL,
   breaks = NULL, breaks_list = NULL, oot_pct = 0.7, g = 10,
   as_table = TRUE, note = FALSE, bins_no = TRUE)
@@ -21,6 +22,8 @@ get_psi(dat, x, dat_test = NULL, occur_time = NULL,
 \item{dat}{A data.frame with independent variables and target variable.}
 
 \item{x_list}{Names of independent variables.}
+
+\item{target}{The name of target variable.}
 
 \item{dat_test}{A data.frame of test data. Default is NULL.}
 

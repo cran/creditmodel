@@ -1,7 +1,18 @@
 #' Data Cleaning
 #'
 #'
-#'The \code{data_cleansing} function is a simpler wrapper for data cleaning functions, such as delete variables that values are all NAs;checking dat and target format.;delete low variance variables.;replace null or NULL or blank with NA; encode variables which NAs &  miss value rate is more than 95% as 1,0 ;encode variables which unique value  rate is  more than 95% as 1,0; merge categories of character variables that  is more than 8; transfer time variables to dateformation; remove duplicated observations;process outliers;process NAs.
+#'The \code{data_cleansing} function is a simpler wrapper for data cleaning functions, such as 
+#' delete variables that values are all NAs;
+#' checking dat and target format.
+#' delete low variance variables
+#' replace null or NULL or blank with NA; 
+#' encode variables which NAs &  miss value rate is more than 95% as 1,0 ;
+#' encode variables which unique value  rate is  more than 95% as 1,0;
+#'merge categories of character variables that  is more than 8; 
+#' transfer time variables to dateformation;
+#' remove duplicated observations;
+#' process outliers;
+#' process NAs.
 #' @param dat A data frame with x and target.
 #' @param target The name of target variable.
 #' @param miss_values  Other extreme value might be used to represent missing values, e.g: -9999, -9998. These miss_values will be encoded to -1 or "Missing".
@@ -50,12 +61,12 @@
 
 data_cleansing <- function(dat, target = NULL, x_list = NULL, obs_id = NULL, occur_time = NULL,
                           pos_flag = NULL, miss_values = NULL, ex_cols = NULL,
-                          outlier_proc = TRUE, missing_proc = TRUE, 
+                          outlier_proc = TRUE, missing_proc = TRUE,
                           low_var = TRUE, one_hot = FALSE,
                           parallel = FALSE, note = FALSE,
                           save_data = FALSE, file_name = NULL, dir_path = tempdir()) {
     #delete variables that values are all nas.
-    opt = options("warn" = -1, stringsAsFactors = FALSE, digits = 10) # suppress warnings
+    opt = options(scipen = 200, "warn" = -1, stringsAsFactors = FALSE, digits = 10) # suppress warnings
     dat = checking_data(dat = dat, target = target, pos_flag = pos_flag,
                             occur_time = occur_time, note = note)
     if (save_data) {
@@ -78,14 +89,14 @@ data_cleansing <- function(dat, target = NULL, x_list = NULL, obs_id = NULL, occ
         if (!is.null(x_list)) {
             dat = dat[unique(c(obs_id, target, occur_time, x_list))]
         }
-        
+
         dat =  null_blank_na(dat = dat, miss_values = miss_values, note = note)
 
         #delete variables that all nas.
         if (low_var) {
             #delecte low vaiance variables
             dat = dat[!colAllnas(dat)] %>%
-                      low_variance_filter(lvp = 0.98, note = note) 
+                      low_variance_filter(lvp = 0.98, note = note)
             x_list_2 = get_names(dat = dat,
                               types = c('logical', 'factor', 'character', 'numeric',
                                         'integer', 'double', "Date", "POSIXlt", "POSIXct", "POSIXt"),
@@ -148,7 +159,7 @@ data_cleansing <- function(dat, target = NULL, x_list = NULL, obs_id = NULL, occ
         re_x_list = gsub("-|\\$|\\*|\\+|\\?|\\[|\\^|\\{|\\}|\\\\|\\(|\\)|\\|\\)|\\]", "_", c(char_x_list, num_x_list))
         dat = re_name(dat, oldname = c(char_x_list, num_x_list), newname = re_x_list)
         if (save_data) {
-            save_dt(dat, dir_path = dir_path, file_name = ifelse(is.null(file_name), "dat.cl", paste(file_name, "dat.cl", sep = ".")), append = FALSE, note = note)
+            save_dt(dat, dir_path = dir_path, file_name = ifelse(is.null(file_name), "data.cleansing", paste(file_name, "data.cleansing", sep = ".")), append = FALSE, note = note)
         }
     }
     options(opt) # reset warnings

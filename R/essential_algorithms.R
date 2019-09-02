@@ -247,6 +247,9 @@ char_cor <- function(dat, x_list = NULL, ex_cols = "date$", parallel = FALSE, no
 
 auc_value = function(target, prob) {
     prob.rank = rank(prob)
+    if(!is.numeric(target)){
+        target =  as.numeric(as.character(target))
+    }
     cnt_1 = sum(target)
     cnt_0 = length(target) - cnt_1
     prob_1 = prob.rank[target == 1]

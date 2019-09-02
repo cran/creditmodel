@@ -27,7 +27,7 @@
 #' @importFrom stats quantile ecdf
 #' @export
 
-train_test_split <- function(dat, prop = 0.7, split_type = c("Random", "OOT", "byRow"),
+train_test_split <- function(dat, prop = 0.7, split_type = "Random",
 occur_time = NULL, cut_date = NULL, start_date = NULL, save_data = FALSE,
 dir_path = tempdir(), file_name = NULL, note = FALSE, seed = 43) {
 
@@ -35,7 +35,7 @@ dir_path = tempdir(), file_name = NULL, note = FALSE, seed = 43) {
         warning("[Invalid]  prop is not a numeric or more than 1,  reset to 0.7.\n")
         prop = 0.7
     }
-    if (!is.element(split_type, c("OOT", "Random", "byRow"))) {
+    if (!any(is.element(split_type, c("OOT", "Random", "byRow")))) {
         stop("split_type must be either 'OOT' or 'Random' or 'byRow'.\n")
     }
     if (length(split_type) > 1) {
@@ -254,10 +254,10 @@ save_dt <- function(dt, file_name = "dat", dir_path = getwd(),
 
 
 digits_num =function(dat_x) {
-    options(scipen = 100)
-    digits1 = digits2 = 10
-    dat_x = sample(unlist(dat_x[!is.na(dat_x)]), 100, replace = FALSE)
-    if (any(is.element(class(dat_x), c("integer", "numeric",
+    options(scipen = 200, stringsAsFactors = FALSE)
+    digits1 = digits2 = 16
+    dat_x = unique(unlist(dat_x[!is.na(dat_x)]))
+    if (length(dat_x) > 0 && any(is.element(class(dat_x), c("integer", "numeric",
         "double")))) {
         digits1 = vapply(dat_x, function(num) {
             char_num = as.character(gsub("-", "",
@@ -280,7 +280,8 @@ digits_num =function(dat_x) {
         }, FUN.VALUE = numeric(1))
         digits2 = max(digits1)
     }
-    digits2
+	digits2 = ifelse(digits2 > 16, 16, digits2)
+	return(digits2)
 }
 
 
@@ -591,7 +592,7 @@ get_names <- function(dat, types = c('logical', 'factor', 'character', 'numeric'
 #' @export
 
 
-get_x_list <- function(x_list = NULL, dat_train = NULL, dat_test = NULL, ex_cols = NULL) {
+get_x_list <- function(dat_train = NULL, dat_test = NULL,x_list = NULL, ex_cols = NULL) {
     if (!is.null(dat_train)) {
         if (is.null(x_list) | length(x_list) <1 ) {
             if (is.null(dat_test)) {
@@ -623,7 +624,7 @@ get_x_list <- function(x_list = NULL, dat_train = NULL, dat_test = NULL, ex_cols
                 x_list_ts = intersect(x_list_t, x_list_s)
                 x_excluded_ts = setdiff(x_list_t, x_list_s)
                 if (length(x_excluded_ts) > 0) {
-                    cat(paste("[EXCLUDED]", "variables which are not both in train & test :\n",
+                    cat(paste("following variables are not both in train & test :\n",
                               paste(x_excluded_ts, collapse = " \n"), ".\n",sep = ""))
                 }
                 x_input = x_list %in% x_list_ts
@@ -631,7 +632,7 @@ get_x_list <- function(x_list = NULL, dat_train = NULL, dat_test = NULL, ex_cols
             if (!all(x_input)) {
                 x_retain = x_list[which(x_input)]
                 x_excluded = x_list[which(!x_input)]
-                cat(paste("[EXCLUDED]", "which  are not in x_list: \n",
+                cat(paste("following variables are excluded: \n",
                           paste(x_excluded, collapse = " \n"), ".\n",sep = ""))
             } else {
                 x_retain = x_list
@@ -642,7 +643,7 @@ get_x_list <- function(x_list = NULL, dat_train = NULL, dat_test = NULL, ex_cols
             if (!all(x_type)) {
                 x_list_retain = x_retain[which(x_type)]
                 x_excluded = x_retain[which(!x_type)]
-                cat(paste("[EXCLUDED]", "which  are not numeric or character or factor:\n",
+                cat(paste("following variables are not numeric or character or factor:\n",
                           paste(x_excluded, collapse = " \n"), ".\n", sep = ""))
             } else {
                 x_list_retain = x_retain
@@ -815,7 +816,7 @@ stop_parallel_computing <- function(cluster) {
 
 loop_function <- function(func = NULL, args = list(data = NULL), x_list = NULL,
                           bind = "rbind", parallel = TRUE, as_list = FALSE) {
-    opt = options("warn" = -1) # suppress warnings
+    opt = options(scipen = 200, stringsAsFactors = FALSE, "warn" = -1) # suppress warnings
     df_list = df_tbl = NULL
     if (parallel) {
         parallel <- start_parallel_computing(parallel)

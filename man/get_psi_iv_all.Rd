@@ -10,13 +10,13 @@ get_psi_iv_all(dat, dat_test = NULL, x_list = NULL, target,
   occur_time = NULL, oot_pct = 0.7, equal_bins = FALSE,
   tree_control = NULL, bins_control = NULL, bins_total = FALSE,
   best = TRUE, g = 10, as_table = TRUE, note = FALSE,
-  parallel = FALSE, bins_no = FALSE)
+  parallel = FALSE, bins_no = TRUE)
 
 get_psi_iv(dat, dat_test = NULL, x, target, pos_flag = NULL,
   breaks = NULL, breaks_list = NULL, occur_time = NULL,
   oot_pct = 0.7, equal_bins = FALSE, tree_control = NULL,
   bins_control = NULL, bins_total = FALSE, best = TRUE, g = 10,
-  as_table = TRUE, note = FALSE, bins_no = FALSE)
+  as_table = TRUE, note = FALSE, bins_no = TRUE)
 }
 \arguments{
 \item{dat}{A data.frame with independent variables and target variable.}
