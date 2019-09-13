@@ -3,20 +3,20 @@
 \name{get_plots}
 \alias{get_plots}
 \alias{plot_vars}
-\title{Plot Independent Variables}
+\title{Plot Independent Variables Distribution}
 \usage{
 get_plots(dat_train, dat_test = NULL, x_list = NULL, target = NULL,
   ex_cols = NULL, breaks_list = NULL, pos_flag = NULL,
-  occur_time = NULL, equal_bins = FALSE, best = TRUE, g = 20,
-  tree_control = NULL, bins_control = NULL, plot_show = TRUE,
-  save_data = FALSE, file_name = NULL, parallel = FALSE,
-  g_width = 8, dir_path = tempdir())
+  equal_bins = FALSE, best = TRUE, g = 20, tree_control = NULL,
+  bins_control = NULL, plot_show = TRUE, save_data = FALSE,
+  file_name = NULL, parallel = FALSE, g_width = 8,
+  dir_path = tempdir())
 
-plot_vars(dat_train, x, dat_test = NULL, target = "target",
-  g_width = 8, breaks_list = NULL, pos_flag = list("1", 1, "bad",
-  "positive"), occur_time = NULL, equal_bins = FALSE, best = TRUE,
-  g = 20, tree_control = NULL, bins_control = NULL,
-  plot_show = TRUE, save_data = FALSE, dir_path = tempdir())
+plot_vars(dat_train, x, target, dat_test = NULL, g_width = 8,
+  breaks_list = NULL, pos_flag = list("1", 1, "bad", "positive"),
+  equal_bins = TRUE, best = FALSE, g = 10, tree_control = NULL,
+  bins_control = NULL, plot_show = TRUE, save_data = FALSE,
+  dir_path = tempdir())
 }
 \arguments{
 \item{dat_train}{A data.frame with independent variables and target variable.}
@@ -32,8 +32,6 @@ plot_vars(dat_train, x, dat_test = NULL, target = "target",
 \item{breaks_list}{A table containing a list of splitting points for each independent variable. Default is NULL.}
 
 \item{pos_flag}{Value of positive class, Default is "1".}
-
-\item{occur_time}{The name of the variable that represents the time at which each observation takes place.}
 
 \item{equal_bins}{Logical, generates initial breaks for equal frequency binning.}
 
@@ -60,7 +58,7 @@ plot_vars(dat_train, x, dat_test = NULL, target = "target",
 \item{x}{The name of an independent variable.}
 }
 \description{
-\code{plot_vars} is used for independent variables with target variable ploting.
+You can use the \code{plot_vars} to produce plots that characterize the frequency or the distribution of your data.
 \code{get_plots} can loop through plots for all specified independent variables.
 }
 \examples{

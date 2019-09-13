@@ -49,13 +49,9 @@ A list of filtered x variables by lasso.
  sub = cv_split(UCICreditCard, k = 40)[[1]]
  dat = UCICreditCard[sub,]
  dat = re_name(dat, "default.payment.next.month", "target")
- dat = data_cleansing(dat, target = "target", obs_id = "ID", occur_time = "apply_date",
+ dat_train = data_cleansing(dat, target = "target", obs_id = "ID", occur_time = "apply_date",
   miss_values = list("", -1))
-
- train_test <- train_test_split(dat, split_type = "OOT", prop = 0.7,
-                                  occur_time = "apply_date")
- dat_train = train_test$train
- dat_test = train_test$test
+ dat_train = process_nas(dat_train, default_miss = TRUE)
  #get breaks of all predictive variables
  x_list = c("PAY_0", "LIMIT_BAL", "PAY_AMT5", "EDUCATION", "PAY_3", "PAY_2")
  breaks_list <- get_breaks_all(dat = dat_train, target = "target",
@@ -66,11 +62,7 @@ A list of filtered x variables by lasso.
                             target = "target",
                             breaks_list = breaks_list,
                             woe_name = FALSE)
- test_woe = woe_trans_all(dat = dat_test,
-                         target = "target",
-                           breaks_list = breaks_list,
-                           note = FALSE)
- lasso_filter(dat_train = train_woe, dat_test = test_woe,
+ lasso_filter(dat_train = train_woe, 
          target = "target", x_list = x_list,
        save_data = FALSE, plot.it = TRUE)
 }

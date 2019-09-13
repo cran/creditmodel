@@ -5,11 +5,8 @@
 \alias{lendingclub}
 \title{Lending Club data}
 \format{A data frame with 63532 rows and 145 variables.}
-\source{
-\url{https://www.lendingclub.com}
-}
 \description{
-This data contains complete loan data for all loans issued through the time period stated, including the current loan status (Current, Late, Fully Paid, etc.) and latest payment information. 
+This data contains complete loan data for all loans issued through the time period stated, including the current loan status (Current, Late, Fully Paid, etc.) and latest payment information.
  The data containing loan data through the "present" contains complete loan data for all loans issued through the previous completed calendar quarter(time period: 2018Q1:2018Q4).
 }
 \details{
@@ -33,7 +30,7 @@ This data contains complete loan data for all loans issued through the time peri
   \item dti: A ratio calculated using the borrower's total monthly debt payments on the total debt obligations, excluding mortgage and the requested LC loan, divided by the borrower's self:reported monthly income.
   \item dti_joint: A ratio calculated using the co:borrowers' total monthly payments on the total debt obligations, excluding mortgages and the requested LC loan, divided by the co:borrowers' combined self:reported monthly income
   \item earliest_cr_line: The month the borrower's earliest reported credit line was opened
-  \item emp_length: Employment length in years. Possible values are between 0 and 10 where 0 means less than one year and 10 means ten or more years. 
+  \item emp_length: Employment length in years. Possible values are between 0 and 10 where 0 means less than one year and 10 means ten or more years.
   \item emp_title: The job title supplied by the Borrower when applying for the loan.
   \item fico_range_high: The upper boundary range the borrower's FICO at loan origination belongs to.
   \item fico_range_low: The lower boundary range the borrower's FICO at loan origination belongs to.
@@ -101,7 +98,7 @@ This data contains complete loan data for all loans issued through the time peri
   \item policy_code: publicly available policy_code=1 new products not publicly available policy_code=2
   \item pub_rec: Number of derogatory public records
   \item pub_rec_bankruptcies: Number of public record bankruptcies
-  \item purpose: A category provided by the borrower for the loan request. 
+  \item purpose: A category provided by the borrower for the loan request.
   \item pymnt_plan: Indicates if a payment plan has been put in place for the loan
   \item recoveries: post charge off gross recovery
   \item revol_bal: Total credit revolving balance
@@ -248,7 +245,7 @@ This data contains complete loan data for all loans issued through the time peri
   \item percentBcGt75: Percentage of all bankcard accounts > 75% of limit.
   \item pub_rec_bankruptcies: Number of public record bankruptcies
   \item pubRec: Number of derogatory public records
-  \item purpose: A category provided by the borrower for the loan request. 
+  \item purpose: A category provided by the borrower for the loan request.
   \item reviewStatus: The status of the loan during the listing period. Values: APPROVED, NOT_APPROVED.
   \item reviewStatusD: The date the loan application was reviewed by LC
   \item revolBal: Total credit revolving balance
@@ -286,7 +283,7 @@ This data contains complete loan data for all loans issued through the time peri
   \item sec_app_mths_since_last_major_derog :  Months since most recent 90:day or worse rating at time of application for the secondary applicant
   \item disbursement_method: The method by which the borrower receives their loan. Possible values are: CASH, DIRECT_PAY
   \item Amount Requested: The total amount requested by the borrower
-  \item Application Date: The date which the borrower applied 
+  \item Application Date: The date which the borrower applied
   \item Loan Title: The loan title provided by the borrower
   \item Risk_Score: For applications prior to November 5, 2013 the risk score is the borrower's FICO score. For applications after November 5, 2013 the risk score is the borrower's Vantage score.
   \item Debt_To_Income Ratio: A ratio calculated using the borrower's total monthly debt payments on the total debt obligations, excluding mortgage and the requested LC loan, divided by the borrower's self:reported monthly income.

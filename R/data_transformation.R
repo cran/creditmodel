@@ -1,4 +1,4 @@
-#'   WOE Transformation
+#' WOE Transformation
 #'
 #' \code{woe_trans} is for transforming data to woe.
 #' The \code{woe_trans_all} function is a simpler wrapper for \code{woe_trans}.
@@ -51,9 +51,8 @@ woe_trans_all <- function(dat, x_list = NULL, ex_cols = NULL, bins_table = NULL,
                           save_data = FALSE, parallel = FALSE, woe_name = FALSE,
                           file_name = NULL, dir_path = tempdir(), ...) {
 
-    if (note)cat(paste("converting all variables to woe...."), "\n")
-
-    opt = options(scipen = 200, stringsAsFactors = FALSE) #
+    if (note)cat_line("-- Transforming variables to woe", col = love_color("deep_green"))
+   opt = options(scipen = 200, stringsAsFactors = FALSE) #
     if (is.null(x_list)) {
         if (!is.null(bins_table)) {
             x_list = unique(bins_table[which(as.character(bins_table[, "Feature"]) != "Total"), "Feature"])
@@ -131,41 +130,44 @@ woe_trans <- function(dat, x, bins_table = NULL, target = NULL, breaks_list = NU
 #' dat2 = de_one_hot_encoding(dat_one_hot = dat1,
 #' cat_vars = c("SEX","MARRIAGE"), na_act = FALSE)
 #'
+#' @importFrom cli cat_rule cat_line cat_bullet
 #' @export
+
 one_hot_encoding = function(dat, cat_vars = NULL, ex_cols = NULL,
                             merge_cat = TRUE, na_act = TRUE, note = FALSE) {
-    if (note)cat("one-hot encoding for charactor or factor.\n")
-    if (class(dat)[1] != "data.frame") {
-        dat <- as.data.frame(dat)
+  if (note)cat_line("-- One-hot encoding for charactor or factor", col = love_color("deep_green"))
+  if (class(dat)[1] != "data.frame") {
+    dat <- as.data.frame(dat)
+  }
+  if (is.null(cat_vars)) {
+    cat_vars <- get_names(dat = dat, types = c("character", "factor"), ex_cols = ex_cols)
+  }
+  if (length(cat_vars) > 0) {
+    if (na_act) {
+      dat[, cat_vars] = process_nas(dat[cat_vars], note = FALSE)
     }
-    if (is.null(cat_vars)) {
-        cat_vars <- get_names(dat = dat, types = c("character", "factor"), ex_cols = ex_cols)
+    if (merge_cat) {
+      dat[, cat_vars] = merge_category(dat[cat_vars], note = FALSE)
     }
-    if (length(cat_vars) > 0) {
-        if (na_act) {
-            dat[, cat_vars] = process_nas(dat[cat_vars], note = FALSE)
+    for (i in cat_vars) {
+      if (is.factor(dat[, i]) || is.character(dat[, i])) {
+        col_name = i
+        dat[, i] = sapply(dat[, i], function(x) gsub("[^\u4e00-\u9fa5,^a-zA-Z,^0-9]", "_", x))
+        cat_list <- unique(dat[, i])
+        encode_cols <- length(cat_list)
+        #Create individual column for every unique value in the variable
+        for (j in 1:encode_cols) {
+          one_hot_name <- (paste(col_name, ".", cat_list[j], ".",sep = ""))
+          dat[, one_hot_name] <- ifelse(dat[, i] == cat_list[j] & !is.na(dat[, i]), 1, 0)
         }
-        if (merge_cat) {
-            dat[, cat_vars] = merge_category(dat[cat_vars], note = FALSE)
-        }
-        for (i in cat_vars) {
-            if (is.factor(dat[, i]) || is.character(dat[, i])) {
-                col_name = i
-                dat[, i] = sapply(dat[, i], function(x) gsub(" |\"|\\$|\\*|\\?|\\[|\\^|\\{|\\}|\\\\|\\(|\\)|\\|\\)|\\]|\\.|\\-|,|\\'", "_", x))
-                cat_list <- unique(dat[, i])
-                encode_cols <- length(cat_list)
-                #Create individual column for every unique value in the variable
-                for (j in 1:encode_cols) {
-                    one_hot_name <- (paste(col_name, ".", cat_list[j], ".", sep = ""))
-                    dat[, one_hot_name] <- ifelse(dat[, i] == cat_list[j] & !is.na(dat[, i]), 1, 0)
-                }
-            }
-        }
-        dat = dat[, - which(names(dat) %in% cat_vars)]
+      }
     }
-    return(dat)
+    dat = dat[, - which(names(dat) %in% cat_vars)]
+  }
+  return(dat)
 }
 
+ 
 
 #' Recovery One-Hot Encoding
 #'
@@ -185,54 +187,56 @@ one_hot_encoding = function(dat, cat_vars = NULL, ex_cols = NULL,
 #' dat2 = de_one_hot_encoding(dat_one_hot = dat1,
 #' cat_vars = c("SEX","MARRIAGE"),
 #' na_act = FALSE)
+#' @importFrom cli cat_rule cat_line cat_bullet
 #' @export
+de_one_hot_encoding = function(dat_one_hot, cat_vars = NULL, na_act = TRUE,note = FALSE) {
+  
+  if(note)cat_line("-- Recoverying one-hot encoding for charactor or factor.\n", col = love_color("deep_green"))
+  if (class(dat_one_hot)[1] != "data.frame") {
+    dat_one_hot <- as.data.frame(dat_one_hot)
+  }
 
-de_one_hot_encoding = function(dat_one_hot, cat_vars = NULL, na_act = TRUE, note = FALSE) {
-    if (note) cat("recoverying one-hot encoding for charactor or factor.\n")
-    if (class(dat_one_hot)[1] != "data.frame") {
-        dat_one_hot <- as.data.frame(dat_one_hot)
+  if (is.null(cat_vars)) {
+    char_names = one_hot_names = one_hot_names = c()
+    for (i in 1:length(dat_one_hot)) {
+      char_names[i] <- sub(paste0("\\.$"), "", colnames(dat_one_hot)[i])
+      if (!is.null(char_names[i]) && !is.na(char_names[i]) &&
+          char_names[i] == colnames(dat_one_hot)[i]) {
+        char_names[i] <- NA
+      }
+      one_hot_names[i] <- try(strsplit(char_names[i], "[.]")[[1]][1], silent = TRUE)
     }
+    cat_vars <- unique(one_hot_names[!is.na(one_hot_names)])
+  }
 
-    if (is.null(cat_vars)) {
-        char_names = one_hot_names = one_hot_names = c()
-        for (i in 1:length(dat_one_hot)) {
-            char_names[i] <- sub(paste0("\\.$"), "", colnames(dat_one_hot)[i])
-            if (!is.null(char_names[i]) && !is.na(char_names[i]) &&
-                char_names[i] == colnames(dat_one_hot)[i]) {
-                char_names[i] <- NA
-            }
-            one_hot_names[i] <- try(strsplit(char_names[i], "[.]")[[1]][1], silent = TRUE)
-        }
-        cat_vars <- unique(one_hot_names[!is.na(one_hot_names)])
+  one_hot_vars <- unlist(sapply(cat_vars, function(x) grep(paste0(x, "\\.", "\\S{1,100}", "\\."),
+                                                           paste(colnames(dat_one_hot)))))
+
+  de_cat_vars = intersect(cat_vars, unique(gsub("\\d{1}$", "", names(one_hot_vars))))
+
+  if (length(de_cat_vars) > 0) {
+    dat_one_hot[, de_cat_vars] <- lapply(de_cat_vars, function(x) {
+      grx = cv_cols = names_1 = re_code = NULL
+      grx = paste0(x, "\\.", "\\S{1,100}", "\\.$")
+      cv_cols =  grep(grx, paste(colnames(dat_one_hot)))
+      names_1 = colnames(dat_one_hot)[cv_cols]
+      if (na_act) {
+        re_code =  rep("other", nrow(dat_one_hot))
+      } else {
+        re_code  =  rep(NA, nrow(dat_one_hot))
+      }
+      for (i in 1:(length(names_1))) {
+        re_code[which(dat_one_hot[cv_cols][i] == 1)] = strsplit(names_1[i], "[.]")[[1]][2]
+      }
+      return(re_code)
     }
-
-    one_hot_vars <- unlist(sapply(cat_vars, function(x) grep(paste0(x, "\\.", "\\S{1,100}", "\\."),
-                                                             paste(colnames(dat_one_hot)))))
-
-    de_cat_vars = intersect(cat_vars, unique(gsub("\\d{1}$", "", names(one_hot_vars))))
-
-    if (length(de_cat_vars) > 0) {
-        dat_one_hot[, de_cat_vars] <- lapply(de_cat_vars, function(x) {
-            grx = cv_cols = names_1 = re_code = NULL
-            grx = paste0(x, "\\.", "\\S{1,100}", "\\.$")
-            cv_cols = grep(grx, paste(colnames(dat_one_hot)))
-            names_1 = colnames(dat_one_hot)[cv_cols]
-            if (na_act) {
-                re_code = rep("other", nrow(dat_one_hot))
-            } else {
-                re_code = rep(NA, nrow(dat_one_hot))
-            }
-            for (i in 1:(length(names_1))) {
-                re_code[which(dat_one_hot[cv_cols][i] == 1)] = strsplit(names_1[i], "[.]")[[1]][2]
-            }
-            return(re_code)
-        }
     )
-        names(dat_one_hot[, de_cat_vars]) = de_cat_vars
-        dat_one_hot = data.frame(dat_one_hot, stringsAsFactors = FALSE)[, - one_hot_vars]
-    }
-    return(dat_one_hot)
+    names(dat_one_hot[, de_cat_vars]) =  de_cat_vars
+    dat_one_hot = data.frame(dat_one_hot, stringsAsFactors = FALSE)[, - one_hot_vars]
+  }
+  return(dat_one_hot)
 }
+
 
 
 #' Time Format Transfering
@@ -255,72 +259,73 @@ de_one_hot_encoding = function(dat_one_hot, cat_vars = NULL, na_act = TRUE, note
 #' class(dat[,"issue_d"])
 #' @export
 
-time_transfer <- function(dat, date_cols = "DATE$|time$|date$|timestamp$|stamp$",
-                          ex_cols = NULL, note = FALSE) {
-    dat <- checking_data(dat)
-    if (note)cat("formating time variables.\n")
-    x_list = get_x_list(x_list = NULL, dat_train = dat, dat_test = NULL, ex_cols = ex_cols)
-    date_cols1 = NULL
-    if (!is.null(date_cols)) {
-        date_cols1 <- names(dat[x_list])[colnames(dat[x_list]) %islike% date_cols]
-    } else {
-        date_cols1 = names(dat[x_list])
-    }
-    df_date = dat[date_cols1]
-    df_date <- df_date[!colAllnas(df_date)]
-    df_date = df_date[!sapply(df_date, is_date)]
-    if (dim(df_date)[2] != 0) {
-        df_date_cols <- names(df_date)
-        t_sample <- list()
-        t_len <- list()
-        tryCatch({
-            for (x in 1:ncol(df_date)) {
-                t_sample[[x]] = min(unlist(lapply(as.character(sample(na.omit(df_date[[x]]), 1)),
-                                              function(i) {
-                                                  if (nchar(i) >= 8) { nchar(i) } else { 0 }
-                                                  })), na.rm = T)
-                t_len[[x]] = unlist(as.character(sample(na.omit(df_date[[x]]), 1)))
-            }
-        }, error = function(e) { cat("ERROR :", conditionMessage(e), "\n") },
+time_transfer <- function(dat, date_cols = NULL,ex_cols = NULL, note = FALSE){
+  dat <- checking_data(dat)
+  if (note)cat_line("-- Formating time variables", col = love_color("dark_green"))
+  x_list = get_x_list(x_list = NULL, dat_train = dat, dat_test = NULL, ex_cols = ex_cols)
+  date_cols1 = NULL
+  if (!is.null(date_cols)) {
+    date_cols1 <- names(dat[x_list])[colnames(dat[x_list]) %islike% date_cols]
+  } else {
+    date_cols1 = names(dat[x_list])
+  }
+  df_date = dat[date_cols1]
+  df_date <- df_date[!colAllnas(df_date)]
+  df_date = df_date[!sapply(df_date, is_date)]
+  if (dim(df_date)[2] != 0) {
+    df_date_cols <- names(df_date)
+    t_sample <- list()
+    t_len <- list()
+    t_sam= NULL
+    tryCatch({
+      for (x in 1:ncol(df_date)) {
+        t_sam = vapply(as.character(sample(na.omit(df_date[[x]]),100,replace = TRUE)),
+                       function(i) {
+                         if (nchar(i) >= 6) { nchar(i) } else { 0 }
+                       }, FUN.VALUE = numeric(1))
+        t_sample[[x]] = min(unlist(t_sam), na.rm = TRUE)
+        t_len[[x]] = as.character(names(t_sam)[which(nchar(names(t_sam)) == t_sample[[x]])][1])
+        
+      }
+    }, error = function(e) { cat("ERROR :", conditionMessage(e), "\n") },
     warning = function(w) { "" })
-        date_cols2 = which(t_sample != 0)
-        for (x in date_cols2) {
-            if (t_sample[[x]] >= 8 & t_sample[[x]] <= 10 &
-                grepl(pattern = "^[2]{1}[0]{1}[0-3]{1}[0-9]{1}-[0-9]{1}-[0-9]{1,2}$|^[2]{1}[0]{1}[0-3]{1}[0-9]{1}-[0-9]{1,2}-[0-3]{1}[0-9]{1}$|^[1]{1}[9]{1}[0-9]{2}-[0-9]{1,2}-[0-3]{1}[0-9]{1}$", x = gsub(" ", "", substr(t_len[[x]], 1, 10)))) {
-                df_date[[x]] = as.Date(as.character(df_date[[x]]), "%Y-%m-%d")
-            }
-            if (t_sample[[x]] > 10 & grepl(pattern = "^[2]{1}[0]{1}[0-3]{1}[0-9]{1}-[0-9]{1}-[0-3]{1}[0-9]{1,2}$|^[2]{1}[0]{1}[0-3]{1}[0-9]{1}-[0-9]{1,2}-[0-3]{1}[0-9]{1}$|^[1]{1}[9]{1}[0-9]{2}-[0-9]{1,2}-[0-3]{1}[0-9]{1}$", x = gsub(" ", "", substr(t_len[[x]], 1, 10))) & grepl(pattern = "^[0-1]{1}[0-9]{1}:[0-9]{2}", gsub(" ", "", substr(t_len[[x]], 12, nchar(t_len[[x]]))))) {
-                df_date[[x]] = as.Date(as.character(df_date[[x]]))
-            }
-            if (t_sample[[x]] >= 7 & t_sample[[x]] <= 9 &
-                grepl(pattern = "^[2]{1}[0]{1}[0-5]{1}[0-9]{1}[0-9]{1}[0-3]{1}[0-9]{1,2}$|^[2]{1}[0]{1}[0-5]{1}[0-9]{1}[0-9]{1,2}[0-3]{1}[0-9]{1}$|^[1]{1}[9]{1}[0-9]{2}[0-9]{1,2}[0-3]{1}[0-9]{1}$", x = t_len[[x]])) {
-                df_date[[x]] = as.Date(as.character(df_date[[x]]), "%Y%m%d")
-            }
-            if (t_sample[[x]] > 10 & grepl(pattern = "^[2]{1}[0]{1}[0-5]{1}[0-9]{1}[0-9]{1}[0-3]{1}[0-9]{1,2}$|^[2]{1}[0]{1}[0-5]{1}[0-9]{1}[0-9]{1,2}[0-3]{1}[0-9]{1}$|^[1]{1}[9]{1}[0-9]{2}[0-9]{1,2}[0-3]{1}[0-9]{1}$", x = gsub(" ", "", substr(t_len[[x]], 1, 10))) & grepl(pattern = "^[0-9]{1,2}:[0-9]{2}", gsub(" ", "", substr(t_len[[x]], 10, nchar(t_len[[x]]))))) {
-                df_date[[x]] = as.Date(as.character(df_date[[x]]))
-            }
-            if (t_sample[[x]] >= 8 & t_sample[[x]] <= 10 &
-                grepl(pattern = "^[2]{1}[0]{1}[0-3]{1}[0-9]{1}/[0-9]{1,2}/[0-9]{1,2}$|^[1]{1}[9]{1}[0-9]{2}/[0-9]{1,2}/[0-9]{1,2}$", x = gsub(" ", "", substr(t_len[[x]], 1, 10)))) {
-                df_date[[x]] = as.Date(as.character(df_date[[x]]), "%Y/%m/%d")
-            }
-            if (t_sample[[x]] > 10 & grepl(pattern = "^[2]{1}[0]{1}[0-3]{1}[0-9]{1}/[0-9]{1,2}/[0-9]{1,2}$|^[2]{1}[0]{1}[0-3]{1}[0-9]{1}/[0-9]{1}/[0-9]{1}$|^[2]{1}[0]{1}[0-3]{1}[0-9]{1}/[0-9]{1,2}/[0-3]{1}[0-9]{1}$|^[2]{1}[0]{1}[0-3]{1}[0-9]{1}/[0-9]{1}/[0-3]{1}[0-9]{1}$|^[1]{1}[9]{1}[0-9]{2}/[0-9]{1,2}/[0-3]{1}[0-9]{1}$", x = gsub(" ", "", substr(t_len[[x]], 1, 10))) & grepl(pattern = "^[0-9]{1,2}:[0-9]{2}", gsub(" ", "", substr(t_len[[x]], 11, nchar(t_len[[x]]))))) {
-                df_date[[x]] = as.POSIXct(as.character(df_date[[x]]))
-            }
-            if (t_sample[[x]] == 10 & grepl(pattern = "^[1]{1}[0-9]{9}", x = t_len[[x]])) {
-                df_date[[x]] = as.POSIXct(as.numeric(df_date[[x]]), origin = "1970-01-01")
-            }
-            if (t_sample[[x]] == 13 & grepl(pattern = "^[1]{1}[0-9]{12}", x = t_len[[x]])) {
-                df_date[[x]] = as.POSIXct(as.numeric(df_date[[x]]) / 1000, origin = "1970-01-01")
-            }
-        }
-        dat[df_date_cols] <- df_date
-        rm(df_date)
-    } else {
-        dat = dat
+    date_cols2 = which(t_sample != 0)
+    for (x in date_cols2) {
+      if (t_sample[[x]] >= 8 & t_sample[[x]] <= 10 &
+          grepl(pattern = "^[2]{1}[0]{1}[0-3]{1}[0-9]{1}-[0-9]{1}-[0-9]{1,2}$|^[2]{1}[0]{1}[0-3]{1}[0-9]{1}-[0-9]{1,2}-[0-3]{1}[0-9]{1}$|^[1]{1}[9]{1}[0-9]{2}-[0-9]{1,2}-[0-3]{1}[0-9]{1}$", x = gsub(" ", "", substr(t_len[[x]], 1, 10)))) {
+        df_date[[x]] = as.Date(as.character(df_date[[x]]), "%Y-%m-%d")
+      }
+      if (t_sample[[x]] > 10 & grepl(pattern = "^[2]{1}[0]{1}[0-3]{1}[0-9]{1}-[0-9]{1}-[0-3]{1}[0-9]{1,2}$|^[2]{1}[0]{1}[0-3]{1}[0-9]{1}-[0-9]{1,2}-[0-3]{1}[0-9]{1}$|^[1]{1}[9]{1}[0-9]{2}-[0-9]{1,2}-[0-3]{1}[0-9]{1}$", x = gsub(" ", "", substr(t_len[[x]], 1, 10))) & grepl(pattern = "^[0-1]{1}[0-9]{1}:[0-9]{2}", gsub(" ", "", substr(t_len[[x]], 12, nchar(t_len[[x]]))))) {
+        df_date[[x]] = as.Date(as.character(df_date[[x]]))
+      }
+      if (t_sample[[x]] >= 7 & t_sample[[x]] <= 9 &
+          grepl(pattern = "^[2]{1}[0]{1}[0-5]{1}[0-9]{1}[0-9]{1}[0-3]{1}[0-9]{1,2}$|^[2]{1}[0]{1}[0-5]{1}[0-9]{1}[0-9]{1,2}[0-3]{1}[0-9]{1}$|^[1]{1}[9]{1}[0-9]{2}[0-9]{1,2}[0-3]{1}[0-9]{1}$", x = t_len[[x]])) {
+        df_date[[x]] = as.Date(as.character(df_date[[x]]), "%Y%m%d")
+      }
+      if (t_sample[[x]] > 10 & grepl(pattern = "^[2]{1}[0]{1}[0-5]{1}[0-9]{1}[0-9]{1}[0-3]{1}[0-9]{1,2}$|^[2]{1}[0]{1}[0-5]{1}[0-9]{1}[0-9]{1,2}[0-3]{1}[0-9]{1}$|^[1]{1}[9]{1}[0-9]{2}[0-9]{1,2}[0-3]{1}[0-9]{1}$", x = gsub(" ", "", substr(t_len[[x]], 1, 10))) & grepl(pattern = "^[0-9]{1,2}:[0-9]{2}", gsub(" ", "", substr(t_len[[x]], 10, nchar(t_len[[x]]))))) {
+        df_date[[x]] = as.Date(as.character(df_date[[x]]))
+      }
+      if (t_sample[[x]] >= 8 & t_sample[[x]] <= 10 &
+          grepl(pattern = "^[2]{1}[0]{1}[0-3]{1}[0-9]{1}/[0-9]{1,2}/[0-9]{1,2}$|^[1]{1}[9]{1}[0-9]{2}/[0-9]{1,2}/[0-9]{1,2}$", x = gsub(" ", "", substr(t_len[[x]], 1, 10)))) {
+        df_date[[x]] = as.Date(as.character(df_date[[x]]), "%Y/%m/%d")
+      }
+      if (t_sample[[x]] > 10 & grepl(pattern = "^[2]{1}[0]{1}[0-3]{1}[0-9]{1}/[0-9]{1,2}/[0-9]{1,2}$|^[2]{1}[0]{1}[0-3]{1}[0-9]{1}/[0-9]{1}/[0-9]{1}$|^[2]{1}[0]{1}[0-3]{1}[0-9]{1}/[0-9]{1,2}/[0-3]{1}[0-9]{1}$|^[2]{1}[0]{1}[0-3]{1}[0-9]{1}/[0-9]{1}/[0-3]{1}[0-9]{1}$|^[1]{1}[9]{1}[0-9]{2}/[0-9]{1,2}/[0-3]{1}[0-9]{1}$", x = gsub(" ", "", substr(t_len[[x]], 1, 10))) & grepl(pattern = "^[0-9]{1,2}:[0-9]{2}", gsub(" ", "", substr(t_len[[x]], 11, nchar(t_len[[x]]))))) {
+        df_date[[x]] = as.POSIXct(as.character(df_date[[x]]))
+      }
+      if (t_sample[[x]] == 10 & grepl(pattern = "^[1]{1}[0-9]{9}", x = t_len[[x]])) {
+        df_date[[x]] = as.POSIXct(as.numeric(df_date[[x]]), origin = "1970-01-01")
+      }
+      if (t_sample[[x]] == 13 & grepl(pattern = "^[1]{1}[0-9]{12}", x = t_len[[x]])) {
+        df_date[[x]] = as.POSIXct(as.numeric(df_date[[x]]) / 1000, origin = "1970-01-01")
+      }
     }
-    return(dat)
+    dat[df_date_cols] <- df_date
+    rm(df_date)
+  } else {
+    dat = dat
+  }
+  dat
 }
-
 
 #' Derivation of Behavioral Variables
 #'
@@ -342,7 +347,8 @@ derived_ts_vars <- function(dat, grx, td = 12,
                                     "time_intervals", "cnt_intervals", "total_pcts",
                                     "cum_pcts", "partial_acfs"),
                             parallel = TRUE,note = TRUE) {
-    if(note)cat(paste("derived variables of", paste(der), ". \n"))
+    if(note)cat_line(paste("--","Derived variables of", paste(der), " .\n"), col = love_color("dark_green"))
+
     if (parallel) {
         parallel <- start_parallel_computing(parallel)
         stopCluster <- TRUE
@@ -367,7 +373,6 @@ derived_ts_vars <- function(dat, grx, td = 12,
 }
 
 #' @rdname derived_ts_vars
-#' @importFrom stringr str_extract
 #' @export
 
 
@@ -382,7 +387,7 @@ derived_ts <- function(dat = dat, grx_x = NULL, td = 12,
     if (length(cv_cols) > 0) {
         name_n = orignal_nam = sim_nam = str_num = c()
         orignal_nam <- names(dat[, cv_cols, with = FALSE])
-        str_num = as.numeric(str_extract(orignal_nam, "\\d+"))
+        str_num = as.numeric(str_match(str_r = orignal_nam,pattern= "\\d+"))
         if (!any(is.na(str_num)) && length(str_num) == td) {
             name_n = paste(min(str_num), max(str_num), sep = "to")
         }
@@ -843,8 +848,10 @@ de_percent <- function(x, digits = 2) {
 #' @export
 
 merge_category <- function(dat, ex_cols = "date$|id$|time$|DATA$|ID$|TIME$", p = 0.01, m = 10, note = TRUE) {
-    opt = options(scipen = 200, stringsAsFactors = FALSE, "warn" = -1) # suppress warnings
-    if (note)(cat("\nmerging categories which percent is less than 0.001 or  obs number is less than 10.\n"))
+    opt = options(scipen = 200, stringsAsFactors = FALSE, "warn" = -1) 
+    if (note)cat_line(paste("-- Merging categories which percent is less than", p ,"or obs number is less than", m), col = love_color("dark_green"))
+	
+
     char_list = get_names(dat = dat,
                           types = c('factor', 'character'),
                           ex_cols = ex_cols, get_ex = FALSE)
@@ -886,7 +893,8 @@ merge_category <- function(dat, ex_cols = "date$|id$|time$|DATA$|ID$|TIME$", p =
 
 char_to_num <- function(dat, note = TRUE, ex_cols = "date$|id$|time$|DATA$|ID$|TIME$") {
     opt = options(scipen = 200, "warn" = -1, stringsAsFactors = FALSE) # suppress warnings
-    if (note) cat("transfering character variables which are actually numerical to numeric.\n")
+    if (note)cat_line(paste("-- Transfering character variables which are actually numerical to numeric"), col = love_color("dark_green")) 
+
     char_list = get_names(dat = dat,
                           types = c('factor', 'character'),
                           ex_cols = ex_cols, get_ex = FALSE)

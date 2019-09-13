@@ -1,15 +1,15 @@
 #' UCI Credit Card data
-#' 
+#'
 #'  This research aimed at the case of customers's default payments in Taiwan and compares the predictive accuracy of probability of default among six data mining methods.
 #'  This research employed a binary variable, default payment (Yes = 1, No = 0), as the response variable. This study reviewed the literature and used the following 24 variables as explanatory variables
-#' 
+#'
 #' \itemize{
 #'   \item ID: Customer id
-#'   \item apply_date: This is a fake occur time. 
-#'   \item LIMIT_BAL: Amount of the given credit (NT dollar): it includes both the individual consumer credit and his/her family (supplementary) credit. 
-#'   \item SEX:  Gender (male; female). 
+#'   \item apply_date: This is a fake occur time.
+#'   \item LIMIT_BAL: Amount of the given credit (NT dollar): it includes both the individual consumer credit and his/her family (supplementary) credit.
+#'   \item SEX:  Gender (male; female).
 #'   \item EDUCATION: Education (1 = graduate school; 2 = university; 3 = high school; 4 = others).
-#'   \item MARRIAGE: Marital status (1 = married; 2 = single; 3 = others). 
+#'   \item MARRIAGE: Marital status (1 = married; 2 = single; 3 = others).
 #'   \item AGE: Age (year)
 #' History of past payment. We tracked the past monthly payment records (from April to September, 2005) as follows:
 #'   \item PAY_0: the repayment status in September
@@ -18,7 +18,7 @@
 #'   \item PAY_4: ...
 #'   \item PAY_5: ...
 #'   \item PAY_6: the repayment status in April
-#' The measurement scale for the repayment status is: -1 = pay duly; 1 = payment delay for one month; 2 = payment delay for two months;...;8 = payment delay for eight months; 9 = payment delay for nine months and above. 
+#' The measurement scale for the repayment status is: -1 = pay duly; 1 = payment delay for one month; 2 = payment delay for two months;...;8 = payment delay for eight months; 9 = payment delay for nine months and above.
 #' Amount of bill statement (NT dollar)
 #'   \item BILL_AMT1: amount of bill statement in September
 #'   \item BILL_AMT2: mount of bill statement in August
@@ -35,7 +35,7 @@
 #'   \item PAY_AMT6: amount paid in April
 #'   \item default.payment.next.month: default payment (Yes = 1, No = 0), as the response variable
 #' }
-#' 
+#'
 #' @docType data
 #' @keywords datasets
 #' @format A data frame with 30000 rows and 26 variables.
@@ -45,10 +45,10 @@
 NULL
 
 #' Lending Club data
-#' 
-#'  This data contains complete loan data for all loans issued through the time period stated, including the current loan status (Current, Late, Fully Paid, etc.) and latest payment information. 
+#'
+#'  This data contains complete loan data for all loans issued through the time period stated, including the current loan status (Current, Late, Fully Paid, etc.) and latest payment information.
 #'  The data containing loan data through the "present" contains complete loan data for all loans issued through the previous completed calendar quarter(time period: 2018Q1:2018Q4).
-#' 
+#'
 #' \itemize{
 #'   \item acc_now_delinq: The number of accounts on which the borrower is now delinquent.
 #'   \item acc_open_past_24mths: Number of trades opened in past 24 months.
@@ -69,7 +69,7 @@ NULL
 #'   \item dti: A ratio calculated using the borrower's total monthly debt payments on the total debt obligations, excluding mortgage and the requested LC loan, divided by the borrower's self:reported monthly income.
 #'   \item dti_joint: A ratio calculated using the co:borrowers' total monthly payments on the total debt obligations, excluding mortgages and the requested LC loan, divided by the co:borrowers' combined self:reported monthly income
 #'   \item earliest_cr_line: The month the borrower's earliest reported credit line was opened
-#'   \item emp_length: Employment length in years. Possible values are between 0 and 10 where 0 means less than one year and 10 means ten or more years. 
+#'   \item emp_length: Employment length in years. Possible values are between 0 and 10 where 0 means less than one year and 10 means ten or more years.
 #'   \item emp_title: The job title supplied by the Borrower when applying for the loan.
 #'   \item fico_range_high: The upper boundary range the borrower's FICO at loan origination belongs to.
 #'   \item fico_range_low: The lower boundary range the borrower's FICO at loan origination belongs to.
@@ -137,7 +137,7 @@ NULL
 #'   \item policy_code: publicly available policy_code=1 new products not publicly available policy_code=2
 #'   \item pub_rec: Number of derogatory public records
 #'   \item pub_rec_bankruptcies: Number of public record bankruptcies
-#'   \item purpose: A category provided by the borrower for the loan request. 
+#'   \item purpose: A category provided by the borrower for the loan request.
 #'   \item pymnt_plan: Indicates if a payment plan has been put in place for the loan
 #'   \item recoveries: post charge off gross recovery
 #'   \item revol_bal: Total credit revolving balance
@@ -284,7 +284,7 @@ NULL
 #'   \item percentBcGt75: Percentage of all bankcard accounts > 75% of limit.
 #'   \item pub_rec_bankruptcies: Number of public record bankruptcies
 #'   \item pubRec: Number of derogatory public records
-#'   \item purpose: A category provided by the borrower for the loan request. 
+#'   \item purpose: A category provided by the borrower for the loan request.
 #'   \item reviewStatus: The status of the loan during the listing period. Values: APPROVED, NOT_APPROVED.
 #'   \item reviewStatusD: The date the loan application was reviewed by LC
 #'   \item revolBal: Total credit revolving balance
@@ -322,7 +322,7 @@ NULL
 #'   \item sec_app_mths_since_last_major_derog :  Months since most recent 90:day or worse rating at time of application for the secondary applicant
 #'   \item disbursement_method: The method by which the borrower receives their loan. Possible values are: CASH, DIRECT_PAY
 #'   \item Amount Requested: The total amount requested by the borrower
-#'   \item Application Date: The date which the borrower applied 
+#'   \item Application Date: The date which the borrower applied
 #'   \item Loan Title: The loan title provided by the borrower
 #'   \item Risk_Score: For applications prior to November 5, 2013 the risk score is the borrower's FICO score. For applications after November 5, 2013 the risk score is the borrower's Vantage score.
 #'   \item Debt_To_Income Ratio: A ratio calculated using the borrower's total monthly debt payments on the total debt obligations, excluding mortgage and the requested LC loan, divided by the borrower's self:reported monthly income.
@@ -331,11 +331,10 @@ NULL
 #'   \item Employment Length: Employment length in years. Possible values are between 0 and 10 where 0 means less than one year and 10 means ten or more years.
 #'   \item Policy Code: publicly available policy_code=1 new products not publicly available policy_code=2
 #' }
-#' 
+#'
 #' @docType data
 #' @keywords datasets
 #' @format A data frame with 63532 rows and 145 variables.
 #' @name lendingclub
-#' @source \url{https://www.lendingclub.com}
 #' @seealso \code{\link{UCICreditCard}}
 NULL

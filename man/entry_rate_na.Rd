@@ -4,7 +4,7 @@
 \alias{entry_rate_na}
 \title{Max Percent of Missing Value}
 \usage{
-entry_rate_na(dat, nr = 0.95, note = FALSE)
+entry_rate_na(dat, nr = 0.98, note = FALSE)
 }
 \arguments{
 \item{dat}{A data frame with x and target.}

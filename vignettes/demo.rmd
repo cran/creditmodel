@@ -47,7 +47,7 @@ knitr::opts_chunk$set(
 	dat_train = train_test$train
 	dat_test = train_test$test
 	x_list = c("PAY_0", "LIMIT_BAL", "PAY_AMT5", "PAY_3")
-	B_model = training_model(dat = dat_train,
+	B_model = training_model(dat = dat,
                          model_name = "UCICreditCard", target = "target", x_list = x_list,
                          occur_time = "apply_date", obs_id = "ID", dat_test = dat_test,
                          preproc = FALSE,

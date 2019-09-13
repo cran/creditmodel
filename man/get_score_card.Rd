@@ -63,7 +63,7 @@ lr_model = glm(Formula, data = train_woe[, c("target", x_list)], family = binomi
 #get LR coefficient
 dt_imp_LR = get_logistic_coef(lg_model = lr_model, save_data = FALSE)
 bins_table = get_bins_table_all(dat = dat_train, target = "target",
-                               occur_time = "apply_date",
+                                 dat_test = dat_test,
                                 x_list = x_list,
                                breaks_list = breaks_list, note = FALSE)
 #score card

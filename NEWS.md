@@ -1,13 +1,25 @@
+# creditmodel1.1.3
+**In this version I have:**
+
+* Fixed additional issues for the *last* version released on CRAN.
+* Add new functions `pred_xgb` for using xgboost model to predict new data.
+* Provide new functions `get_psi_plots`, `psi_plot` to plot PSI of your data..
+* Provide a function `p_to_score` for transforming probability to score.
+* Provide a function `multi_left_jion`  for left jion a list of datasets fast.
+* Provide a function `read_dt`  for loading csv or txt data fast.
+
 # creditmodel1.1.2
 **In this version I have:**
-* Fixted additional issues for the *last* version released on CRAN: 
-   + Error in finalizer(env) :
-   + Inconsistent 'best_score' values between the closure state: 0.742427 and the xgb.attr: 0.742427
-* Fixed some potential bugs in `xgb_filter`,`feature_select_wrapper`,`split_bins`, `ks_table_plot`,`ks_psi_plot`,`ks_value`.
-* Add a new function `pred_score` for predicting new data using trained models.
-* Provide new functions `perf_table`,`roc_plot`,`ks_plot`,`lift_plot`,`psi_plot` for model validation drawings.
-* Provide new functions `partial_dependence_plot`,`get_partial_dependence_plots` for generating partial dependence plot.
-* Provide new functions `cohort_analysis`,`cohort_table`,`cohort_plot`  for cohort analysis and visualization.
+
+* Fixed additional issues for the *last* version released on CRAN.
+* Fixed some potential bugs in `xgb_filter`, `feature_select_wrapper`, `split_bins`, `ks_table_plot`, `ks_psi_plot`, `ks_value`.
+* Add a new function `pred_score` for predicting new data using scorecard.
+* Provide new functions `lr_params_search`, `xgb_params_search` for searching the optimal parameters. "random_search","grid_search","local_search" are available.
+* Provide new functions `partial_dependence_plot`, `get_partial_dependence_plots`  for generating partial dependence plot.
+* Provide new functions `cohort_analysis`, `cohort_table`, `cohort_plot`  for cohort (vintage) analysis and visualization.
+* Provide new functions `perf_table`, `roc_plot`, `ks_plot`, `lift_plot`, `psi_plot` for model validation drawings.
+
+
 
 
 # creditmodel1.1.1

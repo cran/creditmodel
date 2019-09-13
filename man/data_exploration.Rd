@@ -4,13 +4,11 @@
 \alias{data_exploration}
 \title{Data Exploration}
 \usage{
-data_exploration(dat, target = NULL, save_data = FALSE,
-  file_name = NULL, dir_path = tempdir())
+data_exploration(dat, save_data = FALSE, file_name = NULL,
+  dir_path = tempdir())
 }
 \arguments{
 \item{dat}{A data.frame with x and target.}
-
-\item{target}{The name of target variable.}
 
 \item{save_data}{Logical. If TRUE, save  files to the specified folder at \code{dir_path}}
 
@@ -25,5 +23,5 @@ A list contains both categrory and numeric variable analysis.
 #'The \code{data_exploration} includes both univariate and bivariate analysis and ranges from univariate statistics and frequency distributions, to correlations, cross-tabulation and characteristic analysis.
 }
 \examples{
-data_ex = data_exploration(dat = lendingclub[1:1000,],target = "loan_status")
+data_ex = data_exploration(dat = UCICreditCard[1:1000,])
 }

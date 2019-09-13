@@ -6,13 +6,14 @@
 \title{Table of Binning}
 \usage{
 get_bins_table_all(dat, x_list = NULL, target = NULL,
-  pos_flag = NULL, ex_cols = NULL, breaks_list = NULL,
-  parallel = FALSE, note = FALSE, occur_time = NULL, oot_pct = 0.7,
-  save_data = FALSE, file_name = NULL, dir_path = tempdir())
+  pos_flag = NULL, dat_test = NULL, ex_cols = NULL,
+  breaks_list = NULL, parallel = FALSE, note = FALSE,
+  bins_total = TRUE, save_data = FALSE, file_name = NULL,
+  dir_path = tempdir())
 
-get_bins_table(dat, x, target = NULL, pos_flag = NULL, breaks = NULL,
-  breaks_list = NULL, occur_time = NULL, oot_pct = 0.7,
-  note = FALSE)
+get_bins_table(dat, x, target = NULL, pos_flag = NULL,
+  dat_test = NULL, breaks = NULL, breaks_list = NULL,
+  bins_total = TRUE, note = FALSE)
 }
 \arguments{
 \item{dat}{A data.frame with independent variables and target variable.}
@@ -23,6 +24,8 @@ get_bins_table(dat, x, target = NULL, pos_flag = NULL, breaks = NULL,
 
 \item{pos_flag}{Value of positive class, Default is "1".}
 
+\item{dat_test}{A data.frame of test data. Default is NULL.}
+
 \item{ex_cols}{A list of excluded variables. Regular expressions can also be used to match variable names. Default is NULL.}
 
 \item{breaks_list}{A table containing a list of splitting points for each independent variable. Default is NULL.}
@@ -31,9 +34,7 @@ get_bins_table(dat, x, target = NULL, pos_flag = NULL, breaks = NULL,
 
 \item{note}{Logical, outputs info. Default is TRUE.}
 
-\item{occur_time}{The name of the variable that represents the time at which each observation takes place.}
-
-\item{oot_pct}{Percentage of observations retained for overtime test (especially to calculate PSI). Defualt is 0.7}
+\item{bins_total}{Logical, total sum for each columns.}
 
 \item{save_data}{Logical, save results in locally specified folder. Default is FALSE.}
 
@@ -54,7 +55,7 @@ breaks_list = get_breaks_all(dat = UCICreditCard, x_list = names(UCICreditCard)[
 target = "default.payment.next.month", equal_bins =TRUE,best = FALSE,g=5,
 ex_cols = "ID|apply_date", save_data = FALSE)
 get_bins_table_all(dat = UCICreditCard, breaks_list = breaks_list,
-target = "default.payment.next.month", occur_time = "apply_date")
+target = "default.payment.next.month")
 }
 \seealso{
 \code{\link{get_iv}},

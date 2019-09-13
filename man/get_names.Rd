@@ -5,8 +5,8 @@
 \title{Get Variable Names}
 \usage{
 get_names(dat, types = c("logical", "factor", "character", "numeric",
-  "integer", "double", "Date", "POSIXlt", "POSIXct", "POSIXt"),
-  ex_cols = NULL, get_ex = FALSE)
+  "integer64", "integer", "double", "Date", "POSIXlt", "POSIXct",
+  "POSIXt"), ex_cols = NULL, get_ex = FALSE)
 }
 \arguments{
 \item{dat}{A data.frame with independent variables and target variable.}

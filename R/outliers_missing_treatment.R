@@ -11,6 +11,7 @@
 #' @param mat_nas_shadow A shadow matrix of variables which contain nas.
 #' @param dt_nas_random A data.frame with random nas imputation.
 #' @param missing_type Type of missing, genereted by code{\link{analysis_nas}}
+#' @param miss_values  Other extreme value might be used to represent missing values, e.g: -9999, -9998. These miss_values will be encoded to -1 or "Missing".
 #' @param method  The methods of imputation by knn."median" is knn imputation by k neighbors median.
 #' @param class_var Logical, nas analysis of the nominal variables. Default is TRUE.
 #' @param default_miss Logical. If TRUE, assigning the missing values to -1 or "Missing", otherwise ,processing the missing values according to the results of missing analysis.
@@ -29,10 +30,11 @@
 #'
 #' @export
 
-process_nas <- function(dat, x_list = NULL, default_miss = TRUE, class_var = FALSE,
+process_nas <- function(dat, x_list = NULL, default_miss = TRUE, class_var = FALSE,miss_values = NULL,
                         parallel = FALSE, ex_cols = NULL, method = "median", note = FALSE,
                         save_data = FALSE, file_name = NULL, dir_path = tempdir(), ...) {
-    if (note) cat("[NOTE]", "process nas ...\n")
+    if (note)cat_line("-- Processing NAs", col = love_color("dark_green"))
+      
     if (save_data) {
         dir_path = ifelse(!is.character(dir_path), tempdir(), dir_path)
         if (!dir.exists(dir_path)) dir.create(dir_path)
@@ -40,7 +42,9 @@ process_nas <- function(dat, x_list = NULL, default_miss = TRUE, class_var = FAL
         }
     mat_nas_shadow = nas_rate = na_vars = dt_nas_random = missing_type = NULL
     x_list = get_x_list(x_list = x_list, dat_train = dat, dat_test = NULL, ex_cols = ex_cols)
-    mat_nas_shadow <- get_shadow_nas(dat[, x_list])
+    
+	dat =  null_blank_na(dat = dat, miss_values = miss_values, note = FALSE)
+	mat_nas_shadow <- get_shadow_nas(dat[, x_list])
     if (length(mat_nas_shadow) > 0) {
         nas_rate = colSums(mat_nas_shadow) / nrow(mat_nas_shadow)
         na_vars = names(mat_nas_shadow)
@@ -63,7 +67,12 @@ process_nas <- function(dat, x_list = NULL, default_miss = TRUE, class_var = FAL
                                                     note = note, save_data = save_data,
                                                     file_name = file_name, dir_path = dir_path),
                                         bind = "cbind", as_list = FALSE, parallel = parallel)
+	if(save_data){
+	save_dt(dat, dir_path = dir_path, file_name = ifelse(is.null(file_name), "data_missing_proc", paste(file_name, "data_missing_proc", sep = ".")), 
+	append = FALSE, note = note)
+	}									
     }
+
     return(dat)
 }
 
@@ -217,7 +226,7 @@ process_nas_var <- function(dat = dat, x, default_miss = TRUE, nas_rate = NULL,
                   file_name = ifelse(is.null(file_name), "missing.analysis", paste(file_name, "missing.analysis", sep = ".")),
                   append = TRUE, note = FALSE)
         }
-        if (note) cat(paste0(paste(unlist(nas_analysis), collapse = "\t"), "\n"))
+        if (note)cat_bullet(paste(unlist(nas_analysis), collapse = "\t"), col = "darkgrey") 
         is_not_na <- unlist(dat[, x][!is.na(dat[, x])])
         if (nas_rate_x > 0 & len_num > 0) {
             if (!is.na(missing_type_x) && missing_type_x != "No_NAs") {
@@ -402,7 +411,7 @@ get_nas_random <- function(dat) {
 #' @return A data frame with outliers process to all the variables.
 #'
 #' @examples
-#' dat_out = process_outliers(UCICreditCard[1:10000,],
+#' dat_out = process_outliers(UCICreditCard[1:10000,5:10],
 #'                           target = "default.payment.next.month",
 #'                           ex_cols = "date$", kc = 3, kn = 10, parallel = FALSE)
 #' @export
@@ -413,7 +422,8 @@ get_nas_random <- function(dat) {
 process_outliers <- function(dat, target, ex_cols = NULL, kc = 3, kn = 5, x_list = NULL,
                              parallel = FALSE,note = FALSE, process = TRUE,
                              save_data = FALSE, file_name = NULL, dir_path = tempdir()) {
-    if (note) cat("[NOTE]", "process outliers using kmeans and lof...\n")
+    if (note)cat_line("-- Processing outliers using Kmeans and LOF", col = love_color("dark_green"))
+
     if (save_data) {
         dir_path = ifelse(!is.character(dir_path), tempdir(), dir_path)
         if (!dir.exists(dir_path)) dir.create(dir_path)
@@ -434,7 +444,12 @@ process_outliers <- function(dat, target, ex_cols = NULL, kc = 3, kn = 5, x_list
                                                       save_data = save_data, file_name = file_name,
                                                       dir_path = dir_path),
                                           bind = "cbind", as_list = FALSE, parallel = parallel)
+	if(save_data){
+	save_dt(dat, dir_path = dir_path, file_name = ifelse(is.null(file_name), "data_outlier_proc", paste(file_name, "data_outlier_proc", sep = ".")), 
+	append = FALSE, note = note)
+	}									  
     }
+
     return(dat)
 }
 
@@ -461,7 +476,8 @@ outliers_kmeans_lof <- function(dat, x, target = NULL, kc = 3, kn = 5,
               file_name = ifelse(is.null(file_name), "outliers.analysis", paste(file_name, "outliers.analysis", sep = ".")),
               append = TRUE, note = FALSE)
     }
-    if (note) cat(paste(unlist(out_analysis), collapse = "\t"), "\n")
+    if (note)cat_bullet(paste(unlist(out_analysis), collapse = "\t"), col = "darkgrey") 
+
     if (process) {
         if (len_num > 0) {
             if (outlier_type =="no_outlier") {

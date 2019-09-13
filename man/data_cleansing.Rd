@@ -4,22 +4,24 @@
 \alias{data_cleansing}
 \title{Data Cleaning}
 \usage{
-data_cleansing(dat, target = NULL, x_list = NULL, obs_id = NULL,
-  occur_time = NULL, pos_flag = NULL, miss_values = NULL,
+data_cleansing(dat, target = NULL, obs_id = NULL, occur_time = NULL,
+  x_list = NULL, pos_flag = NULL, miss_values = NULL,
   ex_cols = NULL, outlier_proc = TRUE, missing_proc = TRUE,
-  low_var = TRUE, one_hot = FALSE, parallel = FALSE, note = FALSE,
-  save_data = FALSE, file_name = NULL, dir_path = tempdir())
+  merge_cat = TRUE, p = 0.001, m = 20, low_var = TRUE,
+  lvp = 0.99, nr = 0.99, one_hot = FALSE, parallel = FALSE,
+  note = FALSE, save_data = FALSE, file_name = NULL,
+  dir_path = tempdir())
 }
 \arguments{
 \item{dat}{A data frame with x and target.}
 
 \item{target}{The name of target variable.}
 
-\item{x_list}{A list of x variables.}
-
 \item{obs_id}{The name of ID of observations.Default is NULL.}
 
 \item{occur_time}{The name of occur time of observations.Default is NULL.}
+
+\item{x_list}{A list of x variables.}
 
 \item{pos_flag}{The value of positive class of target variable, default: "1".}
 
@@ -31,7 +33,17 @@ data_cleansing(dat, target = NULL, x_list = NULL, obs_id = NULL,
 
 \item{missing_proc}{Logical, process nas or not. Default is TRUE.}
 
+\item{merge_cat}{merge categories of character variables that  is more than m.}
+
+\item{p}{The minimum percent of samples in a category to merge.}
+
+\item{m}{The minimum number of categories.}
+
 \item{low_var}{Logical, delete low variance variables or not. Default is TRUE.}
+
+\item{lvp}{The maximum percent of unique values (including NAs).}
+
+\item{nr}{The maximum percent of NAs.}
 
 \item{one_hot}{Logical. If TRUE, one-hot_encoding  of category variables. Default is FASLE.}
 
@@ -49,14 +61,14 @@ data_cleansing(dat, target = NULL, x_list = NULL, obs_id = NULL,
 A preprocessed data.frame
 }
 \description{
-The \code{data_cleansing} function is a simpler wrapper for data cleaning functions, such as 
+The \code{data_cleansing} function is a simpler wrapper for data cleaning functions, such as
 delete variables that values are all NAs;
 checking dat and target format.
 delete low variance variables
-replace null or NULL or blank with NA; 
+replace null or NULL or blank with NA;
 encode variables which NAs &  miss value rate is more than 95% as 1,0 ;
 encode variables which unique value  rate is  more than 95% as 1,0;
-merge categories of character variables that  is more than 8; 
+merge categories of character variables that  is more than 10;
 transfer time variables to dateformation;
 remove duplicated observations;
 process outliers;

@@ -4,8 +4,7 @@
 \alias{time_transfer}
 \title{Time Format Transfering}
 \usage{
-time_transfer(dat, date_cols = "DATE$|time$|date$|timestamp$|stamp$",
-  ex_cols = NULL, note = FALSE)
+time_transfer(dat, date_cols = NULL, ex_cols = NULL, note = FALSE)
 }
 \arguments{
 \item{dat}{A data frame}

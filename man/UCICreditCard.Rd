@@ -15,11 +15,11 @@ This research aimed at the case of customers's default payments in Taiwan and co
 \details{
 \itemize{
   \item ID: Customer id
-  \item apply_date: This is a fake occur time. 
-  \item LIMIT_BAL: Amount of the given credit (NT dollar): it includes both the individual consumer credit and his/her family (supplementary) credit. 
-  \item SEX:  Gender (male; female). 
+  \item apply_date: This is a fake occur time.
+  \item LIMIT_BAL: Amount of the given credit (NT dollar): it includes both the individual consumer credit and his/her family (supplementary) credit.
+  \item SEX:  Gender (male; female).
   \item EDUCATION: Education (1 = graduate school; 2 = university; 3 = high school; 4 = others).
-  \item MARRIAGE: Marital status (1 = married; 2 = single; 3 = others). 
+  \item MARRIAGE: Marital status (1 = married; 2 = single; 3 = others).
   \item AGE: Age (year)
 History of past payment. We tracked the past monthly payment records (from April to September, 2005) as follows:
   \item PAY_0: the repayment status in September
@@ -28,7 +28,7 @@ History of past payment. We tracked the past monthly payment records (from April
   \item PAY_4: ...
   \item PAY_5: ...
   \item PAY_6: the repayment status in April
-The measurement scale for the repayment status is: -1 = pay duly; 1 = payment delay for one month; 2 = payment delay for two months;...;8 = payment delay for eight months; 9 = payment delay for nine months and above. 
+The measurement scale for the repayment status is: -1 = pay duly; 1 = payment delay for one month; 2 = payment delay for two months;...;8 = payment delay for eight months; 9 = payment delay for nine months and above.
 Amount of bill statement (NT dollar)
   \item BILL_AMT1: amount of bill statement in September
   \item BILL_AMT2: mount of bill statement in August

@@ -143,7 +143,8 @@ get_breaks_all <- function(dat, target = NULL, x_list = NULL, ex_cols = NULL,
     opt = options(scipen = 200, stringsAsFactors = FALSE)
     dat <- checking_data(dat = dat, target = target, pos_flag = pos_flag)
     if (note) {
-        cat(paste("cutting breaks..."), "\n")
+		 cat_line("-- Getting optimal binning breaks", col = love_color("deep_green"))
+		
     }
     if (is.null(x_list)) {
         x_list = get_names(dat = dat, types = c('factor', 'character', 'numeric', 'integer', 'double'),
@@ -166,7 +167,7 @@ get_breaks_all <- function(dat, target = NULL, x_list = NULL, ex_cols = NULL,
                       tempdir(), dir_path)
         if (!dir.exists(dir_path)) dir.create(dir_path)
         if (!is.character(file_name)) file_name = NULL
-        save_dt(breaks_list2, file_name = ifelse(is.null(file_name), "breaks.list", paste(file_name, "breaks.list", sep = ".")),
+        save_dt(breaks_list2, file_name = ifelse(is.null(file_name), "breaks_list", paste(file_name, "breaks_list", sep = ".")),
                 dir_path = dir_path, note = note, as_list = FALSE)
     }
     options(opt) # reset
@@ -206,7 +207,8 @@ get_breaks <- function(dat, x, target = NULL, pos_flag = NULL,
     } else {
         breaks = tree_breaks
     }
-    if (note)cat(paste0(x, "   :   ", paste(breaks, sep = ",", collapse = ","), sep = "\t\t", collapse = "\t"), "\n")
+	  	
+    if (note)cat_bullet(paste0(format(x), ": ", paste(breaks, sep = ",", collapse = ",")), col = "darkgrey")
     return(breaks)
 }
 
@@ -431,165 +433,173 @@ cut_equal <- function(dat_x, g = 10, sp_values = list(-1, "Missing")) {
 #' sp_values = NULL, bins_control = bins_control)
 #' @export
 
-
 select_best_class <- function(dat, x, target, breaks = NULL, occur_time = NULL, oot_pct = 0.7,
                               pos_flag = NULL, bins_control = NULL, sp_values = NULL, ...) {
-    dat = checking_data(dat = dat, target = target, pos_flag = pos_flag)
-    if (is.null(breaks) || any(is.na(breaks)) || length(breaks) < 1) {
-        stop("breaks is missing.\n")
-    }
-    if (!is.character(dat[, x])) {
-        stop(paste(x, "must be a character.\n"))
-    }
-    if (length(breaks) > 2) {
-        break_class = sp_value_char = NULL
-        x_miss = any(dat[, x] %in% sp_values)
-        if (!is.null(sp_values) && x_miss) {
-            sp_value_char = unlist(sp_values[sapply(sp_values, is.character)])
-            miss_class = unlist(breaks[sapply(breaks, function(x) any(sp_value_char %in% x))])
-            non_miss_class = breaks[!sapply(breaks, function(x) any(sp_value_char %in% x))]
-            breaks = unique(non_miss_class)
-            dat = dat[dat[, x] %in% unlist(breaks),]
-        } else {
-            breaks = unique(breaks)
-        }
-        b_chi = ifelse(!is.null(bins_control[["b_chi"]]), bins_control[["b_chi"]], 0.02) / 2
-        b_odds = ifelse(!is.null(bins_control[["b_odds"]]), bins_control[["b_odds"]], 0.1) / 2
-        bins_num = ifelse(!is.null(bins_control[["bins_num"]]), bins_control[["bins_num"]], 10)
-        bins_pct = ifelse(!is.null(bins_control[["bins_pct"]]), bins_control[["bins_pct"]], 0.02)
-        b_psi = ifelse(!is.null(bins_control[["b_psi"]]), bins_control[["b_psi"]], 0.05) * 1.5
-        b_or = ifelse(!is.null(bins_control[["b_or"]]), bins_control[["b_or"]], 0.1) / 2
-        odds_psi = ifelse(!is.null(bins_control[["odds_psi"]]), bins_control[["odds_psi"]], 0.1) * 1.5
-        kc = ifelse(!is.null(bins_control[["kc"]]), bins_control[["kc"]], 5)
-        if (!is.null(kc) && kc > 1) {
-            cv_list = cv_split(dat, k = kc, occur_time = occur_time, seed = 46)
-        } else {
-            cv_list = cv_split(dat, k = 1 / (1 - oot_pct), occur_time = occur_time, seed = 46)
-            kc = 1
-        }
-        breaks_cv = iv_list_sub = psi_list_sub = list()
-        for (k in 1:kc) {
-            dat_train = dat[-cv_list[[k]],]
-            dat_test = dat[cv_list[[k]],]
-            break_class = breaks
-            dt_bins = NULL
-            while (TRUE) {
-                if (length(unique(break_class)) <= 1 | length(dat_train) < 1 | length(dat_test) < 1) break
-                dt_bins = get_psi_iv(dat = dat_train, x = x, dat_test = dat_test, target = target,
-                pos_flag = pos_flag, breaks = break_class, breaks_list = NULL, occur_time = occur_time,
-                oot_pct = oot_pct, bins_total = FALSE, note = FALSE, bins_no = TRUE)
-                gb = dt_bins[, c("expected_0", "expected_1")]
-                cut_psi = dt_bins[, "PSIi"]
-                bins_odds_ratio_s = dt_bins[, "odds_ratio_s"]
-                gb_index = dt_bins[, "odds_ratio"]
-                gb_percent = dt_bins[, "%expected"]
-                dif_gb = c()
-                for (brk in 1:(dim(gb)[1] - 1)) {
-                    cross_table = rbind(gb[brk,], gb[brk + 1,])
-                    a = cross_table[1, 1]
-                    b = cross_table[1, 2]
-                    c = cross_table[2, 1]
-                    d = cross_table[2, 2]
-                    if (any(is.na(cross_table)) | any(cross_table < 30) |
-                        any(cross_table[, 2] / (cross_table[, 1] + cross_table[, 2]) < 0.01)) {
-                        dif_gb[brk] = 0
-                    } else {
-                        dif_gb[brk] = gb_index[brk] - gb_index[brk + 1]
-                    }
-                }
-                if (length(break_class) <= 2) {
-                    break
-                } else {
-                    if (any(abs(dif_gb) < b_or)) {
-                        if (which.min(abs(dif_gb)) < length(break_class)) {
-                            break_class[[which.min(abs(dif_gb)) + 1]] = append(unlist(break_class[which.min(abs(dif_gb))]),
-                            unlist(break_class[which.min(abs(dif_gb)) + 1]), 0)
-                        } else {
-                            break_class[[which.min(abs(dif_gb)) - 1]] = append(unlist(break_class[which.min(abs(dif_gb))]),
-                            unlist(break_class[which.min(abs(dif_gb)) - 1]), 0)
-                        }
-                        break_class = break_class[-which.min(abs(dif_gb))]
-                    } else {
-                        if (length(break_class) > bins_num) {
-                            if (which.min(abs(dif_gb)) < length(break_class)) {
-                                break_class[[which.min(abs(dif_gb)) + 1]] = append(unlist(break_class[which.min(abs(dif_gb))]),
-                                unlist(break_class[which.min(abs(dif_gb)) + 1]), 0)
-                            } else {
-                                break_class[[which.min(abs(dif_gb)) - 1]] = append(unlist(break_class[which.min(abs(dif_gb))]),
-                                unlist(break_class[which.min(abs(dif_gb)) - 1]), 0)
-                            }
-                            break_class = break_class[-which.min(abs(dif_gb))]
-                        } else {
-                            if (length(gb_percent) > 2 & any(gb_percent < bins_pct)) {
-                                bins_pct_cut = dt_bins[, "cuts"][[which.min(gb_percent)]]
-                                max_psi_bin = dt_bins[, "bins"][[which.min(gb_percent)]]
-                                min_pct_m = which(dt_bins[, "bins"] %islike% max_psi_bin)
-
-                                if (length(min_pct_m) > 0 && min_pct_m < length(break_class)) {
-                                    break_class[[min_pct_m + 1]] = append(bins_pct_cut,
-                                                                          break_class[[min_pct_m + 1]], 0)
-                                } else {
-                                    break_class[[min_pct_m - 1]] = append(bins_pct_cut,
-                                                                          break_class[[min_pct_m - 1]], 0)
-                                }
-                                break_class = break_class[-min_pct_m]
-                            } else {
-                                if (length(cut_psi) > 2 & any(cut_psi > b_psi)) {
-                                    max_psi_cut = dt_bins[, "cuts"][[which.max(cut_psi)]]
-                                    max_psi_bin = dt_bins[, "bins"][[which.max(cut_psi)]]
-                                    max_psi_m = which(dt_bins[, "bins"] %islike% max_psi_bin)
-                                    if (length(max_psi_m) > 0 && max_psi_m < length(break_class)) {
-                                        break_class[[max_psi_m + 1]] = append(max_psi_cut,
-                                                                              break_class[[max_psi_m + 1]], 0)
-                                    } else {
-                                        break_class[[max_psi_m - 1]] = append(max_psi_cut,
-                                                                              break_class[[max_psi_m - 1]], 0)
-                                    }
-                                    break_class = break_class[-max_psi_m]
-                                } else {
-                                    if (length(bins_odds_ratio_s) > 2 & any(bins_odds_ratio_s > odds_psi)) {
-                                        max_odds_psi_cuts = dt_bins[, "cuts"][[which.max(bins_odds_ratio_s)]]
-                                        max_odds_psi_bin = dt_bins[, "bins"][[which.max(bins_odds_ratio_s)]]
-                                        max_odds_psi_m = which(dt_bins[, "bins"] %islike% max_odds_psi_bin)
-                                        if (length(max_odds_psi_m) > 0 && max_odds_psi_m < length(break_class)) {
-                                            break_class[[max_odds_psi_m + 1]] = append(max_odds_psi_cuts,
-                                                                                     break_class[[max_odds_psi_m + 1]], 0)
-                                        } else {
-                                            break_class[[max_odds_psi_m - 1]] = append(max_odds_psi_cuts,
-                                                                                     break_class[[max_odds_psi_m - 1]], 0)
-                                        }
-                                        break_class = break_class[-max_odds_psi_m]
-                                    } else {
-                                        break
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            dt_iv = get_iv(dat = dat_test, x = x, target = target, pos_flag = pos_flag,
-                           breaks = break_class, note = FALSE)
-            iv_list_sub[[k]] = unlist(dt_iv[, "IV"])
-            breaks_cv[[k]] = break_class
-        }
-        max_iv =  ifelse(max(unlist(iv_list_sub)) == 0, unlist(iv_list_sub), unlist(iv_list_sub) / max(unlist(iv_list_sub)))
-        best_ind = which.max(max_iv)
-        best_class = unique(breaks_cv[[best_ind]])
-        if (length(best_ind) > 0) {
-            best_class = unique(breaks_cv[[best_ind]])
-        } else {
-            best_class = unique(unlist(breaks_cv))
-        }
-        if (!is.null(sp_values) && x_miss && length(miss_class) > 0) {
-            best_class = unique(append(c(best_class), miss_class, 0))
-        }
+  dat = checking_data(dat = dat, target = target, pos_flag = pos_flag)
+  if (is.null(breaks) || any(is.na(breaks)) || length(breaks) < 1) {
+    stop("breaks is missing.\n")
+  }
+  if (!is.character(dat[, x])) {
+    stop(paste(x, "must be a character.\n"))
+  }
+  if (length(breaks) > 2) {
+    break_class = sp_value_char = NULL
+    x_miss = any(dat[, x] %in% sp_values)
+    if (!is.null(sp_values) && x_miss) {
+      sp_value_char = unlist(sp_values[sapply(sp_values, is.character)])
+      miss_class = unlist(breaks[sapply(breaks, function(x) any(sp_value_char %in% x))])
+      non_miss_class = breaks[!sapply(breaks, function(x) any(sp_value_char %in% x))]
+      breaks = unique(non_miss_class)
+      dat = dat[dat[, x] %in% unlist(breaks),]
     } else {
-        best_class = breaks
+      breaks = unique(breaks)
     }
-    return(best_class)
+    b_chi = ifelse(!is.null(bins_control[["b_chi"]]), bins_control[["b_chi"]], 0.02) / 2
+    b_odds = ifelse(!is.null(bins_control[["b_odds"]]), bins_control[["b_odds"]], 0.1) / 2
+    bins_num = ifelse(!is.null(bins_control[["bins_num"]]), bins_control[["bins_num"]], 10)
+    bins_pct = ifelse(!is.null(bins_control[["bins_pct"]]), bins_control[["bins_pct"]], 0.02)
+    b_psi = ifelse(!is.null(bins_control[["b_psi"]]), bins_control[["b_psi"]], 0.05) * 1.5
+    b_or = ifelse(!is.null(bins_control[["b_or"]]), bins_control[["b_or"]], 0.1) / 2
+    odds_psi = ifelse(!is.null(bins_control[["odds_psi"]]), bins_control[["odds_psi"]], 0.1) * 1.5
+    kc = ifelse(!is.null(bins_control[["kc"]]), bins_control[["kc"]], 1)
+    if (!is.null(kc) && kc > 1) {
+      cv_list = cv_split(dat, k = kc, occur_time = occur_time, seed = 46)
+    } else {
+      cv_list = cv_split(dat, k = 1 / (1 - oot_pct), occur_time = occur_time, seed = 46)
+      kc = 1
+    }
+    breaks_cv = iv_list_sub = psi_list_sub = list()
+    for (k in 1:kc) {
+      dat_train = dat[-cv_list[[k]],]
+      dat_test = dat[cv_list[[k]],]
+      break_class = breaks
+      dt_bins = NULL
+      while (TRUE) {
+        if (length(unique(break_class)) <= 1 | length(dat_train) < 1 | length(dat_test) < 1) break
+        dt_bins = get_psi_iv(dat = dat_train, x = x, dat_test = dat_test, target = target,
+                             pos_flag = pos_flag, breaks = break_class, breaks_list = NULL, occur_time = occur_time,
+                             oot_pct = oot_pct, bins_total = FALSE, note = FALSE, bins_no = TRUE)
+        gb = dt_bins[, c("expected_0", "expected_1")]
+        cut_psi = dt_bins[, "PSIi"]
+        bins_odds_ratio_s = dt_bins[, "odds_ratio_s"]
+        gb_index = dt_bins[, "odds_ratio"]
+        gb_percent = dt_bins[, "%expected"]
+        dif_gb = c()
+        for (brk in 1:(dim(gb)[1] - 1)) {
+          cross_table = rbind(gb[brk,], gb[brk + 1,])
+          a = cross_table[1, 1]
+          b = cross_table[1, 2]
+          c = cross_table[2, 1]
+          d = cross_table[2, 2]
+          if (any(is.na(cross_table)) | any(cross_table < 30) |
+              any(cross_table[, 2] / (cross_table[, 1] + cross_table[, 2]) < 0.01)) {
+            dif_gb[brk] = 0
+          } else {
+            dif_gb[brk] = gb_index[brk] - gb_index[brk + 1]
+          }
+        }
+        if (length(break_class) <= 2) {
+          break
+        } else {
+          if (any(abs(dif_gb) < b_or)) {
+            if (which.min(abs(dif_gb)) < length(break_class)) {
+              break_class[[which.min(abs(dif_gb)) + 1]] = append(unlist(break_class[which.min(abs(dif_gb))]),
+                                                                 unlist(break_class[which.min(abs(dif_gb)) + 1]), 0)
+            } else {
+              break_class[[which.min(abs(dif_gb)) - 1]] = append(unlist(break_class[which.min(abs(dif_gb))]),
+                                                                 unlist(break_class[which.min(abs(dif_gb)) - 1]), 0)
+            }
+            break_class = break_class[-which.min(abs(dif_gb))]
+          } else {
+            if (length(break_class) > bins_num) {
+              if (which.min(abs(dif_gb)) < length(break_class)) {
+                break_class[[which.min(abs(dif_gb)) + 1]] = append(unlist(break_class[which.min(abs(dif_gb))]),
+                                                                   unlist(break_class[which.min(abs(dif_gb)) + 1]), 0)
+              } else {
+                break_class[[which.min(abs(dif_gb)) - 1]] = append(unlist(break_class[which.min(abs(dif_gb))]),
+                                                                   unlist(break_class[which.min(abs(dif_gb)) - 1]), 0)
+              }
+              break_class = break_class[-which.min(abs(dif_gb))]
+            } else {
+              if (length(gb_percent) > 2 & any(gb_percent < bins_pct)) {
+                bins_pct_cut = dt_bins[, "cuts"][[which.min(gb_percent)]]
+                max_psi_bin = dt_bins[, "bins"][[which.min(gb_percent)]]
+                min_pct_m = which(dt_bins[, "bins"] %islike% max_psi_bin)
+                if (length(min_pct_m) > 0 ){
+                  if ( min_pct_m < length(break_class)) {
+                    break_class[[min_pct_m + 1]] = append(bins_pct_cut,
+                                                          break_class[[min_pct_m + 1]], 0)
+                  } else {
+                    break_class[[min_pct_m - 1]] = append(bins_pct_cut,
+                                                          break_class[[min_pct_m - 1]], 0)
+                  }
+                  break_class = break_class[-min_pct_m]
+                  
+                }
+                
+              } else {
+                if (length(cut_psi) > 2 & any(cut_psi > b_psi)) {
+                  max_psi_cut = dt_bins[, "cuts"][[which.max(cut_psi)]]
+                  max_psi_bin = dt_bins[, "bins"][[which.max(cut_psi)]]
+                  max_psi_m = which(dt_bins[, "bins"] %islike% max_psi_bin)
+                  if(length(max_psi_m) > 0 ){
+                    if ( max_psi_m < length(break_class)) {
+                      break_class[[max_psi_m + 1]] = append(max_psi_cut,
+                                                            break_class[[max_psi_m + 1]], 0)
+                    } else {
+                      break_class[[max_psi_m - 1]] = append(max_psi_cut,
+                                                            break_class[[max_psi_m - 1]], 0)
+                    }
+                    break_class = break_class[-max_psi_m]
+                  }
+                  
+                } else {
+                  if (length(bins_odds_ratio_s) > 2 & any(bins_odds_ratio_s > odds_psi)) {
+                    max_odds_psi_cuts = dt_bins[, "cuts"][[which.max(bins_odds_ratio_s)]]
+                    max_odds_psi_bin = dt_bins[, "bins"][[which.max(bins_odds_ratio_s)]]
+                    max_odds_psi_m = which(unlist(dt_bins[, "bins"]) %islike% max_odds_psi_bin)
+                    if (length(max_odds_psi_m) > 0){
+                      if (max_odds_psi_m < length(break_class)) {
+                        break_class[[max_odds_psi_m + 1]] = append(max_odds_psi_cuts,
+                                                                   break_class[[max_odds_psi_m + 1]], 0)
+                      } else {
+                        break_class[[max_odds_psi_m - 1]] = append(max_odds_psi_cuts,
+                                                                   break_class[[max_odds_psi_m - 1]], 0)
+                      }
+                      break_class = break_class[-max_odds_psi_m]
+                      
+                    }
+                    
+                  } else {
+                    break
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+      dt_iv = get_iv(dat = dat_test, x = x, target = target, pos_flag = pos_flag,
+                     breaks = break_class, note = FALSE)
+      iv_list_sub[[k]] = unlist(dt_iv[, "IV"])
+      breaks_cv[[k]] = break_class
+    }
+    max_iv =  ifelse(max(unlist(iv_list_sub)) == 0, unlist(iv_list_sub), unlist(iv_list_sub) / max(unlist(iv_list_sub)))
+    best_ind = which.max(max_iv)
+    best_class = unique(breaks_cv[[best_ind]])
+    if (length(best_ind) > 0) {
+      best_class = unique(breaks_cv[[best_ind]])
+    } else {
+      best_class = unique(unlist(breaks_cv))
+    }
+    if (!is.null(sp_values) && x_miss && length(miss_class) > 0) {
+      best_class = unique(append(c(best_class), miss_class, 0))
+    }
+  } else {
+    best_class = breaks
+  }
+  return(best_class)
 }
-
 
 #' @rdname select_best_class
 #' @export
@@ -620,7 +630,7 @@ select_best_breaks <- function(dat, x, target, breaks = NULL, pos_flag = NULL,
         b_psi = ifelse(!is.null(bins_control[["b_psi"]]), bins_control[["b_psi"]], 0.05)
         b_or = ifelse(!is.null(bins_control[["b_or"]]), bins_control[["b_or"]], 0.15)
         odds_psi = ifelse(!is.null(bins_control[["odds_psi"]]), bins_control[["odds_psi"]], 0.1)
-        kc = ifelse(!is.null(bins_control[["kc"]]), bins_control[["kc"]], 5)
+        kc = ifelse(!is.null(bins_control[["kc"]]), bins_control[["kc"]], 1)
         mono = ifelse(!is.null(bins_control[["mono"]]), bins_control[["mono"]], 0.3)
         # kc = 1
         if (!is.null(kc) && kc > 1) {

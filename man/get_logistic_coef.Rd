@@ -20,7 +20,7 @@ get_logistic_coef(lg_model, file_name = NULL, dir_path = tempdir(),
 A data.frame with logistic coefficients.
 }
 \description{
-\code{get_logistic_coef} is  for geting logistic coefficient.
+\code{get_logistic_coef} is  for geting logistic coefficients.
 }
 \examples{
 # dataset spliting
@@ -55,8 +55,7 @@ lr_model = glm(Formula, data = train_woe[, c("target", x_list)], family = binomi
 #get LR coefficient
 dt_imp_LR = get_logistic_coef(lg_model = lr_model, save_data = FALSE)
 bins_table = get_bins_table_all(dat = dat_train, target = "target",
-                               occur_time = "apply_date",
-                                x_list = x_list,
+                                x_list = x_list,dat_test = dat_test,
                                breaks_list = breaks_list, note = FALSE)
 #score card
 LR_score_card <- get_score_card(lg_model = lr_model, bins_table, target = "target")

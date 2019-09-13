@@ -5,7 +5,8 @@
 \title{pred_score}
 \usage{
 pred_score(model, dat, x_list = NULL, bins_table = NULL,
-  obs_id = NULL, sp_values = list(-1, "Missing"), save_data = TRUE,
+  obs_id = NULL, miss_values = list(-1, "-1", "NULL", "-1", "-9999",
+  "-9996", "-9997", "-9995", "-9998", -9999, -9998, -9997, -9996, -9995),
   woe_name = TRUE)
 }
 \arguments{
@@ -19,9 +20,7 @@ pred_score(model, dat, x_list = NULL, bins_table = NULL,
 
 \item{obs_id}{The name of ID of observations or key variable of data. Default is NULL.}
 
-\item{sp_values}{Special values.}
-
-\item{save_data}{Logical, save the result or not. Default is FALSE.}
+\item{miss_values}{Special values.}
 
 \item{woe_name}{Logical. Whether woe variable's name contains 'woe'.Default is TRUE.}
 }

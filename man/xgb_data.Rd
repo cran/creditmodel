@@ -5,7 +5,7 @@
 \title{XGboost data}
 \usage{
 xgb_data(dat_train, target, dat_test = NULL, x_list = NULL,
-  xgb_x_list = NULL, prop = 0.7, occur_time = NULL)
+  prop = 0.7, occur_time = NULL)
 }
 \arguments{
 \item{dat_train}{data.frame of train data. Default is NULL.}
@@ -15,8 +15,6 @@ xgb_data(dat_train, target, dat_test = NULL, x_list = NULL,
 \item{dat_test}{data.frame of test data. Default is NULL.}
 
 \item{x_list}{names of independent variables of raw data. Default is NULL.}
-
-\item{xgb_x_list}{names of independent variables of xgboost model. Default is NULL.}
 
 \item{prop}{Percentage of train-data after the partition. Default: 0.7.}
 

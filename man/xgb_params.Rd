@@ -5,8 +5,8 @@
 \alias{xgb_params_search}
 \title{XGboost Parameters}
 \usage{
-xgb_params(nrounds = 1000, params = list(max.depth = 6, eta = 0, gamma
-  = 0, min_child_weight = 1, subsample = 1, colsample_bytree = 1,
+xgb_params(nrounds = 1000, params = list(max.depth = 6, eta = 0.1,
+  gamma = 0, min_child_weight = 1, subsample = 1, colsample_bytree = 1,
   max_delta_step = 0), early_stopping_rounds = 100,
   method = "random_search", iters = 10, eval = "auc", nfold = 1,
   nthread = 2, ...)

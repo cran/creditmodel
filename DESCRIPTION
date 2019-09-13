@@ -1,7 +1,7 @@
 Package: creditmodel
-Version: 1.1.2
-Date: 2019-09-02
-Title: Toolkit for Credit Modeling Analysis and Visualization
+Version: 1.1.3
+Date: 2019-09-13
+Title: Toolkit for Credit Modeling
 Authors@R: c(person(given = "Dongping", family = "Fan",email = "fdp@pku.edu.cn",role = c("aut", "cre")))
 Maintainer: Dongping Fan <fdp@pku.edu.cn>
 Description: 
@@ -10,7 +10,7 @@ Description:
 	 2.Find, S. (2012, ISBN13: 9780230347762). Credit scoring, response modelling and insurance rating:A practical guide to forecasting consumer behaviour.  
 Depends: R(>= 3.3.0)
 Imports:
-        data.table,dplyr,ggplot2,gridExtra,glmnet,rpart,xgboost,gbm,randomForest,car,foreach,doParallel,sqldf,stringr,pdp,pmml,XML
+        data.table,dplyr,ggplot2,gridExtra,glmnet,rpart,xgboost,gbm,randomForest,foreach,doParallel,pdp,pmml,XML,cli
 Suggests: knitr,testthat
 VignetteBuilder: knitr
 Encoding: UTF-8
@@ -20,7 +20,7 @@ LazyLoad: yes
 License: AGPL-3
 RoxygenNote: 6.1.1
 NeedsCompilation: no
-Packaged: 2019-09-02 11:34:51 UTC; HANSEN
+Packaged: 2019-09-13 08:39:36 UTC; HANSEN
 Author: Dongping Fan [aut, cre]
 Repository: CRAN
-Date/Publication: 2019-09-02 15:10:08 UTC
+Date/Publication: 2019-09-13 10:30:10 UTC

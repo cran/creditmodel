@@ -219,7 +219,7 @@ code > span.fu { color: #900; font-weight: bold; }  code > span.er { color: #a61
 <hr />
 <p>title: “Automated Model Development Process”</p>
 <p>author: “Fan Dongping”</p>
-<p>date: “2019-09-02”</p>
+<p>date: “2019-09-13”</p>
 <p>output: rmarkdown::html_vignette</p>
 <p>vignette: &gt;</p>
 <p>%</p>
@@ -238,7 +238,7 @@ code > span.fu { color: #900; font-weight: bold; }  code > span.er { color: #a61
     dat_train = train_test$train
     dat_test = train_test$test
     x_list = c(&quot;PAY_0&quot;, &quot;LIMIT_BAL&quot;, &quot;PAY_AMT5&quot;, &quot;PAY_3&quot;)
-    B_model = training_model(dat = dat_train,
+    B_model = training_model(dat = dat,
                          model_name = &quot;UCICreditCard&quot;, target = &quot;target&quot;, x_list = x_list,
                          occur_time = &quot;apply_date&quot;, obs_id = &quot;ID&quot;, dat_test = dat_test,
                          preproc = FALSE,
