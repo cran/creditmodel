@@ -25,7 +25,7 @@
 #' Bezdek, James C. "FCM: The fuzzy c-means clustering algorithm".
 #' Computers & Geosciences (0098-3004),\url{https://doi.org/10.1016/0098-3004(84)90020-7}
 #' @examples
-#' clust <- customer_segmentation(dat = lendingclub[1:10000,40:50],
+#' clust <- customer_segmentation(dat = lendingclub[1:10000,20:30],
 #'                               x_list = NULL, ex_cols = "id$|loan_status",
 #'                               cluster_control = list(meth = "FCM", kc = 2),  save_data = FALSE,
 #'                               tree_control = list(minbucket = round(nrow(lendingclub) / 10)),
@@ -402,9 +402,8 @@ get_ctree_rules = function(tree_fit = NULL, train_dat = NULL, target = NULL, tes
       stop("Support only rpart tree & ctree (party package).\n")
     }
   }
-  terminal_rules = train_sum = rule_no = c_rules = final_rules = train_ks = dt_rules = dt_rules_k = NULL
-  
-  for (i in terminal_tree_nodes) {
+  terminal_rules = train_sum = rule_no = c_rules = final_rules = train_ks = dt_rules = dt_rules_k = NULL  
+  for(i in terminal_tree_nodes){
     inds = ifelse(any(node_rules$tree_rules == "root"), 2, 1)
     c_rules = sapply(inds:node_rules$depth[i], function(j) {
       rule_no = which(rownam == max(which(node_rules$depth == j & rownam <= rownam[i])))
@@ -1263,8 +1262,6 @@ get_psi = function(dat, x, target = NULL, dat_test = NULL, occur_time = NULL, st
     df_ae = rbind(dfa, dfe)
   }
 
-
-
   if(!is.null(target)){
     df_ae$target =df_ae[,target]
     df_psi = data.table::dcast(df_ae, bins~ ae + target, fun.aggregate = length, value.var = "ae")
@@ -1273,7 +1270,7 @@ get_psi = function(dat, x, target = NULL, dat_test = NULL, occur_time = NULL, st
       expected = expected_1 + expected_0 
       Ac_pct_1 = actual_1/ifelse(actual > 0, actual, 1)
       Ex_pct_1 = expected_1/ifelse(expected > 0,expected, 1)
-      cos_s = round(cos_sim(Ex_pct_1, Ac_pct_1, margin = 2 ),3)
+      cos_s = round(cos_sim(Ex_pct_1, Ac_pct_1, cos_margin = 2 ),3)
       Ac_pct = actual / sum(actual,na.rm = TRUE)
       Ex_pct = expected/ sum(expected, na.rm = TRUE)
       PSI_i = round((Ac_pct - Ex_pct) * log(Ac_pct / Ex_pct), 3)

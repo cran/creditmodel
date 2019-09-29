@@ -7,8 +7,9 @@
 training_model(model_name = "mymodel", dat, dat_test = NULL,
   target = NULL, occur_time = NULL, obs_id = NULL, x_list = NULL,
   ex_cols = NULL, pos_flag = NULL, prop = 0.7, preproc = TRUE,
-  one_hot = FALSE, miss_values = NULL, outlier_proc = TRUE,
-  missing_proc = TRUE, feature_filter = list(filter = c("IV", "PSI",
+  low_var = TRUE, merge_cat = TRUE, one_hot = FALSE,
+  trans_log = FALSE, outlier_proc = TRUE, missing_proc = TRUE,
+  miss_values = NULL, feature_filter = list(filter = c("IV", "PSI",
   "COR", "XGB"), iv_cp = 0.02, psi_cp = 0.1, xgb_cp = 0, cv_folds = 1,
   hopper = FALSE), algorithm = list("LR", "XGB", "GBM", "RF"),
   LR.params = lr_params(), XGB.params = xgb_params(),
@@ -38,15 +39,21 @@ training_model(model_name = "mymodel", dat, dat_test = NULL,
 
 \item{prop}{Percentage of train-data after the partition. Default: 0.7.}
 
-\item{preproc}{Logical. Preprocess data. Default is TRUE}
+\item{preproc}{Logical. Preprocess data. Default is TRUE.}
+
+\item{low_var}{Logical, delete low variance variables or not. Default is TRUE.}
+
+\item{merge_cat}{merge categories of character variables that  is more than m.}
 
 \item{one_hot}{Logical. If TRUE, one-hot_encoding  of category variables. Default is FASLE.}
 
-\item{miss_values}{Other extreme value might be used to represent missing values, e.g: -9999, -9998. These miss_values will be encoded to -1 or "Missing".}
+\item{trans_log}{Logical, Logarithmic transformation. Default is FALSE.}
 
 \item{outlier_proc}{Logical. If TRUE,  Outliers processing using Kmeans and Local Outlier Factor. Default is TRUE}
 
 \item{missing_proc}{Logical. If TRUE, missing value analysis and process missing value by knn imputation or central impulation or random imputation. Default is TRUE}
+
+\item{miss_values}{Other extreme value might be used to represent missing values, e.g: -9999, -9998. These miss_values will be encoded to -1 or "Missing".}
 
 \item{feature_filter}{Parameters for selecting important and stable features.See details at: \code{\link{feature_select_wrapper}}}
 
@@ -62,7 +69,7 @@ training_model(model_name = "mymodel", dat, dat_test = NULL,
 
 \item{breaks_list}{A table containing a list of splitting points for each independent variable. Default is NULL.}
 
-\item{parallel}{Default is FALSE}
+\item{parallel}{Default is FALSE.}
 
 \item{cores_num}{The number of CPU cores to use.}
 
@@ -87,28 +94,30 @@ A list containing Model Objects.
 \examples{
 sub = cv_split(UCICreditCard, k = 60)[[1]]
 dat = UCICreditCard[sub,]
-dat = re_name(dat, "default.payment.next.month", "target")
-dat = data_cleansing(dat, target = "target", obs_id = "ID",
-occur_time = "apply_date", miss_values = list("", -1, -2))
-train_test <- train_test_split(dat, split_type = "OOT", prop = 0.7,
-                                occur_time = "apply_date")
-dat_train = train_test$train
-dat_test = train_test$test
-x_list = c("PAY_0", "LIMIT_BAL", "PAY_AMT5")
-B_model = training_model(dat = dat_train,
-model_name = "UCICreditCard", target = "target", x_list = x_list,
-occur_time = "apply_date", obs_id = "ID", dat_test = dat_test,
-                           preproc = FALSE,
-                           feature_filter = NULL,
-                           algorithm = list("LR"),
-                           LR.params = lr_params(lasso = FALSE,
-                           step_wise = FALSE),
-                           breaks_list = NULL,
-                           parallel = FALSE, cores_num = NULL,
-                           save_pmml = FALSE, plot_show = FALSE,
-                           vars_plot = FALSE,
-                           model_path = tempdir(),
-                           seed = 46)
+x_list = c("LIMIT_BAL","PAY_0")
+B_model = training_model(dat = dat,
+                         model_name = "UCICreditCard", 
+                         target = "default.payment.next.month", 
+						x_list = x_list,
+                         occur_time = "apply_date", 
+                         obs_id = "ID", 
+						dat_test = NULL,
+                         preproc = FALSE,
+                         outlier_proc = FALSE,
+                         missing_proc = FALSE,
+                         feature_filter = NULL,
+                         algorithm = list("LR"),
+                         LR.params = lr_params(lasso = FALSE,
+                                               step_wise = FALSE,
+                                                 score_card = FALSE),
+                         breaks_list = NULL,
+                         parallel = FALSE, 
+                         cores_num = NULL,
+                         save_pmml = FALSE, 
+                         plot_show = FALSE,
+                         vars_plot = FALSE,
+                         model_path = tempdir(),
+                         seed = 46)
 }
 \seealso{
 \code{\link{train_test_split}},\code{\link{data_cleansing}}, \code{\link{feature_select_wrapper}},   \code{\link{lr_params}}, \code{\link{xgb_params}}, \code{\link{gbm_params}}, \code{\link{rf_params}},\code{\link{fast_high_cor_filter}},\code{\link{get_breaks_all}},\code{\link{lasso_filter}}, \code{\link{woe_trans_all}}, \code{\link{get_logistic_coef}}, \code{\link{score_transfer}},\code{\link{get_score_card}}, \code{\link{model_key_index}},\code{\link{ks_psi_plot}},\code{\link{get_plots}},\code{\link{ks_table_plot}}

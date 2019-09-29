@@ -17,7 +17,7 @@
 \usage{
 model_result_plot(train_pred, score, target, test_pred = NULL,
   gtitle = NULL, perf_dir_path = NULL, save_data = FALSE,
-  plot_show = TRUE, total = TRUE)
+  plot_show = TRUE, total = TRUE, g = 10)
 
 perf_table(train_pred, test_pred = NULL, target = NULL, score = NULL,
   g = 10, breaks = NULL, pos_flag = list("1", "1", "Bad", 1),
@@ -83,14 +83,14 @@ score_distribution_plot
 sub = cv_split(UCICreditCard, k = 30)[[1]]
 dat = UCICreditCard[sub,]
 dat = re_name(dat, "default.payment.next.month", "target")
-dat = data_cleansing(dat, target = "target", obs_id = "ID",
+x_list = c("PAY_0", "LIMIT_BAL", "PAY_AMT5", "PAY_3", "PAY_2")
+dat = data_cleansing(dat, target = "target", obs_id = "ID",x_list = x_list,
 occur_time = "apply_date", miss_values = list("", -1))
 dat = process_nas(dat,default_miss = TRUE)
 train_test <- train_test_split(dat, split_type = "OOT", prop = 0.7,
                                 occur_time = "apply_date")
 dat_train = train_test$train
 dat_test = train_test$test
-x_list = c("PAY_0", "LIMIT_BAL", "PAY_AMT5", "PAY_3", "PAY_2")
 Formula = as.formula(paste("target", paste(x_list, collapse = ' + '), sep = ' ~ '))
 set.seed(46)
 lr_model = glm(Formula, data = dat_train[, c("target", x_list)], family = binomial(logit))
@@ -101,9 +101,9 @@ dat_test$pred_LR = round(predict(lr_model, dat_test[, x_list], type = "response"
 perf_table(train_pred = dat_train, test_pred = dat_test, target = "target", score = "pred_LR")
 ks_plot(train_pred = dat_train, test_pred = dat_test, target = "target", score = "pred_LR")
 roc_plot(train_pred = dat_train, test_pred = dat_test, target = "target", score = "pred_LR")
-lift_plot(train_pred = dat_train, test_pred = dat_test, target = "target", score = "pred_LR")
-score_distribution_plot(train_pred = dat_train, test_pred = dat_test,
-target = "target", score = "pred_LR")
-model_result_plot(train_pred = dat_train, test_pred = dat_test, 
-target = "target", score = "pred_LR")
+#lift_plot(train_pred = dat_train, test_pred = dat_test, target = "target", score = "pred_LR")
+#score_distribution_plot(train_pred = dat_train, test_pred = dat_test,
+#target = "target", score = "pred_LR")
+#model_result_plot(train_pred = dat_train, test_pred = dat_test,
+#target = "target", score = "pred_LR")
 }

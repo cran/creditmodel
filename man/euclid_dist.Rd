@@ -4,14 +4,14 @@
 \alias{euclid_dist}
 \title{euclid_dist}
 \usage{
-euclid_dist(x, y, margin = 1)
+euclid_dist(x, y, cos_margin = 1)
 }
 \arguments{
 \item{x}{A list}
 
 \item{y}{A list}
 
-\item{margin}{rows or cols}
+\item{cos_margin}{rows or cols}
 }
 \description{
 This function is not intended to be used by end user.

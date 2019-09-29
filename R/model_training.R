@@ -12,11 +12,14 @@
 #' @param ex_cols Names of excluded variables. Regular expressions can also be used to match variable names. Default is NULL.
 #' @param prop Percentage of train-data after the partition. Default: 0.7.
 #' @param obs_id  The name of ID of observations or key variable of data. Default is NULL.
-#' @param miss_values  Other extreme value might be used to represent missing values, e.g: -9999, -9998. These miss_values will be encoded to -1 or "Missing".
-#' @param preproc Logical. Preprocess data. Default is TRUE
+#' @param preproc Logical. Preprocess data. Default is TRUE.
 #' @param outlier_proc Logical. If TRUE,  Outliers processing using Kmeans and Local Outlier Factor. Default is TRUE
 #' @param missing_proc Logical. If TRUE, missing value analysis and process missing value by knn imputation or central impulation or random imputation. Default is TRUE
+#' @param miss_values  Other extreme value might be used to represent missing values, e.g: -9999, -9998. These miss_values will be encoded to -1 or "Missing".
 #' @param one_hot  Logical. If TRUE, one-hot_encoding  of category variables. Default is FASLE.
+#' @param trans_log  Logical, Logarithmic transformation. Default is FALSE.
+#' @param low_var  Logical, delete low variance variables or not. Default is TRUE.
+#' @param merge_cat merge categories of character variables that  is more than m.
 #' @param feature_filter  Parameters for selecting important and stable features.See details at: \code{\link{feature_select_wrapper}}
 #' @param algorithm  Algorithms for training a model. list("LR", "XGB", "GBDT", "RF") are available.
 #' @param LR.params  Parameters of logistic regression & scorecard. See details at :  \code{\link{lr_params}}.
@@ -24,7 +27,7 @@
 #' @param GBM.params Parameters of GBM. See details at :  \code{\link{gbm_params}}.
 #' @param RF.params  Parameters of Random Forest. See details at :  \code{\link{rf_params}}.
 #' @param breaks_list A table containing a list of splitting points for each independent variable. Default is NULL.
-#' @param parallel  Default is FALSE
+#' @param parallel  Default is FALSE.
 #' @param cores_num The number of CPU cores to use.
 #' @param save_pmml Logical, save model in PMML format. Default is TRUE.
 #' @param vars_plot Logical, if TRUE, plot distribution ,correlation or partial dependence of model input variables . Default is TRUE.
@@ -36,53 +39,66 @@
 #' @examples
 #' sub = cv_split(UCICreditCard, k = 60)[[1]]
 #' dat = UCICreditCard[sub,]
-#' dat = re_name(dat, "default.payment.next.month", "target")
-#' dat = data_cleansing(dat, target = "target", obs_id = "ID",
-#' occur_time = "apply_date", miss_values = list("", -1, -2))
-#' train_test <- train_test_split(dat, split_type = "OOT", prop = 0.7,
-#'                                 occur_time = "apply_date")
-#' dat_train = train_test$train
-#' dat_test = train_test$test
-#' x_list = c("PAY_0", "LIMIT_BAL", "PAY_AMT5")
-#' B_model = training_model(dat = dat_train,
-#' model_name = "UCICreditCard", target = "target", x_list = x_list,
-#' occur_time = "apply_date", obs_id = "ID", dat_test = dat_test,
-#'                            preproc = FALSE,
-#'                            feature_filter = NULL,
-#'                            algorithm = list("LR"),
-#'                            LR.params = lr_params(lasso = FALSE,
-#'                            step_wise = FALSE),
-#'                            breaks_list = NULL,
-#'                            parallel = FALSE, cores_num = NULL,
-#'                            save_pmml = FALSE, plot_show = FALSE,
-#'                            vars_plot = FALSE,
-#'                            model_path = tempdir(),
-#'                            seed = 46)
+#' x_list = c("LIMIT_BAL","PAY_0")
+#' B_model = training_model(dat = dat,
+#'                          model_name = "UCICreditCard", 
+#'                          target = "default.payment.next.month", 
+#'							x_list = x_list,
+#'                          occur_time = "apply_date", 
+#'                          obs_id = "ID", 
+#'							dat_test = NULL,
+#'                          preproc = FALSE,
+#'                          outlier_proc = FALSE,
+#'                          missing_proc = FALSE,
+#'                          feature_filter = NULL,
+#'                          algorithm = list("LR"),
+#'                          LR.params = lr_params(lasso = FALSE,
+#'                                                step_wise = FALSE,
+#'                                                  score_card = FALSE),
+#'                          breaks_list = NULL,
+#'                          parallel = FALSE, 
+#'                          cores_num = NULL,
+#'                          save_pmml = FALSE, 
+#'                          plot_show = FALSE,
+#'                          vars_plot = FALSE,
+#'                          model_path = tempdir(),
+#'                          seed = 46)
 #' @import ggplot2
-#' @importFrom gridExtra arrangeGrob
 #' @importFrom foreach foreach
 #' @importFrom pdp partial
+#' @importFrom grid gTree
 #' @importFrom gbm gbm gbm.perf
 #' @importFrom xgboost xgb.importance xgb.train xgb.DMatrix xgb.dump xgb.save xgb.cv getinfo xgb.load
 #' @importFrom dplyr group_by mutate summarize  summarise n  count %>% filter  left_join distinct
 #' @importFrom data.table fwrite fread dcast melt
 #' @importFrom randomForest randomForest tuneRF combine
-#' @importFrom XML saveXML
-#' @importFrom pmml pmml
 #' @importFrom glmnet cv.glmnet glmnet
 #' @importFrom grDevices dev.print png rgb
 #' @importFrom graphics par plot text
 #' @importFrom stats  ar as.formula binomial chisq.test coef complete.cases cor cov glm  kmeans median  na.omit  na.pass predict reorder runif sd ts
 #' @importFrom utils  capture.output  data  install.packages  installed.packages
+
 #' @importFrom cli cat_rule cat_line cat_bullet
 #' @export
 
-training_model <- function(model_name = "mymodel", dat, dat_test = NULL,
-                           target = NULL, occur_time = NULL, obs_id = NULL,
-                           x_list = NULL, ex_cols = NULL,
-                           pos_flag = NULL, prop = 0.7,
-                           preproc = TRUE, one_hot = FALSE, miss_values = NULL,
-                           outlier_proc = TRUE, missing_proc = TRUE,
+training_model <- function(model_name = "mymodel",
+                           dat, 
+                           dat_test = NULL,
+                           target = NULL, 
+						   occur_time = NULL, 
+						   obs_id = NULL,
+                           x_list = NULL, 
+						   ex_cols = NULL,
+                           pos_flag = NULL, 
+						   prop = 0.7,
+                           preproc = TRUE, 
+						   low_var = TRUE,
+						   merge_cat = TRUE,
+						   one_hot = FALSE,
+						   trans_log = FALSE,  
+                           outlier_proc = TRUE, 
+						   missing_proc = TRUE,
+						   miss_values = NULL,
                            feature_filter = list(filter = c("IV", "PSI", "COR", "XGB"),
                                                  iv_cp = 0.02, psi_cp = 0.1, xgb_cp = 0,
                                                  cv_folds = 1, hopper = FALSE),
@@ -161,6 +177,9 @@ training_model <- function(model_name = "mymodel", dat, dat_test = NULL,
                         dat_train = dat, dat_test = dat_test,
                         ex_cols = c(target, obs_id, occur_time, ex_cols))
   }
+    if (!is.null(x_list)) {
+        dat = dat[unique(c(obs_id, target, occur_time, x_list))]
+    }
 
 
   if (preproc) {
@@ -168,21 +187,42 @@ training_model <- function(model_name = "mymodel", dat, dat_test = NULL,
     dat = data_cleansing(dat = dat, x_list = x_list,
                          target = target, obs_id = obs_id, occur_time = occur_time,
                          ex_cols = ex_cols,outlier_proc = FALSE, missing_proc = FALSE,
-                         miss_values = miss_values, one_hot = one_hot,
-                         low_var = TRUE, parallel = parallel, note = TRUE,
+                         miss_values = miss_values, 
+                         low_var = low_var,merge_cat = merge_cat, parallel = parallel, note = TRUE,
                          save_data = TRUE, dir_path = data_dir_path, file_name = NULL)
-
-    x_list = get_x_list(x_list = x_list,dat_train = dat, note = FALSE,
-	                  ex_cols = c(target, obs_id, occur_time, ex_cols))
-  }
-  char_x_list = get_names(dat = dat[x_list],
+   }
+   char_x_list = get_names(dat = dat[x_list],
                           types = c('factor', 'character'),
                           ex_cols = c(obs_id, target, occur_time, ex_cols),
                           get_ex = FALSE)
-  num_x_list = get_names(dat = dat[x_list],
+   num_x_list = get_names(dat = dat[x_list],
                          types = c('numeric', 'integer', 'double','integer64'),
                          ex_cols = c(obs_id, target, occur_time, ex_cols),
                          get_ex = FALSE)
+						 
+						 
+    if(trans_log & length(num_x_list) > 0 & !is.null(target)){
+		dat = log_trans(dat = dat, target = target, x_list = num_x_list,cor_dif = 0.01,
+		ex_cols = ex_cols, note = TRUE)
+		num_x_list = get_names(dat = dat,
+                               types = c('numeric', 'integer', 'double','integer64'),
+                               ex_cols = c(obs_id, target, occur_time, ex_cols),
+                               get_ex = FALSE)
+		
+	}
+
+	if (one_hot & length(char_x_list) > 0){
+      dat = one_hot_encoding(dat = dat, cat_vars = char_x_list, na_act = FALSE, note = TRUE)
+      char_x_list = get_names(dat = dat,
+                          types = c('factor', 'character'),
+                          ex_cols = c(obs_id, target, occur_time, ex_cols),
+                          get_ex = FALSE)
+      num_x_list = get_names(dat = dat,
+                         types = c('numeric', 'integer', 'double','integer64'),
+                         ex_cols = c(obs_id, target, occur_time, ex_cols),
+                         get_ex = FALSE)
+	}
+	x_list = c(char_x_list,num_x_list)
   #train test spliting
 
   if (is.null(dat_test)) {
@@ -205,15 +245,30 @@ training_model <- function(model_name = "mymodel", dat, dat_test = NULL,
   if (outlier_proc) {
     dat_train = process_outliers(dat = dat_train, target = target, 
                                  x_list = num_x_list, ex_cols = c(obs_id, occur_time, target),
-                                 parallel = parallel, note = TRUE, save_data = TRUE, file_name = NULL,dir_path = data_dir_path)
+                                 parallel = parallel, note = TRUE, save_data = TRUE, 
+								 file_name = NULL,dir_path = data_dir_path)
   }
   if (missing_proc) {
     dat_train = process_nas(dat = dat_train, class_var = FALSE, x_list = x_list,
-                            ex_cols = c(obs_id, occur_time, target),miss_values = list(-1,"missing"),
+                            ex_cols = c(obs_id, occur_time, target),
+							miss_values = unique(append(miss_values,list(-1,"Missing"))),
                             default_miss = FALSE, parallel = parallel,
-                            method = "median", note = TRUE, save_data = TRUE, file_name = NULL, dir_path = data_dir_path)
+                            method = "median", note = TRUE, save_data = TRUE, 
+							file_name = NULL, dir_path = data_dir_path)
+  }else{
+    dat_train = process_nas(dat = dat_train, class_var = FALSE, x_list = x_list,
+                            ex_cols = c(obs_id, occur_time, target),
+							miss_values = unique(append(miss_values,list(-1,"Missing"))),
+                            default_miss = TRUE, parallel = parallel,
+                            method = "median", note = FALSE, save_data = FALSE, 
+							file_name = NULL, dir_path = data_dir_path)	
   }
-
+   dat_test = process_nas(dat = dat_test, class_var = FALSE, x_list = x_list,
+                            ex_cols = c(obs_id, occur_time, target),
+							miss_values = unique(append(miss_values,list(-1,"Missing"))),
+                            default_miss = TRUE, parallel = parallel,
+                            method = "median", note = FALSE, save_data = FALSE, 
+							file_name = NULL, dir_path = data_dir_path)					
 
 
   if (!is.null(feature_filter)) {
@@ -283,7 +338,7 @@ training_model <- function(model_name = "mymodel", dat, dat_test = NULL,
       iv_i= thresholds$iv_i
       psi_i = thresholds$psi_i
       cos_i = thresholds$cos_i
-      eval = ifelse(!is.null(LR.params[["eval"]]), LR.params[["eval"]], "ks")
+      f_eval = ifelse(!is.null(LR.params[["f_eval"]]), LR.params[["f_eval"]], "ks")
       method = ifelse(!is.null(LR.params[["method"]]), LR.params[["method"]], "grid_search")
       best_lambda = ifelse(!is.null(LR.params[["best_lambda"]]), LR.params[["best_lambda"]], "lambda.ks")
       tree_control = if (!is.null(LR.params["tree_control"])) {
@@ -308,13 +363,14 @@ training_model <- function(model_name = "mymodel", dat, dat_test = NULL,
 
       if(any(sapply(tree_control,length) >1 ,sapply(bins_control,length)>1 ,sapply(thresholds,length)>1)){
         cat_rule("Searching optimal binning & feature selection parameters", col = love_color("light_cyan"))
-        lr.params.search = lr_params_search(method = method,dat_train = dat_train,target = target, iters = iters,x_list = x_list,
+        lr.params.search = lr_params_search(method = method,dat_train = dat_train,target = target,
+                                     		iters = iters,x_list = x_list,
                                             occur_time = occur_time,
                                             tree_control = tree_control,
                                             bins_control = bins_control,
                                             thresholds = thresholds,
                                             lasso = lasso,step_wise = step_wise,
-                                            eval = eval)
+                                            f_eval = f_eval)
         bins_control = lr.params.search$bins_control
         tree_control = lr.params.search$tree_control
         thresholds= lr.params.search$thresholds
@@ -388,7 +444,7 @@ training_model <- function(model_name = "mymodel", dat, dat_test = NULL,
                                          com_list = iv_psi_list,
                                          ex_cols = c(target, occur_time, obs_id, ex_cols),
                                          p = cor_p,
-                                         note = TRUE,
+                                         note = FALSE,
                                          save_data = TRUE,
                                          file_name = model_name,
                                          dir_path = LR_var_dir_path)
@@ -407,7 +463,7 @@ training_model <- function(model_name = "mymodel", dat, dat_test = NULL,
                                ex_cols = c(target, occur_time, obs_id),
                                bins_table = bins_table,
                                breaks_list = breaks_list,
-                               note = TRUE, woe_name = FALSE, parallel = parallel,
+                               note = FALSE, woe_name = FALSE, parallel = parallel,
                                save_data = TRUE, file_name = "lr_test",
                                dir_path = LR_data_dir_path)
 
@@ -420,7 +476,7 @@ training_model <- function(model_name = "mymodel", dat, dat_test = NULL,
                                    ex_cols = c(target, occur_time, obs_id, ex_cols),
                                    sim_sign = "negtive",
                                    best_lambda = best_lambda,
-                                   plot.it = plot_show, seed = seed,
+                                   plot.it = FALSE, seed = seed,
                                    save_data = TRUE, file_name = "LR", dir_path = LR_var_dir_path)
       }
       save_dt(select_vars, as_list = TRUE, row_names = FALSE, note = TRUE,
@@ -480,7 +536,7 @@ training_model <- function(model_name = "mymodel", dat, dat_test = NULL,
                   x_list = lr_vars, target = target,
                   ex_cols = ex_cols,
                   breaks_list = breaks_list,
-                  save_data = TRUE, parallel = parallel, plot_show = plot_show,
+                  save_data = TRUE, parallel = parallel, plot_show = FALSE,
                   g_width = 8, dir_path = LR_var_dir_path)
       }
 
@@ -488,7 +544,7 @@ training_model <- function(model_name = "mymodel", dat, dat_test = NULL,
         # standard socre card
         cat_rule("Generating standard socrecard", col = love_color("light_cyan"))
 
-        LR_score_card <- get_score_card(lg_model = lr_model_new,
+        LR_score_card = get_score_card(lg_model = lr_model_new,
                                         bins_table, target = target,
                                         file_name =model_name,
                                         dir_path = LR_perf_dir_path,
@@ -523,12 +579,12 @@ training_model <- function(model_name = "mymodel", dat, dat_test = NULL,
       if (score_card) {
         cat_line("-- Producing plots that characterize performance of scorecard", col = love_color("deep_green"))
         perf_tb = model_result_plot(train_pred = train_score, test_pred = test_score, target = target,
-                                    score = "score_LR",gtitle = paste(model_name,".LR"),perf_dir_path = LR_perf_dir_path,
+                                    score = "score_LR",gtitle = paste0(model_name,".LR"),perf_dir_path = LR_perf_dir_path,
                                     save_data = TRUE,plot_show = plot_show,total = TRUE)
       }else{
         cat_line("-- Producing plots that characterize the performance of Logistic Regression", col = love_color("deep_green"))
         perf_tb = model_result_plot(train_pred = train_pred, test_pred = test_pred, target = target,
-                                    score = "prob_LR", gtitle = paste(model_name,".LR"),perf_dir_path = LR_perf_dir_path,
+                                    score = "prob_LR", gtitle = paste0(model_name,".LR"),perf_dir_path = LR_perf_dir_path,
                                     save_data = TRUE,plot_show = plot_show,total = TRUE)
       }
 
@@ -540,18 +596,21 @@ training_model <- function(model_name = "mymodel", dat, dat_test = NULL,
               append = TRUE, note = TRUE)
 
       #transfer to pmml
-      if (save_pmml) {
+      if (save_pmml){	  
         cat_rule("Converting LR model to pmml", col = love_color("light_cyan"))
-
-        model_pmml <- pmml(lr_model_new,
+        if (!requireNamespace("pmml", quietly = TRUE)&!requireNamespace("XML", quietly = TRUE) ){
+        cat_rule("Package `pmml`,`XML` needed for PMML transfering to work. Please install it.", col = love_color("deep_red"))
+        }else{
+        model_pmml <- pmml::pmml(lr_model_new,
                            model.name = "Logistic_Regression_Model",
                            description = "Logistic Regression Model",
                            copyright = NULL,
                            transforms = NULL,
                            unknownValue = NULL,
                            weights = NULL)
-        saveXML(model_pmml, file = paste0(LR_model_dir_path, "/lr_model.pmml"))
+        XML::saveXML(model_pmml, file = paste0(LR_model_dir_path, "/lr_model.pmml"))
       }
+	 }
 
       save(lr_model_new, file = paste0(LR_model_dir_path, "/lg_model.RData")) #save model
       model_new = list(lr_model = lr_model_new)
@@ -594,8 +653,8 @@ training_model <- function(model_name = "mymodel", dat, dat_test = NULL,
                       XGB.params[["method"]], 'random_search')
       iters = ifelse(!is.null(XGB.params[["iters"]]),
                      XGB.params[["iters"]], 10)
-      eval = ifelse(!is.null(XGB.params[["eval"]]),
-                    XGB.params[["eval"]], 'auc')
+      f_eval = ifelse(!is.null(XGB.params[["f_eval"]]),
+                    XGB.params[["f_eval"]], 'auc')
       nthread = ifelse(!is.null(XGB.params[["nthread"]]),
                        XGB.params[["nthread"]], 2)
       nfold = ifelse(!is.null(XGB.params[["nfold"]]),
@@ -610,7 +669,7 @@ training_model <- function(model_name = "mymodel", dat, dat_test = NULL,
                                               nrounds = nrounds,
                                               early_stopping_rounds = early_stopping_rounds,
                                               params = params,
-                                              eval = eval, nfold = nfold, nthread = nthread)
+                                              f_eval = f_eval, nfold = nfold, nthread = nthread)
 
 
 
@@ -637,7 +696,7 @@ training_model <- function(model_name = "mymodel", dat, dat_test = NULL,
                              nthread = nthread,
                              nfold = nfold,
                              watchlist = watchlist,
-                             nrounds = nrounds, eval = eval,
+                             nrounds = nrounds, f_eval = f_eval,
                              early_stopping_rounds = early_stopping_rounds,
                              verbose = 1,
                              params = params)
@@ -645,7 +704,7 @@ training_model <- function(model_name = "mymodel", dat, dat_test = NULL,
       max_iter_index = train_iter$max_iter_index
       xgb_model_new = train_iter$xgb_model
 	  input_vars = data.frame(vars_order = 1:xgb_model_new$nfeatures,feature_names =  unlist(xgb_model_new$feature_names))
-	  save_dt(input_vars, file_name = paste(model_name,"XGB_input_vars",sep = "_"),
+	  save_dt(input_vars, file_name = paste(model_name,"XGB_input_vars",sep = "."),
               dir_path = XGB_model_dir_path, note = TRUE)
       # feature importance1111
       dat_names <- dimnames(x_train)[[2]]
@@ -674,7 +733,7 @@ training_model <- function(model_name = "mymodel", dat, dat_test = NULL,
       save_dt(test_pred, file_name = "XGB.test_prob", dir_path = XGB_pred_dir_path, note = TRUE)
       cat_line("-- Producing plots that characterize the performance of XGboost", col = love_color("deep_green"))
       perf_tb = model_result_plot(train_pred = train_pred, test_pred = test_pred, target = target,
-                                  score = "prob_XGB", gtitle = paste(model_name,".XGB"),perf_dir_path = XGB_perf_dir_path,
+                                  score = "prob_XGB", gtitle = paste0(model_name,".XGB"),perf_dir_path = XGB_perf_dir_path,
                                   save_data = TRUE,plot_show = plot_show,total = TRUE)
       key_index = model_key_index(perf_tb)
       params_key_index = data.frame(c(params), key_index)
@@ -684,11 +743,13 @@ training_model <- function(model_name = "mymodel", dat, dat_test = NULL,
 
       if (save_pmml) {
         cat_rule("Converting  XGboost model to pmml", col = love_color("light_cyan"))
-
+        if (!requireNamespace("pmml", quietly = TRUE)&!requireNamespace("XML", quietly = TRUE) ){
+        cat_rule("Package `pmml`,`XML` needed for PMML transfering to work. Please install it.", col = love_color("deep_red"))
+        }else{
         # save the tree information file
         xgb.dump(xgb_model_new, paste0(XGB_model_dir_path, "/xgb_model.dumped.trees"))
         # Export the model to PMML.
-        xgb_model_pmml = pmml(xgb_model_new,
+        xgb_model_pmml = pmml::pmml(xgb_model_new,
                               inputFeatureNames = x_list,
                               outputLabelName = target,
                               outputCategories = c(0, 1),
@@ -701,8 +762,9 @@ training_model <- function(model_name = "mymodel", dat, dat_test = NULL,
                               parentInvalidValueTreatment = "returnInvalid",
                               childInvalidValueTreatment = "asIs"
         )
-        saveXML(xgb_model_pmml, file = paste0(XGB_model_dir_path, "/xgb_model.pmml"))
-      }
+        XML::saveXML(xgb_model_pmml, file = paste0(XGB_model_dir_path, "/xgb_model.pmml"))
+       }
+	  }
       xgb.save(xgb_model_new, paste0(XGB_model_dir_path,paste0("/",model_name,"_xgb.model")))
       save(xgb_model_new, file = paste0(XGB_model_dir_path, "/xgb_model.RData")) #save model
       model_new = append(model_new, list(xgb_model = xgb_model_new), 1)
@@ -803,7 +865,7 @@ training_model <- function(model_name = "mymodel", dat, dat_test = NULL,
 
       cat_line("-- Producing plots that characterize the performance of GBM", col = love_color("deep_green"))
       perf_tb = model_result_plot(train_pred = train_pred, test_pred = test_pred, target = target,
-                                  score = "prob_GBM", gtitle = paste(model_name,".GBM"),perf_dir_path = GBM_perf_dir_path,
+                                  score = "prob_GBM", gtitle = paste0(model_name,".GBM"),perf_dir_path = GBM_perf_dir_path,
                                   save_data = TRUE,plot_show = plot_show,total = TRUE)
 
       key_index = model_key_index(perf_tb)
@@ -813,7 +875,10 @@ training_model <- function(model_name = "mymodel", dat, dat_test = NULL,
       if (save_pmml) {
 
         cat_rule("Converting  GBM model to pmml", col = love_color("light_cyan"))
-        gbm_model_pmml = pmml(gbm_model_new,
+        if (!requireNamespace("pmml", quietly = TRUE)&!requireNamespace("XML", quietly = TRUE) ){
+        cat_rule("Package `pmml`,`XML` needed for PMML transfering to work. Please install it.", col = love_color("deep_red"))
+        }else{
+        gbm_model_pmml = pmml::pmml(gbm_model_new,
                               model.name = "GBM_Model",
                               app.name = "R-PMML",
                               description = "Gradient Boosting Decision Tree Model",
@@ -823,8 +888,9 @@ training_model <- function(model_name = "mymodel", dat, dat_test = NULL,
                               parentInvalidValueTreatment = "returnInvalid",
                               childInvalidValueTreatment = "asIs"
         )
-        saveXML(gbm_model_pmml, file = paste0(GBM_model_dir_path, "/gbm_model.pmml"))
+        XML::saveXML(gbm_model_pmml, file = paste0(GBM_model_dir_path, "/gbm_model.pmml"))
       }
+	 }
       #save model
       save(gbm_model_new, file = paste0(GBM_model_dir_path, "/gbm_model.RData"))
       model_new = append(model_new, list(gbm_model = gbm_model_new), 1)
@@ -955,7 +1021,7 @@ training_model <- function(model_name = "mymodel", dat, dat_test = NULL,
       save_dt(test_pred, file_name = "RF.test_prob",dir_path = RF_pred_dir_path, note = TRUE)
       cat_line("-- Producing plots that characterize the performance of RandomForest", col = love_color("deep_green"))
       perf_tb = model_result_plot(train_pred = train_pred, test_pred = test_pred, target = target,
-                                  score = "prob_RF", gtitle = paste(model_name,".RF"),perf_dir_path = RF_perf_dir_path,
+                                  score = "prob_RF", gtitle = paste0(model_name,".RF"),perf_dir_path = RF_perf_dir_path,
                                   save_data = TRUE,plot_show = plot_show,total = TRUE)
       key_index = model_key_index(perf_tb)
       params_key_index = data.frame(c(RF.params), key_index)
@@ -966,7 +1032,10 @@ training_model <- function(model_name = "mymodel", dat, dat_test = NULL,
       if (save_pmml) {
 
         cat_rule("Converting  RandomForest model to pmml", col = love_color("light_cyan"))
-        rf_model_pmml = pmml(tRF,
+        if (!requireNamespace("pmml", quietly = TRUE)&!requireNamespace("XML", quietly = TRUE) ){
+        cat_rule("Package `pmml`,`XML` needed for PMML transfering to work. Please install it.", col = love_color("deep_red"))
+        }else{
+        rf_model_pmml = pmml::pmml(tRF,
                              model.name = "randomForest_Model",
                              app.name = "R-PMML",
                              description = "Random Forest Tree Model",
@@ -975,7 +1044,8 @@ training_model <- function(model_name = "mymodel", dat, dat_test = NULL,
                              unknownValue = NULL,
                              parentInvalidValueTreatment = "returnInvalid",
                              childInvalidValueTreatment = "asIs")
-        saveXML(rf_model_pmml, file = paste0(RF_model_dir_path, "/rf_model.pmml"))
+        XML::saveXML(rf_model_pmml, file = paste0(RF_model_dir_path, "/rf_model.pmml"))
+		}
       }
       save(rf_model_new, file = paste0(RF_model_dir_path, "/rf_model.RData")) #save model
       model_new = append(model_new, list(rf_model = rf_model_new), 1)
@@ -1012,7 +1082,7 @@ training_model <- function(model_name = "mymodel", dat, dat_test = NULL,
 #' }
 #' @param method Method of searching optimal parameters. "random_search","grid_search","local_search" are available.
 #' @param iters Number of iterations of "random_search" optimal parameters.
-#' @param eval 	Custimized evaluation function, "ks" & "auc" are available.
+#' @param f_eval 	Custimized evaluation function, "ks" & "auc" are available.
 #' @param ... Other parameters
 #' @return A list of parameters.
 #' @seealso  \code{\link{training_model}}, \code{\link{xgb_params}}, \code{\link{gbm_params}}, \code{\link{rf_params}}
@@ -1022,13 +1092,13 @@ lr_params = function(tree_control = list(p = 0.02, cp = 0.00000001, xval = 5, ma
                      bins_control = list(bins_num = 10, bins_pct = 0.05, b_chi = 0.02,
                                          b_odds = 0.1, b_psi = 0.03, b_or = 0.15,
                                          mono = 0.2, odds_psi = 0.15, kc = 1),
-                     eval = 'ks',best_lambda = "lambda.ks",method = "random_search",iters = 10,
+                     f_eval = 'ks',best_lambda = "lambda.ks",method = "random_search",iters = 10,
                      lasso = TRUE,step_wise = TRUE, score_card = TRUE, sp_values = NULL,forced_in = NULL, obsweight = c(1, 1),
                      thresholds = list(cor_p = 0.8,iv_i = 0.02,
                                        psi_i = 0.1,
                                        cos_i = 0.5), ...) {
   structure(list(tree_control = tree_control, bins_control = bins_control,
-                 eval = eval,best_lambda = best_lambda, method = method,iters= iters,
+                 f_eval = f_eval,best_lambda = best_lambda, method = method,iters= iters,
                  sp_values = sp_values,
                  forced_in = forced_in, obsweight = obsweight, lasso = lasso,
                  step_wise = step_wise, score_card = score_card,
@@ -1067,7 +1137,7 @@ lr_params_search = function( method = "random_search",dat_train, target,
                                                cos_i = 0.6),
                              step_wise = FALSE,
                              lasso = FALSE,
-                             eval = 'ks') {
+                             f_eval = 'ks') {
 
 
   if (length(method) > 1) stop("only one method can be provided to select best parameters.\n")
@@ -1077,7 +1147,7 @@ lr_params_search = function( method = "random_search",dat_train, target,
     dat_train = train_test$train
     dat_test = train_test$test
   }
-  if(eval == 'ks'){
+  if(f_eval == 'ks'){
     best_lambda ='lambda.ks'
   }else{
     best_lambda ='lambda.auc'
@@ -1737,7 +1807,7 @@ train_lr = function(dat_train,dat_test = NULL, target,x_list= NULL, occur_time =
 #' @param nrounds Max number of boosting iterations.
 #' @param params  List of contains parameters of xgboost. The complete list of parameters is available at: \url{ http://xgboost.readthedocs.io/en/latest/parameter.html}
 #' @param early_stopping_rounds  If NULL, the early stopping function is not triggered. If set to an integer k, training with a validation set will stop if the performance doesn't improve for k rounds.
-#' @param eval 	Custimized evaluation function,"ks" & "auc" are available.
+#' @param f_eval 	Custimized evaluation function,"ks" & "auc" are available.
 #' @param nfold Number of the cross validation of xgboost
 #' @param nthread Number of threads
 #' @param method Method of searching optimal parameters."random_search","grid_search","local_search" are available.
@@ -1752,9 +1822,9 @@ xgb_params = function(nrounds = 1000,
                       params = list(max.depth = 6, eta = 0.1, gamma = 0,min_child_weight = 1,
                                     subsample = 1,colsample_bytree = 1,
                                     max_delta_step = 0),
-                      early_stopping_rounds = 100, method = 'random_search', iters = 10, eval = "auc",
+                      early_stopping_rounds = 100, method = 'random_search', iters = 10, f_eval = "auc",
                       nfold = 1, nthread = 2,...) {
-  structure(list(nrounds = nrounds, params = params,eval = eval, method = method,iters = iters,
+  structure(list(nrounds = nrounds, params = params,f_eval = f_eval, method = method,iters = iters,
                  nfold = nfold, nthread = nthread,
                  early_stopping_rounds = early_stopping_rounds))
 }
@@ -1780,7 +1850,7 @@ xgb_params_search = function(dat_train, target,dat_test = NULL, x_list = NULL, p
                                            subsample = 1,
                                            colsample_bytree = 1,
                                            max_delta_step = 0),
-                             eval = 'auc', nfold = 1, nthread = 2,
+                             f_eval = 'auc', nfold = 1, nthread = 2,
                              ...) {
 
 
@@ -1825,7 +1895,7 @@ xgb_params_search = function(dat_train, target,dat_test = NULL, x_list = NULL, p
                                nthread = nthread,
                                nfold = nfold,
                                watchlist = watchlist,
-                               nrounds = nrounds, eval = eval,
+                               nrounds = nrounds, f_eval = f_eval,
                                early_stopping_rounds = early_stopping_rounds,
                                verbose = verbose,
                                params = params)
@@ -1880,7 +1950,7 @@ xgb_params_search = function(dat_train, target,dat_test = NULL, x_list = NULL, p
                                              nthread = nthread,
                                              nfold = nfold,
                                              watchlist = watchlist,
-                                             nrounds = nrounds, eval = eval,
+                                             nrounds = nrounds, f_eval = f_eval,
                                              early_stopping_rounds = early_stopping_rounds,
                                              verbose = verbose,
                                              params = params)
@@ -1941,7 +2011,7 @@ xgb_params_search = function(dat_train, target,dat_test = NULL, x_list = NULL, p
                                    nthread = nthread,
                                    nfold = nfold,
                                    watchlist = watchlist,
-                                   nrounds = nrounds, eval = eval,
+                                   nrounds = nrounds, f_eval = f_eval,
                                    early_stopping_rounds = early_stopping_rounds,
                                    verbose = verbose,
                                    params = params)
@@ -1974,7 +2044,7 @@ xgb_params_search = function(dat_train, target,dat_test = NULL, x_list = NULL, p
                                      nthread = nthread,
                                      nfold = nfold,
                                      watchlist = watchlist,
-                                     nrounds = nrounds, eval = eval,
+                                     nrounds = nrounds, f_eval = f_eval,
                                      early_stopping_rounds = early_stopping_rounds,
                                      verbose = verbose,
                                      params = params)
@@ -2008,7 +2078,7 @@ xgb_params_search = function(dat_train, target,dat_test = NULL, x_list = NULL, p
                                      nthread = nthread,
                                      nfold = nfold,
                                      watchlist = watchlist,
-                                     nrounds = nrounds, eval = eval,
+                                     nrounds = nrounds, f_eval = f_eval,
                                      early_stopping_rounds = early_stopping_rounds,
                                      verbose = verbose,
                                      params = params)
@@ -2042,7 +2112,7 @@ xgb_params_search = function(dat_train, target,dat_test = NULL, x_list = NULL, p
                                      nthread = nthread,
                                      nfold = nfold,
                                      watchlist = watchlist,
-                                     nrounds = nrounds, eval = eval,
+                                     nrounds = nrounds, f_eval = f_eval,
                                      early_stopping_rounds = early_stopping_rounds,
                                      verbose = verbose,
                                      params = params)
@@ -2077,7 +2147,7 @@ xgb_params_search = function(dat_train, target,dat_test = NULL, x_list = NULL, p
                                      nthread = nthread,
                                      nfold = nfold,
                                      watchlist = watchlist,
-                                     nrounds = nrounds, eval = eval,
+                                     nrounds = nrounds, f_eval = f_eval,
                                      early_stopping_rounds = early_stopping_rounds,
                                      verbose = verbose,
                                      params = params)
@@ -2111,7 +2181,7 @@ xgb_params_search = function(dat_train, target,dat_test = NULL, x_list = NULL, p
                                      nthread = nthread,
                                      nfold = nfold,
                                      watchlist = watchlist,
-                                     nrounds = nrounds, eval = eval,
+                                     nrounds = nrounds, f_eval = f_eval,
                                      early_stopping_rounds = early_stopping_rounds,
                                      verbose = verbose,
                                      params = params)
@@ -2145,7 +2215,7 @@ xgb_params_search = function(dat_train, target,dat_test = NULL, x_list = NULL, p
                                      nthread = nthread,
                                      nfold = nfold,
                                      watchlist = watchlist,
-                                     nrounds = nrounds, eval = eval,
+                                     nrounds = nrounds, f_eval = f_eval,
                                      early_stopping_rounds = early_stopping_rounds,
                                      verbose = verbose,
                                      params = params)
@@ -2197,7 +2267,7 @@ xgb_params_search = function(dat_train, target,dat_test = NULL, x_list = NULL, p
                            nthread = nthread,
                            nfold = nfold,
                            watchlist = watchlist,
-                           nrounds = nrounds, eval = eval,
+                           nrounds = nrounds, f_eval = f_eval,
                            early_stopping_rounds = early_stopping_rounds,
                            verbose = verbose,
                            params = params)
@@ -2290,7 +2360,7 @@ xgb_data = function(dat_train, target, dat_test = NULL,x_list = NULL,prop = 0.7,
 #' @param nrounds Max number of boosting iterations.
 #' @param params  List of contains parameters of xgboost. The complete list of parameters is available at: \url{ http://xgboost.readthedocs.io/en/latest/parameter.html}
 #' @param early_stopping_rounds  If NULL, the early stopping function is not triggered. If set to an integer k, training with a validation set will stop if the performance doesn't improve for k rounds.
-#' @param eval 	Custimized evaluation function,"ks" & "auc" are available.
+#' @param f_eval 	Custimized evaluation function,"ks" & "auc" are available.
 #' @param nfold Number of the cross validation of xgboost
 #' @param nthread Number of threads
 #' @param dtrain train-data of xgb.DMatrix datasets.
@@ -2305,7 +2375,7 @@ train_xgb = function(seed_number = 1234, dtrain,
                      nthread = 2,
                      nfold = 1,
                      watchlist = NULL,
-                     nrounds = 100, eval = 'ks',
+                     nrounds = 100, f_eval = 'ks',
                      early_stopping_rounds = 10,
                      verbose = 0,
                      params = NULL,...) {
@@ -2331,7 +2401,7 @@ train_xgb = function(seed_number = 1234, dtrain,
     lift = lift_value(target = labels, prob = preds)
     return(list(metric = "lift", value = round(lift, 6)))
   }
-  if (eval == 'ks') {
+  if (f_eval == 'ks') {
   feval = eval_ks
   if (!is.null(nfold) && nfold > 1) {
     eval_log = c('train_ks_mean','test_ks_mean')
@@ -2339,7 +2409,7 @@ train_xgb = function(seed_number = 1234, dtrain,
     eval_log = c("train_ks","eval_ks")
   }
   } else {
-  if(eval == 'auc'){
+  if(f_eval == 'auc'){
     feval = eval_auc
     if (!is.null(nfold) && nfold > 1) {
       eval_log = c('train_auc_mean','test_auc_mean')
@@ -2347,7 +2417,7 @@ train_xgb = function(seed_number = 1234, dtrain,
       eval_log = c("train_auc","eval_auc")
     }
   }else{
-    if(eval == 'tnr'){
+    if(f_eval == 'tnr'){
       feval = eval_tnr
       if (!is.null(nfold) && nfold > 1) {
         eval_log = c('train_tnr_mean','test_tnr_mean')
@@ -2355,7 +2425,7 @@ train_xgb = function(seed_number = 1234, dtrain,
         eval_log = c("train_tnr","eval_tnr")
       }
     }else{
-	   if(eval == 'lift'){
+	   if(f_eval == 'lift'){
       feval = eval_lift
       if (!is.null(nfold) && nfold > 1) {
         eval_log = c('train_lift_mean','test_lift_mean')
@@ -2364,11 +2434,11 @@ train_xgb = function(seed_number = 1234, dtrain,
       }
     }else{
 	
-      feval = eval
+      feval = f_eval
       if (!is.null(nfold) && nfold > 1) {
         eval_log = c('train_mean','test_mean')
       } else {
-        eval_log = c("train","eval")
+        eval_log = c("train","f_eval")
       }
     }
 	}

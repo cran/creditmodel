@@ -8,15 +8,15 @@
 xgb_params(nrounds = 1000, params = list(max.depth = 6, eta = 0.1,
   gamma = 0, min_child_weight = 1, subsample = 1, colsample_bytree = 1,
   max_delta_step = 0), early_stopping_rounds = 100,
-  method = "random_search", iters = 10, eval = "auc", nfold = 1,
+  method = "random_search", iters = 10, f_eval = "auc", nfold = 1,
   nthread = 2, ...)
 
 xgb_params_search(dat_train, target, dat_test = NULL, x_list = NULL,
   prop = 0.7, occur_time = NULL, method = "random_search",
   iters = 10, nrounds = 100, early_stopping_rounds = 10,
   params = list(max.depth = 6, eta = 0, gamma = 0, min_child_weight = 1,
-  subsample = 1, colsample_bytree = 1, max_delta_step = 0), eval = "auc",
-  nfold = 1, nthread = 2, ...)
+  subsample = 1, colsample_bytree = 1, max_delta_step = 0),
+  f_eval = "auc", nfold = 1, nthread = 2, ...)
 }
 \arguments{
 \item{nrounds}{Max number of boosting iterations.}
@@ -29,7 +29,7 @@ xgb_params_search(dat_train, target, dat_test = NULL, x_list = NULL,
 
 \item{iters}{Number of iterations of "random_search" optimal parameters.}
 
-\item{eval}{Custimized evaluation function,"ks" & "auc" are available.}
+\item{f_eval}{Custimized evaluation function,"ks" & "auc" are available.}
 
 \item{nfold}{Number of the cross validation of xgboost}
 

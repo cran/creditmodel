@@ -4,9 +4,11 @@
 \alias{require_packages}
 \title{Packages required and intallment}
 \usage{
-require_packages(pkg)
+require_packages(..., pkg = as.character(substitute(list(...))))
 }
 \arguments{
+\item{...}{Packages need loaded}
+
 \item{pkg}{A list or vector of names of required packages.}
 }
 \value{
@@ -17,6 +19,6 @@ packages installed and library.
 }
 \examples{
 \dontrun{
-require_packages(c("dplyr","ggplot2"))
+require_packages(data.table, ggplot2, dplyr)
 }
 }

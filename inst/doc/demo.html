@@ -11,8 +11,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
 
+<meta name="date" content="2019-09-28" />
 
-<title>demo.utf8</title>
+<title>Introduction to creditmodel</title>
 
 
 
@@ -213,46 +214,80 @@ code > span.fu { color: #900; font-weight: bold; }  code > span.er { color: #a61
 
 
 
+<h1 class="title toc-ignore">Introduction to creditmodel</h1>
+<h4 class="date">2019-09-28</h4>
 
 
 
-<hr />
-<p>title: “Automated Model Development Process”</p>
-<p>author: “Fan Dongping”</p>
-<p>date: “2019-09-13”</p>
-<p>output: rmarkdown::html_vignette</p>
-<p>vignette: &gt;</p>
-<p>%</p>
-<p>%</p>
-<p>%</p>
-<hr />
-<pre class="{r"><code>   library(creditmodel)
-   if (!dir.exists(&quot;c:/test_model&quot;)) dir.create(&quot;c:/test_model&quot;)
-   setwd(&quot;c:/test_model&quot;)
-   sub = cv_split(UCICreditCard, k = 3)[[1]]
-   dat = UCICreditCard[sub,]
-   dat = re_name(dat, &quot;default.payment.next.month&quot;, &quot;target&quot;)
-   dat = data_cleansing(dat, target = &quot;target&quot;, obs_id = &quot;ID&quot;,
-                     occur_time = &quot;apply_date&quot;, miss_values = list(&quot;&quot;, -1, -2))
-    train_test &lt;- train_test_split(dat, split_type = &quot;OOT&quot;, prop = 0.7,occur_time = &quot;apply_date&quot;)
-    dat_train = train_test$train
-    dat_test = train_test$test
-    x_list = c(&quot;PAY_0&quot;, &quot;LIMIT_BAL&quot;, &quot;PAY_AMT5&quot;, &quot;PAY_3&quot;)
-    B_model = training_model(dat = dat,
-                         model_name = &quot;UCICreditCard&quot;, target = &quot;target&quot;, x_list = x_list,
-                         occur_time = &quot;apply_date&quot;, obs_id = &quot;ID&quot;, dat_test = dat_test,
-                         preproc = FALSE,
-                         feature_filter = NULL,
-                         algorithm = list(&quot;RF&quot;,&quot;LR&quot;,&quot;XGB&quot;,&quot;GBM&quot;),
-                         LR.params = lr_params(lasso = TRUE,
-                                               step_wise = TRUE, vars_plot = TRUE),
-                         XGB.params = xgb_params(),
+<p>The <strong>creditmodel</strong> package provides a highly efficient R tool suite for Credit Modeling Analysis and Visualization. Contains infrastructure functionalities such as data exploration and preparation, missing values treatment, outliers treatment, variable derivation, variable selection, dimensionality reduction, grid search for hyper parameters, data mining and visualization, model evaluation, strategy analysis etc. creditmodel can facilitate reliable predictive models (such as xgboost or scorecard) and data analysis on a standard laptop computer within minutes. This introductory vignette provides a brief glance at the training_model module of the package.</p>
+<div id="quick-modeling" class="section level3">
+<h3>Quick Modeling</h3>
+<p>When I first wrote the creditmodel package, its primary purpose was to provide a tool to make the development of binary classification models (machine learning based models as well as credit scorecard) simpler and faster. Therefore, I wrote the package to automatically build model. However, as the package grew in functionality, this choice was increasingly problematic.</p>
+<p>Importantly, the creditmodel package now provides a set of complementary tools with different missions. Now, Let’s start with quick modeling.</p>
+<pre class="{r"><code>
+library(creditmodel)
+
+B_model = training_model(dat = UCICreditCard,
+                         model_name = &quot;UCICreditCard&quot;,
+                         target = &quot;default.payment.next.month&quot;,
+                         x_list = NULL,
+                         occur_time = &quot;apply_date&quot;,
+                         obs_id = &quot;ID&quot;,
+                         dat_test = NULL,
+                         preproc = TRUE,
+                         miss_values = c(-1, -2),
+                         missing_proc = TRUE,
+                         outlier_proc = TRUE,
+                         trans_log = FALSE,
+                         feature_filter = list(filter = c(&quot;IV&quot;, &quot;PSI&quot;, &quot;COR&quot;, &quot;XGB&quot;),
+                                               cv_folds = 1,
+                                               iv_cp = 0.02,
+                                               psi_cp = 0.2,
+                                               cor_cp = 0.95,
+                                               xgb_cp = 0,
+                                               hopper = TRUE),
+                         vars_plot = FALSE,
+                         algorithm = list(&quot;LR&quot;,&quot;XGB&quot;),
                          breaks_list = NULL,
-                         parallel = FALSE, cores_num = NULL,
-                         save_pmml = FALSE, plot_show = FALSE,
-                         model_path = getwd(),
-                         seed = 46)
-    }                    </code></pre>
+                         LR.params = lr_params(
+                           iter = 2,
+                           method = &#39;random_search&#39;,
+                           tree_control = list(p = 0.02,
+                                               cp = c(0.00001, 0.00000001),
+                                               xval = 5,
+                                               maxdepth = c(10, 15)),
+                           bins_control = list(bins_num = 10,
+                                               bins_pct = c(0.02, 0.03, 0.05),
+                                               b_chi = c(0.01, 0.02, 0.03),
+                                               b_odds = 0.1,
+                                               b_psi = c(0.02, 0.06),
+                                               b_or = c(.05, 0.1, 0.15, 0.2),
+                                               mono = c(0.1, 0.2, 0.4, 0.5),
+                                               odds_psi = c(0.1, 0.15, 0.2),
+                                               kc = 1),
+                           f_eval = &#39;ks&#39;,
+                           lasso = TRUE,
+                           step_wise = FALSE),
+                         XGB.params = xgb_params(
+                           iter = 3,
+                           method = &#39;random_search&#39;,
+                           params = list(
+                             max.depth = c(3:6),
+                             eta = c(0.01, 0.05, 0.1, 0.2),
+                             gamma = c(0.01, 0.05, 0.1),
+                             min_child_weight = c(1, 5, 10, 20, 30, 40, 50),
+                             subsample = c(0.8, 0.7, 0.6, 0.5),
+                             colsample_bytree = c(0.8, 0.7, 0.6, 0.5),
+                             max_delta_step = c(0, 1, 2, 5, 10)),
+                           f_eval = &#39;auc&#39;),
+                         parallel = FALSE,
+                         cores_num = NULL,
+                         save_pmml = FALSE,
+                         plot_show = TRUE,
+                         model_path = tempdir(),
+                         seed = 46)</code></pre>
+<p>In a few minutes, the program completed data cleaning and pretreatment, variable screening, scorecard, Xgboost, GBDT, RandomForest four models development and evaluation.</p>
+</div>
 
 
 

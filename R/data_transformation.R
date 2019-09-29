@@ -52,7 +52,7 @@ woe_trans_all <- function(dat, x_list = NULL, ex_cols = NULL, bins_table = NULL,
                           file_name = NULL, dir_path = tempdir(), ...) {
 
     if (note)cat_line("-- Transforming variables to woe", col = love_color("deep_green"))
-   opt = options(scipen = 200, stringsAsFactors = FALSE) #
+    opt = options(scipen = 200, stringsAsFactors = FALSE) #
     if (is.null(x_list)) {
         if (!is.null(bins_table)) {
             x_list = unique(bins_table[which(as.character(bins_table[, "Feature"]) != "Total"), "Feature"])
@@ -64,6 +64,7 @@ woe_trans_all <- function(dat, x_list = NULL, ex_cols = NULL, bins_table = NULL,
     }
     ex_vars = get_names(dat = dat, types = c('factor', 'character', 'numeric', 'integer', 'double'),
                         ex_cols = x_list, get_ex = FALSE)
+	if(sum(is.na(dat))> 0){stop("Input data contains NAs, please process missing value first.")	}			
     dat_woe = loop_function(func = woe_trans, x_list = x_list,
                             args = list(dat = dat, bins_table = bins_table,
                                         target = target, breaks_list = breaks_list,
@@ -473,7 +474,6 @@ time_vars_process <- function(df_tm = df_tm, x, enddate = "occur_time") {
 #' @param  enddate  End time.
 #' @export
 time_varieble <- function(dat, date_cols = NULL, enddate = NULL) {
-
     dat = checking_data(dat = dat)
     date_cols1 = NULL
     if (!is.null(date_cols)) {
@@ -882,11 +882,9 @@ merge_category <- function(dat, ex_cols = "date$|id$|time$|DATA$|ID$|TIME$", p =
 #' @param note Logical, outputs info. Default is TRUE.
 #' @return  A data.frame
 #' @examples
-#' dat_sub = lendingclub[c("mths_since_recent_revol_delinq", "mths_since_last_record")]
+#' dat_sub = lendingclub[c('dti_joint',	'emp_length')]
 #' str(dat_sub)
 #' #variables that are converted to numbers containing strings
-#' dat_sub[is.na(dat_sub)] = "Missing"
-#' str(dat_sub)
 #' dat_sub = char_to_num(dat_sub)
 #' str(dat_sub)
 #' @export
@@ -917,3 +915,54 @@ char_to_num <- function(dat, note = TRUE, ex_cols = "date$|id$|time$|DATA$|ID$|T
     return(dat)
 }
 
+
+#' Logarithmic transformation
+#'
+#' \code{log_trans} is for logarithmic transformation
+#' @param dat A data.frame.
+#' @param target The name of target variable.
+#' @param x_list A list of x variables.
+#' @param cor_dif The correlation coefficient difference with the target of logarithm transformed variable and original variable.
+#' @param ex_cols Names of excluded variables. Regular expressions can also be used to match variable names. Default is NULL.
+#' @param note Logical, outputs info. Default is TRUE.
+#' @return Log transformed data.frame.
+#' @examples
+#' dat = log_trans(dat = UCICreditCard, target = "default.payment.next.month",
+#' x_list =NULL,cor_dif = 0.01,ex_cols = "ID", note = TRUE)
+#' @importFrom cli cat_rule cat_line cat_bullet
+#' @export
+
+
+log_trans = function(dat, target, x_list = NULL,cor_dif = 0.01,ex_cols = NULL, note = TRUE){
+  log_x = log_vars(dat = dat, target = target, x_list = x_list, cor_dif = cor_dif,ex_cols = ex_cols )
+  if(!is.null(log_x)){
+    if(note)cat_line("-- Logarithmic transformation", col = love_color("deep_green"))
+    dat[,log_x] = lapply(dat[,log_x],function(x)ifelse(is.na(x),x,ifelse(as.numeric(x)== 0, 0, log(as.numeric(x)))) )
+    dat = re_name(dat, oldname = log_x, newname =  paste(log_x,"log",sep = "_"))
+    if(note){
+      cat_line("-- Following variables are log transformed:", col = love_color("dark_green"))
+      cat_bullet(paste(format(log_x),paste(log_x,"log",sep = "_"),sep  = " -> "), col = "darkgrey")
+    }
+  }
+  return(dat)
+}
+
+log_vars  <- function(dat, x_list = NULL, target = NULL,cor_dif = 0.01,ex_cols = NULL){
+  log_x_list = list()
+  dat = checking_data(dat = dat,target = target)
+  if(is.null(x_list)){
+    x_list = get_names(dat = dat,types = c("numeric","double","integer"),ex_cols = c(ex_cols,target))   
+  }
+  if(length(x_list) > 0){
+    log_x_list = lapply(dat[,x_list],function(x){
+      flag = as.numeric(as.factor(dat[[target]]))
+      x = as.numeric(x)
+      log_x = ifelse(is.na(x),x,ifelse(as.numeric(x)== 0, 0, log(as.numeric(x))))
+      cor_log_x = cor(log_x,flag,method = "pearson",use = "complete.obs")
+      cor_x = cor(x,flag,method = "pearson",use = "complete.obs")
+      abs(cor_log_x) - abs(cor_x)
+    })
+  }
+  logvars = names(log_x_list[which(log_x_list >= cor_dif)])
+  return(logvars)
+}

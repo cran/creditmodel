@@ -4,14 +4,14 @@
 \alias{cos_sim}
 \title{cos_sim}
 \usage{
-cos_sim(x, y, margin = 1)
+cos_sim(x, y, cos_margin = 1)
 }
 \arguments{
 \item{x}{A list}
 
 \item{y}{A list}
 
-\item{margin}{rows or cols}
+\item{cos_margin}{rows or cols}
 }
 \description{
 This function is not intended to be used by end user.

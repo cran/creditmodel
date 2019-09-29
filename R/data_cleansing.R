@@ -24,10 +24,12 @@
 #' @param outlier_proc  Logical, process outliers or not. Default is TRUE.
 #' @param missing_proc  Logical, process nas or not. Default is TRUE.
 #' @param low_var  Logical, delete low variance variables or not. Default is TRUE.
+#' @param merge_cat merge categories of character variables that  is more than m.
+#' @param one_hot  Logical. If TRUE, one-hot_encoding  of category variables. Default is FASLE.
+#' @param trans_log  Logical, Logarithmic transformation. Default is FALSE.
 #' @param lvp  The maximum percent of unique values (including NAs).
 #' @param nr  The maximum percent of NAs.
-#' @param one_hot  Logical. If TRUE, one-hot_encoding  of category variables. Default is FASLE.
-#' @param merge_cat merge categories of character variables that  is more than m.
+#' @param cor_dif The correlation coefficient difference with the target of logarithm transformed variable and original variable.
 #' @param p The minimum percent of samples in a category to merge.
 #' @param m The minimum number of categories.
 #' @param parallel  Logical, parallel computing or not. Default is FALSE.
@@ -66,8 +68,9 @@
 
 data_cleansing <- function(dat, target = NULL, obs_id = NULL, occur_time = NULL,x_list = NULL,
                           pos_flag = NULL, miss_values = NULL, ex_cols = NULL,
-                          outlier_proc = TRUE, missing_proc = TRUE, merge_cat = TRUE, p = 0.001, m = 20,
-                          low_var = TRUE, lvp = 0.99,nr = 0.99, one_hot = FALSE,
+                          low_var = TRUE, outlier_proc = TRUE, missing_proc = TRUE, merge_cat = TRUE,
+						  trans_log = FALSE, one_hot = FALSE, p = 0.001, m = 20,
+                          lvp = 0.99,nr = 0.97,cor_dif = 0.01, 
                           parallel = FALSE, note = FALSE,
                           save_data = FALSE, file_name = NULL, dir_path = tempdir()) {
     #delete variables that values are all nas.
@@ -80,11 +83,12 @@ data_cleansing <- function(dat, target = NULL, obs_id = NULL, occur_time = NULL,
         if (!is.character(file_name)) file_name = NULL
         }
     if (note)cat_line("-- Cleansing data", col = love_color("dark_green"))
-
+    if(is.null(x_list)){
     x_list = get_names(dat = dat,
                               types = c('logical', 'factor', 'character', 'numeric','integer64',
                                         'integer', 'double', "Date", "POSIXlt", "POSIXct", "POSIXt"),
                               ex_cols = ex_cols, get_ex = FALSE)
+	}						  
     ex_x_cols = ex_x_cols2 = NULL
     ex_x_cols = get_names(dat = dat,
                               types = c('logical', 'factor', 'character', 'numeric','integer64',
@@ -145,8 +149,13 @@ data_cleansing <- function(dat, target = NULL, obs_id = NULL, occur_time = NULL,
                                         'integer', 'double', "Date", "POSIXlt", "POSIXct", "POSIXt"),
                               ex_cols = c(obs_id, occur_time, target),
                               get_ex = TRUE)
+							  
+				  
         dat = dat[, c(flag_list, date_x_list, char_x_list, num_x_list)]
-
+ 
+        if(length(char_x_list) > 0 ){		
+		dat[,char_x_list] = lapply(dat[,char_x_list],function(x)gsub("[^\u4e00-\u9fa5,^a-zA-Z,^0-9,^_]", "_", x))
+		}
         if (outlier_proc) {
             dat = process_outliers(dat = dat, target = target,
                                    x_list = num_x_list, ex_cols = c(obs_id, occur_time, target),
@@ -165,11 +174,9 @@ data_cleansing <- function(dat, target = NULL, obs_id = NULL, occur_time = NULL,
         }
 		
 		re_x_list = gsub("[^\u4e00-\u9fa5,^a-zA-Z,^0-9,^_]", "", c(char_x_list, num_x_list))
-
+        
         dat = re_name(dat, oldname = c(char_x_list, num_x_list), newname = re_x_list)
-		if (one_hot & length(char_x_list) > 0) {
-            dat = one_hot_encoding(dat = dat, cat_vars = char_x_list, na_act = FALSE, note = note)
-        }
+
 
         if (save_data) {
             save_dt(dat, dir_path = dir_path, file_name = ifelse(is.null(file_name), "data_cleansing", paste(file_name, "data_cleansing", sep = ".")), append = FALSE, note = note)

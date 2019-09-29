@@ -6,11 +6,11 @@
 \usage{
 data_cleansing(dat, target = NULL, obs_id = NULL, occur_time = NULL,
   x_list = NULL, pos_flag = NULL, miss_values = NULL,
-  ex_cols = NULL, outlier_proc = TRUE, missing_proc = TRUE,
-  merge_cat = TRUE, p = 0.001, m = 20, low_var = TRUE,
-  lvp = 0.99, nr = 0.99, one_hot = FALSE, parallel = FALSE,
-  note = FALSE, save_data = FALSE, file_name = NULL,
-  dir_path = tempdir())
+  ex_cols = NULL, low_var = TRUE, outlier_proc = TRUE,
+  missing_proc = TRUE, merge_cat = TRUE, trans_log = FALSE,
+  one_hot = FALSE, p = 0.001, m = 20, lvp = 0.99, nr = 0.97,
+  cor_dif = 0.01, parallel = FALSE, note = FALSE,
+  save_data = FALSE, file_name = NULL, dir_path = tempdir())
 }
 \arguments{
 \item{dat}{A data frame with x and target.}
@@ -29,23 +29,27 @@ data_cleansing(dat, target = NULL, obs_id = NULL, occur_time = NULL,
 
 \item{ex_cols}{A list of excluded variables. Default is NULL.}
 
+\item{low_var}{Logical, delete low variance variables or not. Default is TRUE.}
+
 \item{outlier_proc}{Logical, process outliers or not. Default is TRUE.}
 
 \item{missing_proc}{Logical, process nas or not. Default is TRUE.}
 
 \item{merge_cat}{merge categories of character variables that  is more than m.}
 
+\item{trans_log}{Logical, Logarithmic transformation. Default is FALSE.}
+
+\item{one_hot}{Logical. If TRUE, one-hot_encoding  of category variables. Default is FASLE.}
+
 \item{p}{The minimum percent of samples in a category to merge.}
 
 \item{m}{The minimum number of categories.}
-
-\item{low_var}{Logical, delete low variance variables or not. Default is TRUE.}
 
 \item{lvp}{The maximum percent of unique values (including NAs).}
 
 \item{nr}{The maximum percent of NAs.}
 
-\item{one_hot}{Logical. If TRUE, one-hot_encoding  of category variables. Default is FASLE.}
+\item{cor_dif}{The correlation coefficient difference with the target of logarithm transformed variable and original variable.}
 
 \item{parallel}{Logical, parallel computing or not. Default is FALSE.}
 

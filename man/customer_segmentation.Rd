@@ -6,7 +6,7 @@
 \usage{
 customer_segmentation(dat, x_list = NULL, ex_cols = NULL,
   cluster_control = list(meth = "Kmeans", kc = 2, nstart = 1, epsm =
-  0.000001, sf = 2, max_iter = 100), tree_control = list(cv_folds = 5,
+  1e-06, sf = 2, max_iter = 100), tree_control = list(cv_folds = 5,
   maxdepth = kc + 1, minbucket = nrow(dat)/(kc + 1)), save_data = FALSE,
   file_name = NULL, dir_path = tempdir())
 }
@@ -45,7 +45,7 @@ A "data.frame" object contains cluster results.
 \code{customer_segmentation} is  a function for clustering and find the best segment variable.
 }
 \examples{
-clust <- customer_segmentation(dat = lendingclub[1:10000,40:50],
+clust <- customer_segmentation(dat = lendingclub[1:10000,20:30],
                               x_list = NULL, ex_cols = "id$|loan_status",
                               cluster_control = list(meth = "FCM", kc = 2),  save_data = FALSE,
                               tree_control = list(minbucket = round(nrow(lendingclub) / 10)),

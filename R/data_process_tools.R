@@ -184,24 +184,27 @@ cv_split <- function(dat, k = 5, occur_time = NULL, seed = 46) {
 #'
 #' \code{require_packages} is function for librarying required packages and  installing missing packages if needed.
 #' @param pkg A list or vector of names of required packages.
+#' @param ... Packages need loaded
 #' @return  packages installed and library.
 #' @examples
 #' \dontrun{
-#' require_packages(c("dplyr","ggplot2"))
+#' require_packages(data.table, ggplot2, dplyr)
 #' }
 #' @importFrom cli cat_rule cat_line cat_bullet
 #' @export
-require_packages <- function(pkg){
-   opt = options("warn" = -1) # suppress warnings
-   new_pkg <- pkg[!(pkg %in% installed.packages()[, "Package"])]
-   if (length(new_pkg) > 0) {
-     install.packages(new_pkg, dependencies = TRUE)
-     cat_rule("Installing missing packages if needed", col = love_color("light_cyan"))
-     cat_line("-- Following packages  are installed and loaded:", col = love_color("dark_green"))
-     cat_bullet(paste0(format(new_pkg)), col = "darkgrey")   
-   }
-   sapply(pkg, require, ch = TRUE)
-   options(opt) # reset warnings
+require_packages <- function(..., pkg = as.character(substitute(list(...)))){
+    opt = options("warn" = -1) 
+    new_pkg <- pkg[!(pkg %in% installed.packages()[, "Package"])]
+    if (length(new_pkg) > 0) {
+        cat_rule("Installing missing packages if needed", col = love_color("light_cyan"))
+        install.packages(new_pkg, dependencies = TRUE)     
+        cat_line("-- Following packages  are installed:", col = love_color("dark_green"))
+        cat_bullet(paste0(format(new_pkg)), col = "darkgrey")
+    }
+    cat_line("-- Following packages  are loaded:", col = love_color("dark_green"))
+    cat_bullet(paste0(format(pkg)), col = "darkgrey")
+    sapply(pkg, require, ch = TRUE)
+    options(opt)
 }
 
 

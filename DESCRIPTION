@@ -1,17 +1,15 @@
 Package: creditmodel
-Version: 1.1.3
-Date: 2019-09-13
+Version: 1.1.4
+Date: 2019-09-22
 Title: Toolkit for Credit Modeling
 Authors@R: c(person(given = "Dongping", family = "Fan",email = "fdp@pku.edu.cn",role = c("aut", "cre")))
 Maintainer: Dongping Fan <fdp@pku.edu.cn>
 Description: 
   Provides a highly efficient R tool suite for Credit Modeling, Analysis and Visualization. Contains infrastructure functionalities such as data exploration and preparation, missing values treatment, outliers treatment, variable derivation, variable selection, dimensionality reduction, grid search for hyper parameters, data mining and visualization, model evaluation, strategy analysis etc. This package is designed to make the development of binary classification models (machine learning based models as well as credit scorecard) simpler and faster. 
-     1.Anderson, R. (2007). The credit scoring toolkit: Theory and practice for retail credit risk management and decision automation. 
-	 2.Find, S. (2012, ISBN13: 9780230347762). Credit scoring, response modelling and insurance rating:A practical guide to forecasting consumer behaviour.  
 Depends: R(>= 3.3.0)
 Imports:
-        data.table,dplyr,ggplot2,gridExtra,glmnet,rpart,xgboost,gbm,randomForest,foreach,doParallel,pdp,pmml,XML,cli
-Suggests: knitr,testthat
+        data.table,dplyr,ggplot2,foreach,doParallel,glmnet,rpart,xgboost,gbm,randomForest,pdp,cli
+Suggests: pmml,XML,rmarkdown,knitr,testthat
 VignetteBuilder: knitr
 Encoding: UTF-8
 ByteCompile: yes
@@ -20,7 +18,7 @@ LazyLoad: yes
 License: AGPL-3
 RoxygenNote: 6.1.1
 NeedsCompilation: no
-Packaged: 2019-09-13 08:39:36 UTC; HANSEN
+Packaged: 2019-09-28 14:26:42 UTC; HANSEN
 Author: Dongping Fan [aut, cre]
 Repository: CRAN
-Date/Publication: 2019-09-13 10:30:10 UTC
+Date/Publication: 2019-09-29 12:40:05 UTC

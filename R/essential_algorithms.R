@@ -135,12 +135,12 @@ fuzzy_cluster <- function(dat, kc = 2, init_centers, sf = 3, max_iter = 100, eps
 #'
 #' @param  x  A list
 #' @param  y  A list
-#' @param margin  rows or cols
+#' @param cos_margin  rows or cols
 #' @export
-euclid_dist <- function(x, y, margin = 1) {
+euclid_dist <- function(x, y, cos_margin = 1) {
     x = as.matrix(x)
     y = as.matrix(y)
-    if (margin == 1) {
+    if (cos_margin == 1) {
         nr = nrow(y)
         dist = sapply(1:nr, function(j) rowSums(scale(x, y[j,], FALSE) ^ 2))
     } else {
@@ -156,13 +156,14 @@ euclid_dist <- function(x, y, margin = 1) {
 #'
 #' @param  x  A list
 #' @param  y  A list
-#' @param margin  rows or cols
+#' @param cos_margin  rows or cols
 #' @export
 
-cos_sim <- function(x, y, margin = 1) {
+cos_sim <- function(x, y, cos_margin = 1) {
     x = as.matrix(x)
     y = as.matrix(y)
-    if (margin == 1) {
+	dist = NULL
+    if (cos_margin == 1) {
         nr = nrow(y)
         dist = sapply(1:nr, function(j) colSums(t(x) * y[j,]) / sqrt(rowSums(x ^ 2) * sum(y[j,] ^ 2)))
         colnames(dist) = rownames(y)

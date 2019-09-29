@@ -52,6 +52,6 @@ lr_model = glm(Formula, data = dat_train[, c("target", x_list)], family = binomi
 #plot partial dependency of one variable
 partial_dependence_plot(model = lr_model, x ="LIMIT_BAL", x_train = dat_train)
 #plot partial dependency of all variables
-pd_list = get_partial_dependence_plots(model = lr_model, x_list = x_list[1:2], 
+pd_list = get_partial_dependence_plots(model = lr_model, x_list = x_list[1:2],
  x_train = dat_train, save_data = FALSE,plot_show = TRUE)
 }

@@ -557,8 +557,9 @@ feature_select_wrapper = function(dat_train, dat_test = NULL, x_list = NULL, tar
     psi_list_t$Feature = gsub("\\.\\S{1,100}\\.", "", psi_list_t$Feature)
     psi_list_t = psi_list_t %>% dplyr::group_by(Feature) %>% dplyr::summarise(PSI = sum(PSI))
     if (save_data) {
-      save_dt(psi_list_t, as_list = FALSE, row_names = FALSE, note = note,
-              file_name = ifelse(is.null(file_name), "feature_filter_PSI", paste(file_name, "feature_filter_PSI", sep = ".")), dir_path = dir_path)
+      save_dt(psi_list_t, as_list = FALSE, row_names = FALSE, note = FALSE,
+              file_name = ifelse(is.null(file_name), "feature_filter_PSI", 
+			  paste(file_name, "feature_filter_PSI", sep = ".")), dir_path = dir_path)
     }
     if (hopper) {
       imp_list = select_vars_psi
@@ -610,8 +611,9 @@ feature_select_wrapper = function(dat_train, dat_test = NULL, x_list = NULL, tar
     iv_list_t$Feature = gsub("\\.\\S{1,100}\\.", "", iv_list_t$Feature)
     iv_list_t = iv_list_t %>% dplyr::group_by(Feature) %>% dplyr::summarise(IV = sum(IV))
     if (save_data) {
-      save_dt(iv_list_t, as_list = FALSE, row_names = FALSE,
-              file_name = ifelse(is.null(file_name), "feature_filter_IV", paste(file_name, "feature_filter_IV", sep = ".")), dir_path = dir_path)
+      save_dt(iv_list_t, as_list = FALSE, row_names = FALSE,note = FALSE,
+              file_name = ifelse(is.null(file_name), "feature_filter_IV", 
+			  paste(file_name, "feature_filter_IV", sep = ".")), dir_path = dir_path)
     }
 
     if (is.null(dt_imp)) {
@@ -630,8 +632,8 @@ feature_select_wrapper = function(dat_train, dat_test = NULL, x_list = NULL, tar
                                             max_delta_step = 0, early_stopping_rounds = 100,
                                             eval_metric = "auc",
                                             objective = "binary:logistic"),
-                          cv_folds = cv_folds, cp = xgb_cp, seed = seed, note = note,
-                          vars_name = FALSE, save_data = TRUE)
+                          cv_folds = cv_folds, cp = xgb_cp, seed = seed, note = TRUE,
+                          vars_name = FALSE, save_data = FALSE)
     select_vars_xgb = xgb_list[,"Feature"]
     if (length(select_vars_xgb) <= 1) {
       select_vars_xgb = imp_list
@@ -644,7 +646,7 @@ feature_select_wrapper = function(dat_train, dat_test = NULL, x_list = NULL, tar
     xgb_list = xgb_list %>% dplyr::group_by(Feature) %>%
       dplyr::summarise(Imp_Means_XGB = sum(Imp_Means_XGB))
     if (save_data) {
-      save_dt(xgb_list, as_list = FALSE, row_names = FALSE, note = note,
+      save_dt(xgb_list, as_list = FALSE, row_names = FALSE,note = FALSE,
               file_name = ifelse(is.null(file_name), "feature_filter_XGB", paste(file_name, "feature_filter_XGB", sep = ".")), dir_path = dir_path)
     }
     if (is.null(dt_imp)) {
@@ -1040,7 +1042,6 @@ select_cor_list <- function(cor_vars_list) {
 #'        save_data = FALSE, plot.it = TRUE)
 #' @importFrom glmnet cv.glmnet glmnet
 #' @import ggplot2
-#' @importFrom gridExtra arrangeGrob
 #' @export
 
 
@@ -1168,7 +1169,6 @@ lasso_filter <- function(dat_train, dat_test = NULL, target = NULL,
 #' @seealso \code{\link{lasso_filter}}, \code{\link{get_sim_sign_lambda}}
 #' @importFrom glmnet cv.glmnet glmnet
 #' @import ggplot2
-#' @importFrom gridExtra arrangeGrob
 #' @export
 get_auc_ks_lambda <- function(lasso_model, x_test, y_test, save_data = FALSE, plot_show = TRUE, file_name = NULL, dir_path = tempdir()) {
   test_pre = predict(lasso_model, newx = x_test, s = lasso_model$lambda, type = "response") # make predictions
@@ -1273,10 +1273,10 @@ get_auc_ks_lambda <- function(lasso_model, x_test, y_test, save_data = FALSE, pl
     ggsave(device = "png",
            filename = paste0(dir_path, "/", ifelse(is.null(file_name), "LASSO_lambda.KS_AUC",
                                                    paste(file_name, "LASSO_lambda.KS_AUC", sep = ".")), ".png"),
-           plot = arrangeGrob(grobs = list(plot_ks, plot_auc), ncol = 2, nrow = 1), dpi = "retina", width = 8)
+           plot = multi_grid(grobs = list(plot_ks, plot_auc), ncol = 2, nrow = 1), dpi = "retina", width = 8)
   }
   if (plot_show) {
-    plot(arrangeGrob(grobs = list(plot_ks, plot_auc), ncol = 2, nrow = 1))
+    plot(multi_grid(grobs = list(plot_ks, plot_auc), ncol = 2, nrow = 1))
   }
   return(list(lambda.ks = bst_ks_lambda, lambda.auc = bst_auc_lambda))
 }

@@ -5,7 +5,7 @@
 \title{Training XGboost}
 \usage{
 train_xgb(seed_number = 1234, dtrain, nthread = 2, nfold = 1,
-  watchlist = NULL, nrounds = 100, eval = "ks",
+  watchlist = NULL, nrounds = 100, f_eval = "ks",
   early_stopping_rounds = 10, verbose = 0, params = NULL, ...)
 }
 \arguments{
@@ -21,7 +21,7 @@ train_xgb(seed_number = 1234, dtrain, nthread = 2, nfold = 1,
 
 \item{nrounds}{Max number of boosting iterations.}
 
-\item{eval}{Custimized evaluation function,"ks" & "auc" are available.}
+\item{f_eval}{Custimized evaluation function,"ks" & "auc" are available.}
 
 \item{early_stopping_rounds}{If NULL, the early stopping function is not triggered. If set to an integer k, training with a validation set will stop if the performance doesn't improve for k rounds.}
 

@@ -29,7 +29,6 @@
 #' get_plots(dat_train[, c(8, 26)], dat_test = dat_test[, c(8, 26)],
 #' target = "default.payment.next.month")
 #' @import ggplot2
-#' @importFrom gridExtra arrangeGrob tableGrob
 #' @importFrom dplyr group_by mutate summarize  summarise n  count %>% filter mutate_if distinct ungroup
 #' @importFrom data.table melt
 #' @export
@@ -42,7 +41,7 @@ get_plots <- function(dat_train, dat_test = NULL, x_list = NULL,
                       save_data = FALSE, file_name = NULL,
                       parallel = FALSE, g_width = 8, dir_path = tempdir()) {
 
-    opt = options(scipen = 200, stringsAsFactors = FALSE) #
+    opt = options('warn' = -1,scipen = 200, stringsAsFactors = FALSE) #
     if (save_data) {
         dir_path = paste0(dir_path, "/variable_plot/")
         if (!dir.exists(dir_path)) dir.create(dir_path)
@@ -111,7 +110,7 @@ get_plots <- function(dat_train, dat_test = NULL, x_list = NULL,
                                args = list(dat_train = dat_train, dat_test = dat_test,
                                            target = target, breaks_list = breaks_list,
                                            pos_flag = pos_flag,
-                                          
+
                                            equal_bins = equal_bins, best = best, g = g,
                                            tree_control = tree_control,
                                            bins_control = bins_control,
@@ -132,23 +131,23 @@ get_plots <- function(dat_train, dat_test = NULL, x_list = NULL,
 #' @export
 plot_vars <- function(dat_train, x, target,dat_test = NULL,
                       g_width = 8,breaks_list = NULL,
-                      pos_flag = list("1", 1, "bad", "positive"),                    
+                      pos_flag = list("1", 1, "bad", "positive"),
                       equal_bins = TRUE, best = FALSE,
                       g = 10, tree_control = NULL,
                       bins_control = NULL,
                       plot_show = TRUE,
                       save_data = FALSE,
                       dir_path = tempdir()) {
-  
+
   digits_x = ifelse(is.numeric(dat_train[, x]), digits_num(dat_train[, x]),4)
-  
-  opt = options(scipen = 200, stringsAsFactors = FALSE, digits = digits_x + 1) #
-  
-  
+
+  opt = options('warn' = -1,scipen = 200, stringsAsFactors = FALSE, digits = digits_x + 1) #
+
+
   dat_train$target =  as.character(dat_train[,target])
   xn = NULL
   if (class(dat_train[, x]) %in% c("numeric", "double","integer") && length(unique(dat_train[,x]))>10) {
-    
+
     med <- dat_train %>%
       dplyr::mutate(xn = dat_train[, x]) %>%
       dplyr::group_by(target) %>%
@@ -178,7 +177,7 @@ plot_vars <- function(dat_train, x, target,dat_test = NULL,
       ggtitle(paste("Density of", x)) +
       plot_theme(legend.position = c(.9, .9), title_size = 9,
                  axis_title_size = 8)
-    
+
   } else {
     #relative frequency histogram
     data1 <- dat_train %>%
@@ -186,7 +185,7 @@ plot_vars <- function(dat_train, x, target,dat_test = NULL,
       dplyr::filter(target %in% c("0", "1")) %>%
       dplyr::group_by(xn) %>% dplyr::count(xn, target) %>%
       dplyr::mutate(percent = n / sum(n))
-    
+
     plot_1 <- ggplot(data1,aes(x = data1$xn, y = data1$percent, fill = reorder(data1$target, n))) +
       geom_bar(stat = "identity", position = position_stack()) +
       geom_text(aes(label = paste(as_percent(data1$percent, digits = 3))),
@@ -204,7 +203,7 @@ plot_vars <- function(dat_train, x, target,dat_test = NULL,
   if (!is.null(dat_test) || length(dat_test) > 1){
     df_ae <- get_psi_iv(dat = dat_train, dat_test = dat_test,
                         x = x, target = target, pos_flag = pos_flag,
-                        breaks_list = breaks_list, 
+                        breaks_list = breaks_list,
                         equal_bins = equal_bins,
                         tree_control = tree_control,
                         bins_control = bins_control,
@@ -219,7 +218,7 @@ plot_vars <- function(dat_train, x, target,dat_test = NULL,
                              id.vars = c("bins"),
                              variable.name = "actual_expected",
                              value.name = "value")
-    
+
     plot_2 <- ggplot(ae_total, aes(x = ae_total$bins,
                                    y = ae_total$value,
                                    fill = ae_total$actual_expected)) +
@@ -268,11 +267,11 @@ plot_vars <- function(dat_train, x, target,dat_test = NULL,
                  axis_size_x = ifelse(max(nchar(ae_total$bins)) > 30, 5,
                                       ifelse(max(nchar(ae_total$bins)) > 20, 6,
                                              ifelse(max(nchar(ae_total$bins)) > 10, 7 ,8))))
-    
-    
-    
+
+
+
   }else{
-    
+
     if(is.null(breaks_list)){
       breaks = get_breaks( dat = dat_train, dat_test = dat_test,
                            x = x, target = target, pos_flag = pos_flag,
@@ -283,15 +282,15 @@ plot_vars <- function(dat_train, x, target,dat_test = NULL,
                            bins_total = FALSE,
                            best = best, g = g, as_table = TRUE,
                            note = FALSE, bins_no = TRUE)
-      
+
     }
-    df_ae <- get_bins_table(dat = dat_train, 
+    df_ae <- get_bins_table(dat = dat_train,
                             x = x, target = target, pos_flag = pos_flag,
                             breaks_list  = breaks_list,
                             breaks = breaks,
                             bins_total = FALSE,
                             note = FALSE)
-    
+
     plot_2 <- ggplot(df_ae, aes(x = df_ae$bins,
                                 y = de_percent(df_ae$`%total`,3)
     )) +
@@ -324,14 +323,14 @@ plot_vars <- function(dat_train, x, target,dat_test = NULL,
                                      ifelse(nrow(df_ae) > 3, 3, 3.2))), vjust = -0.1) +
       annotate(geom = 'text',
                x = dim(df_ae)[1] / 3,
-               y = max(c(de_percent(df_ae$`%total`,3), 
+               y = max(c(de_percent(df_ae$`%total`,3),
                          de_percent(df_ae$bad_rate,3) * max(de_percent(df_ae$`%total`,3)) * 4))+ 0.09,
                label = paste(paste("IV:", sum(df_ae$iv,na.rm = TRUE)))) +
       scale_fill_manual(values = c("%total" = love_color("light_cyan"))) +
       scale_color_manual(values = c("%flag_1" = love_color("deep_orange"))) +
-      ylim(c(-0.01, max(c(de_percent(df_ae$`%total`,3), 
+      ylim(c(-0.01, max(c(de_percent(df_ae$`%total`,3),
                           de_percent(df_ae$bad_rate,3) * max(de_percent(df_ae$`%total`,3)) * 4))+ 0.05)) +
-      
+
       guides(fill=guide_legend(title=NULL))+
       xlab(x) + ylab("percent") +
       ggtitle(paste(x," Distribution")) +
@@ -344,16 +343,16 @@ plot_vars <- function(dat_train, x, target,dat_test = NULL,
                  axis_size_x = ifelse(max(nchar(df_ae$bins)) > 30, 5,
                                       ifelse(max(nchar(df_ae$bins)) > 20, 6,
                                              ifelse(max(nchar(df_ae$bins)) > 10, 7 ,8))))
-    
-    
+
+
   }
   if (save_data) {
     ggsave(paste0(dir_path, paste(x, "png", sep = '.')),
-           plot = arrangeGrob(grobs = list(plot_1, plot_2), ncol = 2, nrow = 1),
+           plot = multi_grid(grobs = list(plot_1, plot_2), ncol = 2, nrow = 1),
            width = g_width, height = g_width / 2, dpi = "retina")
   }
   if (plot_show) {
-    plot(arrangeGrob(grobs = list(plot_1, plot_2), ncol = 2, nrow = 1))
+    plot(multi_grid(grobs = list(plot_1, plot_2), ncol = 2, nrow = 1))
   }
   return(df_ae)
   options(opt) # reset
@@ -385,7 +384,6 @@ plot_vars <- function(dat_train, x, target,dat_test = NULL,
 #' dat_test = train_test$test
 #' get_psi_plots(dat_train[, c(8, 9)], dat_test = dat_test[, c(8, 9)])
 #' @import ggplot2
-#' @importFrom gridExtra arrangeGrob tableGrob
 #' @importFrom dplyr group_by mutate summarize  summarise n  count %>% filter mutate_if distinct ungroup
 #' @importFrom data.table melt
 #' @export
@@ -396,7 +394,7 @@ get_psi_plots <- function(dat_train, dat_test = NULL, x_list = NULL,
                       save_data = FALSE, file_name = NULL,
                       parallel = FALSE, g_width = 8, dir_path = tempdir()) {
 
-    opt = options(scipen = 200, stringsAsFactors = FALSE) #
+    opt = options('warn' = -1,scipen = 200, stringsAsFactors = FALSE) #
     if (save_data) {
         dir_path = paste0(dir_path, "/psi_plot/")
         if (!dir.exists(dir_path)) dir.create(dir_path)
@@ -453,8 +451,7 @@ psi_plot <- function(dat_train, x, dat_test = NULL,occur_time = NULL,
                       dir_path = tempdir()){
 
   digits_x = ifelse(is.numeric(dat_train[, x]), digits_num(dat_train[, x]),4)
-
-  opt = options(scipen = 200, stringsAsFactors = FALSE, digits = digits_x + 1) #
+  opt = options('warn' = -1, scipen = 200, stringsAsFactors = FALSE, digits = digits_x + 1) #
     if(is.null(dat_test)) {
       train_test = train_test_split(dat_train,split_type = 'OOT',prop = 0.7,
                                     occur_time = occur_time)
@@ -464,67 +461,6 @@ psi_plot <- function(dat_train, x, dat_test = NULL,occur_time = NULL,
   dat_train$ae = "Expected"
   dat_test$ae = "Actual"
   xn = ae = NULL
-  dat_all  = rbind(dat_train[,c(x,"ae")],dat_test[,c(x,"ae")])
-
-  if (class(dat_train[, x]) %in% c("numeric", "double","integer") && length(unique(dat_train[,x]))>10) {
-
-    med <- dat_all %>%
-      dplyr::mutate(xn = dat_all[, x]) %>%
-      dplyr::group_by(ae) %>%
-      dplyr::summarise(grp.mean = quantile(xn, 0.5, na.rm = TRUE, type = 3))
-    none_na_num <- sum(!is.na(dat_all[, x]))
-    tbl_x <- table(dat_all[, x])
-    x_unique_value <- as.double(names(tbl_x))
-    cum_sum <- cumsum(tbl_x)
-    cuts_sum <- approx(cum_sum, x_unique_value, xout = (1:100) * none_na_num / 100,
-                       method = "constant", rule = 2, f = 1)$y
-    if (length(unique(cuts_sum) )> 10) {
-      x_cuts <- cuts_sum[length(cuts_sum) - 1]
-      dat_all <- subset(dat_all, dat_all[, x] < x_cuts)
-    }
-    #desity plot
-    plot_1 <- ggplot(dat_all, aes(x = dat_all[, x])) +
-      geom_density(aes(fill = dat_all$ae), alpha = 0.5) +
-      stat_density(geom = "line", position = "identity", size = 0.6,
-                   aes(color = dat_all$ae)) +
-      scale_fill_manual(values = c('Actual' = love_color("shallow_cyan"),
-                                   'Expected' = love_color("light_purple"))) +
-      scale_color_manual(values = c('Actual' = love_color("shallow_cyan"),
-                                    'Expected' = love_color("light_purple"))) +
-      geom_vline(data = med,linetype = "dashed", size = 0.7,
-                 aes(xintercept = med$grp.mean, color = med$ae)) +
-      xlab(x) +
-      ggtitle(paste("Density of", x)) +
-      plot_theme(legend.position = c(.9, .9), title_size = 9,
-                 axis_title_size = 8)
-
-  } else {
-    #relative frequency histogram
-
-   data1 <- dat_all %>%
-    dplyr::mutate(xn = dat_all[, x]) %>%
-    dplyr::filter(ae %in% c("Actual", "Expected")) %>%
-    dplyr::group_by(xn) %>% dplyr::count(xn, ae) %>%
-    dplyr::mutate(percent = n / sum(n))
-   mean_line =  prop.table(table(dat_all$ae))["Expected"]
-   plot_1 <- ggplot(data1,aes(x = data1$xn, y = data1$percent, fill = reorder(data1$ae, n))) +
-             geom_bar(stat = "identity", position = position_stack()) +
-             geom_text(aes(label = paste(as_percent(data1$percent, digits = 3))),
-            size = ifelse(length(data1$xn) > 10, 2.1,
-                          ifelse(length(data1$xn)  > 5, 2.5,
-                                 ifelse(length(data1$xn)  > 3, 3, 3.3))), vjust = 1.5, colour = 'white',
-            position = position_stack()) +
-  guides(fill = guide_legend(reverse = F)) +
-  ggtitle(paste("Relative Frequency of", x)) +
-  ylab("Percent") + xlab(x) +
-  scale_fill_manual(values = c('Expected' = love_color("shallow_cyan"),
-                               'Actual' = love_color("light_purple"))) +
-  geom_line(aes(y = unlist(rep(mean_line, nrow(data1))+0.001), group = 1, color = "Mean Percent"),linetype =5, size = 1) +
-  scale_colour_manual(values = c("Mean Percent"= love_color("deep_red")))	+						   
-  plot_theme(legend.position = "top", title_size = 9,
-           axis_title_size = 8)
-  }
-
 
     df_ae <- get_psi(dat = dat_train, dat_test = dat_test,
                         x = x,
@@ -532,7 +468,7 @@ psi_plot <- function(dat_train, x, dat_test = NULL,occur_time = NULL,
                         breaks = breaks,
                          g = g, as_table = TRUE,
                         note = FALSE, bins_no = TRUE)
-
+    plot_1 = plot_table(grid_table = df_ae[,-1],theme = c("cyan"),tile.color = "grey80", title = paste("PSI of", x))
     ae_total <- data.table::melt(df_ae[c("Bins", "Ac_pct", "Ex_pct")],
                                  id.vars = c("Bins"),
                                  variable.name = "actual_expected",
@@ -570,11 +506,11 @@ psi_plot <- function(dat_train, x, dat_test = NULL,occur_time = NULL,
                                              ifelse(max(nchar(ae_total$Bins)) > 10, 7 ,8))))
   if (save_data) {
     ggsave(paste0(dir_path, paste(x, "png", sep = '.')),
-           plot = arrangeGrob(grobs = list(plot_1, plot_2), ncol = 2, nrow = 1),
+           plot = multi_grid(grobs = list(plot_1, plot_2), ncol = 2, nrow = 1),
            width = g_width, height = g_width / 2, dpi = "retina")
   }
   if (plot_show) {
-    plot(arrangeGrob(grobs = list(plot_1, plot_2), ncol = 2, nrow = 1))
+    plot(multi_grid(grobs = list(plot_1, plot_2), ncol = 2, nrow = 1))
   }
   return(df_ae)
   options(opt) # reset
@@ -612,18 +548,17 @@ psi_plot <- function(dat_train, x, dat_test = NULL,occur_time = NULL,
 #' #plot partial dependency of one variable
 #' partial_dependence_plot(model = lr_model, x ="LIMIT_BAL", x_train = dat_train)
 #' #plot partial dependency of all variables
-#' pd_list = get_partial_dependence_plots(model = lr_model, x_list = x_list[1:2], 
+#' pd_list = get_partial_dependence_plots(model = lr_model, x_list = x_list[1:2],
 #'  x_train = dat_train, save_data = FALSE,plot_show = TRUE)
 #' @import ggplot2
 #' @importFrom pdp partial
-#' @importFrom gridExtra arrangeGrob tableGrob ttheme_default
 #' @importFrom dplyr group_by mutate summarize  summarise n  count %>% filter
 #' @importFrom data.table melt dcast
 #' @export
 
 
 partial_dependence_plot = function(model, x, x_train, n.trees = NULL) {
-    opt = options(scipen = 200,stringsAsFactors = FALSE) #
+    opt = options('warn' = -1,scipen = 200, stringsAsFactors = FALSE, digits = 6) #
     pd = partial(model,
             pred.var = c(x),
             grid.resolution = NULL,
@@ -636,7 +571,7 @@ partial_dependence_plot = function(model, x, x_train, n.trees = NULL) {
             chull = TRUE,
             trim.outliers = TRUE)
 	yhat = NULL
-    autoplot(pd, aes(x = pd[x], y = pd$yhat)) +
+   pd_pl =  autoplot(pd, aes(x = pd[x], y = pd$yhat)) +
     geom_line(color = love_color("green_cyan"), size = 1) +
     theme_light() +
     theme(legend.title = element_blank(), legend.position = "top",
@@ -645,6 +580,8 @@ partial_dependence_plot = function(model, x, x_train, n.trees = NULL) {
     breaks = round(seq(min(pd$yhat), max(pd$yhat), length.out = 10), 4),
     labels = sprintf("%0.3f", round(seq(min(pd$yhat), max(pd$yhat), length.out = 10), digits = 3))) +
     labs(x = x, y = "y_prob", title = paste(x, " - Partial Dependence"))
+	return(pd_pl)
+	options(opt)
 }
 
 
@@ -663,17 +600,14 @@ get_partial_dependence_plots = function(model, x_train, x_list, n.trees = NULL, 
         if (dir.exists(dir_path)) { file.remove(list.files(dir_path, recursive = TRUE, full.names = TRUE)) }
         for (x in names(pd_list)) {
             ggsave(paste0(dir_path, "/pdp.", paste(x, "png", sep = '.')),
-           plot = arrangeGrob(grobs = pd_list[x]),
+           plot = multi_grid(grobs = pd_list[x]),
            width = 4, height = 3, dpi = "retina")
         }
     }
     if (plot_show) {
-        for (x in pd_list) {
-            plot(x)
-        }
+     plot(multi_grid(grobs = pd_list))
     }
     return(pd_list)
-
 }
 
 
@@ -722,7 +656,6 @@ get_partial_dependence_plots = function(model, x_train, x_list, n.trees = NULL, 
 #'                                      g = 10, g_width = 13, plot_show = FALSE)
 #' key_index = model_key_index(tb_pred)
 #' @import ggplot2
-#' @importFrom gridExtra arrangeGrob tableGrob ttheme_default
 #' @importFrom dplyr group_by mutate summarize  summarise n  count %>% filter
 #' @importFrom data.table melt dcast
 #' @export
@@ -731,7 +664,7 @@ get_partial_dependence_plots = function(model, x_train, x_list, n.trees = NULL, 
 
 ks_table <- function(train_pred, test_pred = NULL, target = NULL, score = NULL,
                      g = 10, breaks = NULL, pos_flag = list("1", "1", "Bad", 1)) {
-    opt = options(scipen = 200, stringsAsFactors = FALSE, digits = 6) #
+     opt = options('warn' = -1,scipen = 200, stringsAsFactors = FALSE, digits = 6) #
     `train_GB_index` = `test_GB_index` = `G` = `bins` = `B` = `%train` = `%test` = `#train` = `#test` = NULL
     if (is.null(target)) {
         stop("target is missing!\n")
@@ -833,9 +766,9 @@ ks_table <- function(train_pred, test_pred = NULL, target = NULL, score = NULL,
         dt_ks[is.na(dt_ks)] <- 0
         names(dt_ks) = c("bins", "#train", "%train", "%train_B",
                      "%train_cumG", "%train_cumB", "train_K-S")
-      
+
         dt_ks = dt_ks[c("bins",  "#train", "%train", "%train_B",
-                     "%train_cumG", "%train_cumB", 
+                     "%train_cumG", "%train_cumB",
                      "train_K-S")]
     }
     options(opt) # reset
@@ -895,18 +828,9 @@ ks_table_plot <- function(train_pred, test_pred, target = "target", score = "sco
                       tempdir(), dir_path)
         if (!dir.exists(dir_path)) dir.create(dir_path)
         if (!is.character(gtitle)) { gtitle = paste0("mymodel") }
-        tb_ks = tableGrob(dt_pred, rows = NULL,
-                     cols = c("bins", "#total", "#train", "#test",
-                                  "%train", "%test", "%train_B", "%test_B",
-                                  "%train_cumG", "%train_cumB", "%test_cumG",
-                                  "%test_cumB", "train_K-S", "test_K-S", "PSI"),
-                     theme = ttheme_default(base_size = 8, base_colour = "black",
-                                            base_family = "", parse = FALSE,
-                                            padding = unit(c(3, 3), "mm")
-                                            )
-                     )
+        tb_ks = plot_table(dt_pred)
         ggsave(paste0(dir_path, "/", paste(paste(gtitle, "_ks_psi_table"), "png", sep = '.')),
-            arrangeGrob(grobs = list(tb_ks), ncol = 1, nrow = 1), dpi = "retina", width = g_width)
+            plot = tb_ks, dpi = "retina", width = g_width)
         save_dt(dt_pred, file_name = paste(gtitle, "_ks_psi_table"), dir_path = dir_path)
         }
     return(dt_pred)
@@ -922,7 +846,7 @@ ks_table_plot <- function(train_pred, test_pred, target = "target", score = "sco
 ks_psi_plot <- function(train_pred, test_pred, target = "target", score = "score",
                         gtitle = NULL, plot_show = TRUE, g_width = 12, save_data = FALSE,
                         breaks = NULL, g = 10, dir_path = tempdir()) {
-    opt = options(scipen = 200, stringsAsFactors = FALSE, digits = 6) #
+    opt = options('warn' = -1,scipen = 200, stringsAsFactors = FALSE, digits = 6) #
    `value` = `train_test` = `bins` =   `%train_cumG` =   `%train_cumB` =  `%test_cumG` =  `%test_cumB` = NULL
     if (!dir.exists(dir_path)) dir.create(dir_path)
     if (is.null(gtitle)) { gtitle = paste0("Model") }
@@ -1034,11 +958,11 @@ ks_psi_plot <- function(train_pred, test_pred, target = "target", score = "score
         if ( !is.character(gtitle)) { gtitle = paste0("mymodel") }
         ggsave(filename = paste0(dir_path, "/", paste(paste0(gtitle, "_ks_psi_plot"), "png", sep = '.')),
            device = "png",
-           plot = arrangeGrob(grobs = list(ks_plot, psi_plot), ncol = 2, nrow = 1),
+           plot = multi_grid(grobs = list(ks_plot, psi_plot), ncol = 2, nrow = 1),
            dpi = "retina", width = g_width, height = g_width / 2)
     }
     if (plot_show) {
-        ks_psi_plot = arrangeGrob(grobs = list(ks_plot, psi_plot), ncol = 2, nrow = 1)
+        ks_psi_plot = multi_grid(grobs = list(ks_plot, psi_plot), ncol = 2, nrow = 1)
         return(plot(ks_psi_plot))
     }
     options(opt) # reset
@@ -1060,7 +984,6 @@ ks_psi_plot <- function(train_pred, test_pred, target = "target", score = "score
 #' dat_test = train_test$test
 #' cor_plot(dat_train[,8:12],plot_show = TRUE)
 #' @import ggplot2
-#' @importFrom gridExtra arrangeGrob tableGrob
 #' @export
 
 cor_plot = function(dat, dir_path = tempdir(), x_list = NULL,
@@ -1083,7 +1006,7 @@ cor_plot = function(dat, dir_path = tempdir(), x_list = NULL,
         dir_path = ifelse(!is.character(dir_path) ,
                       tempdir(), dir_path)
         if (!dir.exists(dir_path)) dir.create(dir_path)
-        
+
         ggsave(paste0(dir_path, "/", paste(paste0(gtitle, "_correlation_of_variables"), "png", sep = '.')), cor_p, dpi = "retina", width = 8)
     }
     if (plot_show) {
@@ -1175,7 +1098,6 @@ model_key_index <- function(tb_pred) {
 #' @examples
 #' love_color(color="dark_cyan")
 #' @import ggplot2
-#' @importFrom gridExtra arrangeGrob tableGrob
 #' @export
 
 
@@ -1189,24 +1111,20 @@ love_color <- function(color =NULL, type = NULL,all = FALSE) {
     pale_cyan = rgb(0, 147, 198, maxColorValue = 255),
     dark_green=  rgb(0, 100, 50, maxColorValue = 255),
     deep_green = rgb(10, 149, 136, maxColorValue = 255),
-   
     light_green =  rgb(84, 169, 84, maxColorValue = 255),
     shallow_green =rgb(66, 192, 46, maxColorValue = 255),
     pale_green = rgb(180, 202, 198, maxColorValue = 255),
-    
-    
     dark_grey = rgb(102, 102, 102, maxColorValue = 255),
     deep_grey = rgb(128, 129, 128, maxColorValue = 255),
-    light_grey = rgb(169, 169, 169, maxColorValue = 255), 
+    light_grey = rgb(169, 169, 169, maxColorValue = 255),
     shallow_grey = rgb(191, 192, 191, maxColorValue = 255),
     pale_grey = rgb(240, 240, 240, maxColorValue = 255),
-   
     dark_red= rgb(181, 0, 0, maxColorValue = 255),
     deep_red  = rgb(154, 42, 42, maxColorValue = 255),
     light_red = rgb(174, 61, 63, maxColorValue = 255),
     shallow_red = rgb(252, 74, 42, maxColorValue = 255),
     pale_red = rgb(220, 63, 56, maxColorValue = 255),
-    shallow_red2 = rgb(220, 63, 56, maxColorValue = 255),   
+    shallow_red2 = rgb(220, 63, 56, maxColorValue = 255),
     dark_blue = rgb(33, 71, 117, maxColorValue = 255),
     deep_blue = rgb(32, 81, 139, maxColorValue = 255),
     deep_blue = rgb(80, 99, 139, maxColorValue = 255),
@@ -1259,7 +1177,6 @@ love_color <- function(color =NULL, type = NULL,all = FALSE) {
 #' @param face see details at:  code{axis.title.x}
 #' @details see details at: code{theme}
 #' @import ggplot2
-#' @importFrom gridExtra arrangeGrob
 #' @export
 
 plot_theme <- function(legend.position = "top", angle = 30,
@@ -1299,7 +1216,7 @@ plot_theme <- function(legend.position = "top", angle = 30,
 #' @param target The name of target variable.
 #' @param score The name of prob or score variable.
 #' @param g Number of breaks for prob or score.
-#' @param gtitle The title of the graph & The name for periodically saved graphic file. 
+#' @param gtitle The title of the graph & The name for periodically saved graphic file.
 #' @param breaks Splitting points of prob or score.
 #' @param pos_flag The value of positive class of target variable, default: "1".
 #' @param total Whether to summarize the table. default: TRUE.
@@ -1310,14 +1227,15 @@ plot_theme <- function(legend.position = "top", angle = 30,
 #' sub = cv_split(UCICreditCard, k = 30)[[1]]
 #' dat = UCICreditCard[sub,]
 #' dat = re_name(dat, "default.payment.next.month", "target")
-#' dat = data_cleansing(dat, target = "target", obs_id = "ID",
+#' x_list = c("PAY_0", "LIMIT_BAL", "PAY_AMT5", "PAY_3", "PAY_2")
+#' dat = data_cleansing(dat, target = "target", obs_id = "ID",x_list = x_list,
 #' occur_time = "apply_date", miss_values = list("", -1))
 #' dat = process_nas(dat,default_miss = TRUE)
 #' train_test <- train_test_split(dat, split_type = "OOT", prop = 0.7,
 #'                                 occur_time = "apply_date")
 #' dat_train = train_test$train
 #' dat_test = train_test$test
-#' x_list = c("PAY_0", "LIMIT_BAL", "PAY_AMT5", "PAY_3", "PAY_2")
+
 #' Formula = as.formula(paste("target", paste(x_list, collapse = ' + '), sep = ' ~ '))
 #' set.seed(46)
 #' lr_model = glm(Formula, data = dat_train[, c("target", x_list)], family = binomial(logit))
@@ -1328,47 +1246,52 @@ plot_theme <- function(legend.position = "top", angle = 30,
 #' perf_table(train_pred = dat_train, test_pred = dat_test, target = "target", score = "pred_LR")
 #' ks_plot(train_pred = dat_train, test_pred = dat_test, target = "target", score = "pred_LR")
 #' roc_plot(train_pred = dat_train, test_pred = dat_test, target = "target", score = "pred_LR")
-#' lift_plot(train_pred = dat_train, test_pred = dat_test, target = "target", score = "pred_LR")
-#' score_distribution_plot(train_pred = dat_train, test_pred = dat_test,
-#' target = "target", score = "pred_LR")
-#' model_result_plot(train_pred = dat_train, test_pred = dat_test, 
-#' target = "target", score = "pred_LR")
+#' #lift_plot(train_pred = dat_train, test_pred = dat_test, target = "target", score = "pred_LR")
+#' #score_distribution_plot(train_pred = dat_train, test_pred = dat_test,
+#' #target = "target", score = "pred_LR")
+#' #model_result_plot(train_pred = dat_train, test_pred = dat_test,
+#' #target = "target", score = "pred_LR")
 #' @import ggplot2
-#' @importFrom gridExtra arrangeGrob tableGrob ttheme_default 
 #' @importFrom dplyr group_by mutate summarize  summarise n  count %>% filter
 #' @importFrom data.table melt dcast
 #' @export
 
 
 model_result_plot = function(train_pred , score, target ,test_pred= NULL, gtitle = NULL,perf_dir_path = NULL,
-                             save_data = FALSE,plot_show = TRUE,total = TRUE ){
-  
-  
+                             save_data = FALSE,plot_show = TRUE,total = TRUE,g = 10 ){
+
+  opt = options('warn' = -1,scipen = 200, stringsAsFactors = FALSE, digits = 6) #
   train_pred = checking_data(dat = train_pred, target = target)
   train_pred <- train_pred[which(complete.cases(train_pred[, score])),]
   if(!is.null(test_pred)){
     test_pred = checking_data(dat = test_pred, target = target)
 	test_pred <- test_pred[which(complete.cases(test_pred[, score])),]
   }
- 
-  perf_tb = perf_table(train_pred = train_pred, test_pred = test_pred, target = target, score = score, total = total,
-                       g = 20)
-  tb_ks = tableGrob(perf_tb, rows = NULL,
-                    
-                    theme = ttheme_default(base_size = 8, base_colour = "black",
-                                           base_family = "", parse = FALSE,
-                                           padding = unit(c(3, 3), "mm")
-                    ))
-  dis_pl = score_distribution_plot(train_pred = train_pred, test_pred = test_pred, target = target, score =score, gtitle = gtitle)
 
-  ks_pl = ks_plot(train_pred = train_pred, test_pred = test_pred, target = target, score = score, gtitle = gtitle)
+  perf_tb = perf_table(train_pred = train_pred, test_pred = test_pred, target = target, score = score, total = total,
+                       g = g)
+
+  tb_ks =  plot_table(grid_table = perf_tb, theme = c("green"),
+                     title= paste0(gtitle, ".performance_table"),title.size = 12,title.color = 'black',
+                     title.face = "bold", title.position='middle',
+                     subtitle= NULL,subtitle.size = 8,subtitle.color = 'black',subtitle.face = "plain",
+                     subtitle.position='middle',
+                     tile.color = 'grey80',tile.size = 1,
+                     colname.size = 3,colname.color = 'white',colname.face = 'bold',
+                     colname.fill.color =love_color("dark_cyan"),
+                     text.size = 3,text.color =love_color("dark_grey"),
+                     text.face = 'plain', text.fill.color = c('white',love_color("pale_grey")))
+  dis_pl = score_distribution_plot(train_pred = train_pred, test_pred = test_pred,
+           target = target, score =score, gtitle = gtitle,g = g)
+
+  ks_pl = ks_plot(train_pred = train_pred, test_pred = test_pred, target = target, score = score, gtitle = gtitle, g = g)
   roc_pl = roc_plot(train_pred = train_pred, test_pred = test_pred, target = target, score = score, gtitle = gtitle)
-  lift_pl = lift_plot(train_pred = train_pred, test_pred = test_pred, target = target, score = score, gtitle = gtitle)
-  
+  lift_pl = lift_plot(train_pred = train_pred, test_pred = test_pred, target = target, score = score, gtitle = gtitle,g = g)
+
   if(save_data){
     perf_dir_path = ifelse(is.null(perf_dir_path), tempdir(), perf_dir_path)
     if (!dir.exists(perf_dir_path)) dir.create(perf_dir_path)
-    
+
     ggsave(filename = paste0(perf_dir_path, "/", paste(paste0(gtitle, "_ks"), "png", sep = '.')), device = "png",
            plot = ks_pl, dpi = "retina", width = 5, height = 4.5)
     ggsave(filename = paste0(perf_dir_path, "/", paste(paste0(gtitle, "_roc"), "png", sep = '.')), device = "png",
@@ -1376,14 +1299,15 @@ model_result_plot = function(train_pred , score, target ,test_pred= NULL, gtitle
     ggsave(filename = paste0(perf_dir_path, "/", paste(paste0(gtitle, "_psi"), "png", sep = '.')), device = "png",
            plot = dis_pl, dpi = "retina", width = 5, height = 4.5)
     ggsave(paste0(perf_dir_path, "/", paste(paste0(gtitle, ".performance_table"), "png", sep = '.')),
-           arrangeGrob(grobs = list(tb_ks), ncol = 1, nrow = 1), dpi = "retina", width = 12)
+           plot = tb_ks, dpi = "retina", width = 12)
     save_dt(perf_tb, file_name = paste0(gtitle, ".performance_table"), dir_path = perf_dir_path,note = TRUE)
     ggsave(filename = paste0(perf_dir_path, "/", paste(paste0(gtitle, ".lift"), "png", sep = '.')), device = "png",
            plot = lift_pl, dpi = "retina", width = 5, height = 4.5)
 
   }
+  options(opt)
   if (plot_show) {
-    plot(arrangeGrob(grobs = list(ks_pl,lift_pl,roc_pl, dis_pl), ncol = 2, nrow = 2))
+    plot(multi_grid(grobs = list(ks_pl,lift_pl,roc_pl, dis_pl), ncol = 2, nrow = 2))
   }
   return(perf_tb)
 }
@@ -1395,10 +1319,10 @@ model_result_plot = function(train_pred , score, target ,test_pred= NULL, gtitle
 
 perf_table <- function(train_pred, test_pred = NULL, target = NULL, score = NULL,
                      g = 10, breaks = NULL, pos_flag = list("1", "1", "Bad", 1),total = FALSE) {
-    opt = options(scipen = 200, stringsAsFactors = FALSE, digits = 6) #
+    opt = options('warn' = -1,scipen = 200, stringsAsFactors = FALSE, digits = 6) #
     `train_GB_index` = `test_GB_index` = `G` = `bins` = `B` = `%train` = `%test` = `#train` = `#test` = NULL
 	`%test_B` = `%test_cumB` = `%test_cumG` = `%train_B` = `%train_cumB` = `%train_cumG` = NULL
-   
+
    	train_pred <- train_pred[which(complete.cases(train_pred[, score])),]
    if (is.null(target)) { stop("target is missing!\n") }
     if (is.null(score)) { stop("score is missing!\n") }
@@ -1551,7 +1475,7 @@ perf_table <- function(train_pred, test_pred = NULL, target = NULL, score = NULL
                        "%test_B", "%train_cumG", "%train_cumB", "%test_cumG",
                        "%test_cumB", "train_K-S", "test_K-S","train_Lift", "test_Lift", "PSI")
 		}
-		
+
     } else {
         dt_ks = train_ks[c(1, 4:10)]
         dt_ks[is.na(dt_ks)] <- 0
@@ -1576,7 +1500,7 @@ perf_table <- function(train_pred, test_pred = NULL, target = NULL, score = NULL
 
 ks_plot = function(train_pred, test_pred = NULL, target = NULL, score =  NULL,
                         gtitle = NULL, breaks = NULL, g = 10) {
-    opt = options(scipen = 200, stringsAsFactors = FALSE, digits = 6) 
+    opt = options('warn' = -1,scipen = 200, stringsAsFactors = FALSE, digits = 6) #
     `value` = `train_test` = `bins` = `%train_cumG` = `%train_cumB` = `%test_cumG` = `%test_cumB`= `%Cumsum_0`= `%Cumsum_1` = NULL
 	train_pred <- train_pred[which(complete.cases(train_pred[, score])),]
     if (is.null(gtitle)) { gtitle = paste0("Model") }
@@ -1608,7 +1532,7 @@ ks_plot = function(train_pred, test_pred = NULL, target = NULL, score =  NULL,
                  size = 2, shape = 21, fill = 'white', color = '#ca3e1c') +
         annotate(geom = 'text', x = 7, y = 0.1,
                label = paste('train K-S : ', max(round(ks$`train_K-S`, 2))),
-                vjust = 1.5) +
+                vjust = 1.5,size = 3) +
         geom_line(aes(y = `%test_cumG`, group = 1, color = "%test_cumG"),
                 linetype = "dashed", size = 1) +
         geom_point(aes(x = which.max(ks$`test_K-S`),
@@ -1629,14 +1553,14 @@ ks_plot = function(train_pred, test_pred = NULL, target = NULL, score =  NULL,
                      y = as.numeric(ks$`%test_cumB`[which.max(ks$`test_K-S`)])),
                  size = 2, shape = 21, fill = 'white', color = '#ca3e1c') +
         annotate(geom = 'text', x = 7, y = 0.15, vjust = 1.5,
-               label = paste('test K-S : ', max(round(ks$`test_K-S`, 2)))) +
+               label = paste('test K-S : ', max(round(ks$`test_K-S`, 2))),size = 3) +
         scale_colour_manual(values = c("%train_cumG" = love_color("light_blue"),
                                      "%test_cumG" = love_color("light_green"),
                                      "%train_cumB" = love_color("light_red"),
                                      "%test_cumB" = love_color("deep_orange")),
         labels = c("%test_0", "%test_1","%train_0", "%train_1")) +
         labs(x = "% of Total", y = "% of CumSum",
-           title = paste(gtitle, "K-S Curve")) + theme_light() + 
+           title = paste(gtitle, "K-S Curve")) + theme_light() +
 		   theme(legend.title = element_blank(), legend.position = "top",
 		   plot.title = element_text(face = "bold", size = 11,vjust = 0, hjust = 0))
     } else {
@@ -1662,11 +1586,11 @@ ks_plot = function(train_pred, test_pred = NULL, target = NULL, score =  NULL,
         annotate(geom = 'text', x = 7, y = 0.1,
                label = paste('K-S : ', max(round(ks$`K-S`, 2))),
                 vjust = 1.5) +
-        scale_colour_manual(values = c("%Cumsum_0" = love_color("water_blue"),                           
+        scale_colour_manual(values = c("%Cumsum_0" = love_color("water_blue"),
                                      "%Cumsum_1" = love_color("gold_yellow")),
         labels = c("%Cumsum_0", "%Cumsum_1")) +
         labs(x = "% of Total", y = "% of CumSum",
-           title = paste(gtitle, "K-S Curve")) + theme_light() + 
+           title = paste(gtitle, "K-S Curve")) + theme_light() +
 		   theme(legend.title = element_blank(), legend.position = "top",
 		   plot.title = element_text(face = "bold", size = 11, vjust = 0, hjust = 0))
     }
@@ -1683,7 +1607,7 @@ ks_plot = function(train_pred, test_pred = NULL, target = NULL, score =  NULL,
 
 lift_plot = function(train_pred, test_pred = NULL, target = NULL, score = NULL,
                         gtitle = NULL,  breaks = NULL, g = 10) {
-    opt = options(scipen = 200, stringsAsFactors = FALSE, digits = 6)
+    opt = options('warn' = -1,scipen = 200, stringsAsFactors = FALSE, digits = 6) #
     `value` = `train_test` = `bins` = `%train_cumG` = `%train_cumB` = `%test_cumG` = `%test_cumB` = Lift = test_Lift = train_Lift= NULL
     if (is.null(gtitle)) { gtitle = paste0("Model") }
     if (is.null(target)) { stop("target is missing!\n") }
@@ -1705,12 +1629,12 @@ lift_plot = function(train_pred, test_pred = NULL, target = NULL, score = NULL,
         geom_point(aes(y = rep(1, nrow(tb_ks))), size = 1.5, shape = 21, fill = 'white', color = "#085A9C") +
         scale_y_continuous(limits = c(0, max(tb_ks$train_Lift) + 0.5)) +
         geom_text(aes(y = train_Lift, label = round(train_Lift, 1)), vjust = -1, hjust = 0.5, size = 3, colour = "darkgrey") +
-        geom_text(aes(y = test_Lift, label = round(test_Lift, 1)), vjust = 1.3, hjust = 0.5, size = 3, colour = "darkgrey") + 
-		labs(x = '%Total', y = 'Lift', title = paste(gtitle,"Lift Chart")) + theme_light() + 
+        geom_text(aes(y = test_Lift, label = round(test_Lift, 1)), vjust = 1.3, hjust = 0.5, size = 3, colour = "darkgrey") +
+		labs(x = '%Total', y = 'Lift', title = paste(gtitle,"Lift Chart")) + theme_light() +
 		theme(legend.title = element_blank(), legend.position = "top",
 		   plot.title = element_text(face = "bold", size = 11, vjust = 0, hjust = 0))
     } else {
-        if (tb_ks[1, "Lift"] < tb_ks[nrow(tb_ks), "Lift"]) { 
+        if (tb_ks[1, "Lift"] < tb_ks[nrow(tb_ks), "Lift"]) {
             tb_ks = tb_ks[order(tb_ks$bins, decreasing = TRUE),]
         }
        lift_pl =  ggplot(tb_ks, aes(x = reorder(as.factor(as_percent(round(cumsum(tb_ks$`%Pct`), 1))), cumsum(tb_ks$`%Pct`)))) +
@@ -1721,7 +1645,7 @@ lift_plot = function(train_pred, test_pred = NULL, target = NULL, score = NULL,
         geom_point(aes(y = rep(1, nrow(tb_ks))), size = 1.5, shape = 21, fill = 'white', color = "#085A9C") +
         scale_y_continuous(limits = c(0, max(tb_ks$Lift) + 0.5)) +
         geom_text(aes(y = Lift, label = round(Lift, 1)), vjust = -1, hjust = 0.5, size = 3, colour = "darkgrey") +
-        labs(x = '%Total', y = 'Lift', title = paste(gtitle,"Lift Chart")) + theme_light() + 
+        labs(x = '%Total', y = 'Lift', title = paste(gtitle,"Lift Chart")) + theme_light() +
 		theme(legend.title = element_blank(), legend.position = "top",
 		   plot.title = element_text(face = "bold", size = 11, vjust = 0, hjust = 0))
     }
@@ -1734,41 +1658,41 @@ lift_plot = function(train_pred, test_pred = NULL, target = NULL, score = NULL,
 #' @rdname model_result_plot
 #' @export
 roc_plot = function(train_pred, test_pred = NULL, target = NULL, score = NULL, gtitle = NULL) {
-    opt = options(scipen = 200, stringsAsFactors = FALSE, digits = 6) #
+    opt = options('warn' = -1,scipen = 200, stringsAsFactors = FALSE, digits = 6) #
     if (is.null(target)) {stop("target is missing!\n") }
     if (is.null(score)) { stop("score is missing!\n") }
     if (is.null(gtitle)) { gtitle = paste0("Model") }
 	train_pred <- train_pred[which(complete.cases(train_pred[, score])),]
 	if(length(train_pred[,score]) > 1 && max(train_pred[,score]) > 1)train_pred[,score] = 1/train_pred[,score]
-    rocdata = data.frame(prob = train_pred[ ,score], target = train_pred[ ,target])
-    auc = auc_value(target = rocdata$target, prob = rocdata$prob)
-    rocdata = rocdata[order(rocdata$prob),]
-    tpr = fpr = rep(0, nrow(rocdata))
-    for (i in 1:nrow(rocdata)) {
-        threshold = rocdata$prob[i]
-        tp = sum(rocdata$prob > threshold & rocdata$target == 1)
-        fp = sum(rocdata$prob > threshold & rocdata$target == 0)
-        tn = sum(rocdata$prob < threshold & rocdata$target == 0)
-        fn = sum(rocdata$prob < threshold & rocdata$target == 1)
+    roc_d = data.frame(prob = train_pred[ ,score], target = train_pred[ ,target])
+    auc = auc_value(target = roc_d$target, prob = roc_d$prob)
+    roc_d = roc_d[order(roc_d$prob),]
+    tpr = fpr = rep(0, nrow(roc_d))
+    for (i in 1:nrow(roc_d)) {
+        threshold = roc_d$prob[i]
+        tp = sum(roc_d$prob > threshold & roc_d$target == 1)
+        fp = sum(roc_d$prob > threshold & roc_d$target == 0)
+        tn = sum(roc_d$prob < threshold & roc_d$target == 0)
+        fn = sum(roc_d$prob < threshold & roc_d$target == 1)
         tpr[i] <- tp / (tp + fn)
         fpr[i] <- fp / (tn + fp)
     }
     tpr_fpr = data.frame(tpr, fpr)
-   
+
     if (!is.null(test_pred) || length(test_pred) > 1) {
 	    test_pred <- test_pred[which(complete.cases(test_pred[, score])),]
 	    if(length(test_pred[,score]) > 1 && max(test_pred[,score]) > 1)test_pred[,score] = 1/test_pred[,score]
-        rocdata_ts = data.frame(prob = test_pred[, score], target = test_pred[, target])
+        roc_dts = data.frame(prob = test_pred[, score], target = test_pred[, target])
 
-        auc_ts = auc_value(target = rocdata_ts$target, prob = rocdata_ts$prob)
-        rocdata_ts = rocdata_ts[order(rocdata_ts$prob),]
-        tpr_ts = fpr_ts = rep(0, nrow(rocdata_ts))
-        for (i in 1:nrow(rocdata_ts)) {
-            threshold = rocdata_ts$prob[i]
-            tp_ts = sum(rocdata_ts$prob > threshold & rocdata_ts$target == 1)
-            fp_ts = sum(rocdata_ts$prob > threshold & rocdata_ts$target == 0)
-            tn_ts = sum(rocdata_ts$prob < threshold & rocdata_ts$target == 0)
-            fn_ts = sum(rocdata_ts$prob < threshold & rocdata_ts$target == 1)
+        auc_ts = auc_value(target = roc_dts$target, prob = roc_dts$prob)
+        roc_dts = roc_dts[order(roc_dts$prob),]
+        tpr_ts = fpr_ts = rep(0, nrow(roc_dts))
+        for (i in 1:nrow(roc_dts)) {
+            threshold = roc_dts$prob[i]
+            tp_ts = sum(roc_dts$prob > threshold & roc_dts$target == 1)
+            fp_ts = sum(roc_dts$prob > threshold & roc_dts$target == 0)
+            tn_ts = sum(roc_dts$prob < threshold & roc_dts$target == 0)
+            fn_ts = sum(roc_dts$prob < threshold & roc_dts$target == 1)
             tpr_ts[i] <- tp_ts / (tp_ts + fn_ts)
             fpr_ts[i] <- fp_ts / (tn_ts + fp_ts)
         }
@@ -1776,13 +1700,13 @@ roc_plot = function(train_pred, test_pred = NULL, target = NULL, score = NULL, g
         roc_pl = ggplot() +
         geom_line(aes(x = tpr_fpr$fpr, y = tpr_fpr$tpr,group = 1, color = "train ROC"), size = 1) +
         annotate(geom = 'text', x = 0.5, y = 0.35, vjust = 1.5,
-               label = paste('train AUC : ', round(auc, 4))) +
+               label = paste('train AUC : ', round(auc, 4)),size = 3) +
         geom_line( aes(x = tpr_fpr_ts$fpr_ts, y = tpr_fpr_ts$tpr_ts, group = 1, color = "test ROC"), size = 1) +
 		scale_colour_manual(values = c("train ROC" = love_color("deep_orange"), 'test ROC' = love_color("deep_blue"))) +
         annotate(geom = 'text', x = 0.5, y = 0.3, vjust = 1.5,
-               label = paste('test AUC : ', round(auc_ts, 4))) +
+               label = paste('test AUC : ', round(auc_ts, 4)),size = 3) +
         geom_abline() + geom_hline(yintercept = 1) + geom_hline(yintercept = 0) +
-        ylim(c(0, 1)) + labs(x = 'FPR', y = 'TPR',title = paste(gtitle, "ROC Curve"))+ theme_light()+ 
+        ylim(c(0, 1)) + labs(x = 'FPR', y = 'TPR',title = paste(gtitle, "ROC Curve"))+ theme_light()+
 		theme(legend.title = element_blank(), legend.position = "top",
 		   plot.title = element_text(face = "bold", size = 11, vjust = 0, hjust = 0))
     } else {
@@ -1790,8 +1714,8 @@ roc_plot = function(train_pred, test_pred = NULL, target = NULL, score = NULL, g
         geom_line(aes(x = tpr_fpr$fpr, y = tpr_fpr$tpr), size = 1, color = love_color("deep_orange")) +
         geom_abline() + geom_hline(yintercept = 1) + geom_hline(yintercept = 0) +
         annotate(geom = 'text', x = 0.5, y = 0.35, vjust = 1.5,
-               label = paste('AUC : ', round(auc, 4))) +
-        ylim(c(0, 1)) + labs(x = 'Fpr', y = 'Tpr',title = paste(gtitle, "ROC Curve")) + theme_light() + 
+               label = paste('AUC : ', round(auc, 4)),size = 3) +
+        ylim(c(0, 1)) + labs(x = 'Fpr', y = 'Tpr',title = paste(gtitle, "ROC Curve")) + theme_light() +
 		theme(legend.title = element_blank(), legend.position = "top",
 		   plot.title = element_text(face = "bold", size = 11, vjust = 0, hjust = 0))
     }
@@ -1807,21 +1731,21 @@ roc_plot = function(train_pred, test_pred = NULL, target = NULL, score = NULL, g
 
 score_distribution_plot = function(train_pred, test_pred, target, score,
                              gtitle = NULL, breaks = NULL, g = 10) {
-  opt = options(scipen = 200, stringsAsFactors = FALSE, digits = 6) #
-  `value` = `train_test` = `bins` = `%train_cumG` = `%train_cumB` = `%test_cumG` = `%test_cumB` = 
+   opt = options('warn' = -1,scipen = 200, stringsAsFactors = FALSE, digits = 6) #
+  `value` = `train_test` = `bins` = `%train_cumG` = `%train_cumB` = `%test_cumG` = `%test_cumB` =
     `%Pct` = `%Pct_1` =  NULL
   if (is.null(gtitle)) { gtitle = paste0("Model") }
-  
+
   tb_ks = perf_table(train_pred = train_pred, test_pred = test_pred,
                      target = target, score = score, g = g, breaks = breaks)
-  if (!is.null(test_pred) || length(test_pred) > 1){	
-   
+  if (!is.null(test_pred) || length(test_pred) > 1){
+
     names(tb_ks)[7:8] =  c("%train_1", "%test_1")
     ts_total = data.table::melt(tb_ks[c("bins", "%train", "%test")], id.vars = c("bins"),
                                 variable.name = "train_test", value.name = "value")
     ts_1 = data.table::melt(tb_ks[c("bins", "%train_1", "%test_1")], id.vars = c("bins"),
                             variable.name = "train_test", value.name = "value")
-    
+
     dis_pl =  ggplot(ts_total, aes(x = bins, y = value,fill = train_test)) +
       geom_bar(stat = "identity", position = position_dodge(width = 0.7)) +
       geom_text(aes(y = value, label = paste(as_percent(value, digits = 3))),
@@ -1873,7 +1797,7 @@ score_distribution_plot = function(train_pred, test_pred, target, score,
       group = 1,
       position = position_dodge(width = 0.5), size = 1) +
       geom_point(aes(y = as.numeric(tb_ks$`%Pct_1`) * max(tb_ks$`%Pct`) * 4),
-                 
+
                  color = love_color("deep_orange"),
                  group = 1,
                  position = position_dodge(width = 0.5),
@@ -1883,7 +1807,7 @@ score_distribution_plot = function(train_pred, test_pred, target, score,
                 position = position_dodge(width = 0.5),
                 colour = 'black', size = 3, vjust = -0.1) +
       scale_fill_manual(values = c("%total" = love_color("deep_green"))) +
-      scale_color_manual(values = c("%flag_1" = love_color("deep_orange"))) +		
+      scale_color_manual(values = c("%flag_1" = love_color("deep_orange"))) +
       ylim(c(-0.01, max(c(tb_ks$`%Pct`,  as.numeric(tb_ks$`%Pct_1`) * max(tb_ks$`%Pct`) * 4)) + 0.05)) +
       xlab(score) +
       ylab("% Population") +
@@ -1891,9 +1815,9 @@ score_distribution_plot = function(train_pred, test_pred, target, score,
       plot_theme(legend.position = "top",
                  angle = ifelse(nrow(tb_ks) > 10, 50,
                                 ifelse(nrow(tb_ks) > 5, 30, 0)))
-  }							
+  }
   return(dis_pl)
-  
+
 }
 
 
@@ -1905,12 +1829,12 @@ score_distribution_plot = function(train_pred, test_pred, target, score,
 #'
 #' @param cohort_dat  A data.frame generated by \code{cohort_analysis}.
 #' @import ggplot2
-#' @importFrom gridExtra arrangeGrob tableGrob ttheme_default 
 #' @importFrom dplyr group_by mutate summarize  summarise n  count %>% filter
 #' @importFrom data.table melt dcast
 #' @export
 
 cohort_table_plot = function(cohort_dat){
+    opt = options('warn' = -1,scipen = 200, stringsAsFactors = FALSE, digits = 6) #
    cohort_dat[is.na(cohort_dat)] = 0
    Cohort_Group= Cohort_Period =Events= Events_rate= Opening_Total= Retention_Total =cohor_dat= final_Events =m_a= max_age=NULL
    ggplot(cohort_dat ,aes( reorder(paste0(Cohort_Period),Cohort_Period),
@@ -1928,7 +1852,7 @@ cohort_table_plot = function(cohort_dat){
     labs(x = "Cohort_Period", title="Cohort Analysis") +
     theme( text = element_text(size = 15),rect = element_blank() )+
     plot_theme(legend.position = 'right',angle = 0)
-  
+    options(opt)
 }
 
 #' cohort_plot
@@ -1947,4 +1871,530 @@ cohort_plot = function(cohort_dat){
       scale_x_continuous(breaks = 1:max(cohort_dat$Cohort_Period)) +
       scale_colour_manual(values = love_color(all= TRUE,type = "dark|light|shallow"))+
       plot_theme()
+}
+
+#' plot_table
+#'
+#' \code{plot_table} is for table visualizaiton.
+#' @param grid_table A data.frame or table
+#' @param theme The theme of color, "cyan","grey","green","red","blue","purple" are available.
+#' @param title The title of table
+#' @param title.size The title size of plot.
+#' @param title.color The title color.
+#' @param title.face The title face, such as "plain", "bold".
+#' @param title.position The title position,such as "left","middle","right".
+#' @param subtitle The subtitle of table
+#' @param subtitle.size The subtitle size.
+#' @param subtitle.color The subtitle color.
+#' @param subtitle.face The subtitle face, such as "plain", "bold",default is "bold".
+#' @param subtitle.position The subtitle position,such as "left","middle","right", default is "middle".
+#' @param tile.color The color of table lines, default is 'white'.
+#' @param tile.size The size of table lines , default is 1.
+#' @param colname.size The size of colnames, default is 3.
+#' @param colname.color  The color of colnames, default is 'white'.
+#' @param colname.face The face of colnames,default is 'bold'.
+#' @param colname.fill.color  The fill color of colnames, default is love_color("dark_cyan").
+#' @param text.size The size of text, default is 3.
+#' @param text.color The color of text, default is love_color("dark_grey").
+#' @param text.face The face of text, default is 'plain'.
+#' @param text.fill.color The fill color of text, default is c('white',love_color("pale_grey").
+#' @import ggplot2
+#' @examples
+#' sub = cv_split(UCICreditCard, k = 30)[[1]]
+#' dat = UCICreditCard[sub,]
+#' dat = re_name(dat, "default.payment.next.month", "target")
+#' dat = data_cleansing(dat, target = "target", obs_id = "ID",
+#' occur_time = "apply_date", miss_values = list("", -1))
+#' dat = process_nas(dat,default_miss = TRUE)
+#' train_test <- train_test_split(dat, split_type = "OOT", prop = 0.7,
+#'                                 occur_time = "apply_date")
+#' dat_train = train_test$train
+#' dat_test = train_test$test
+#' x_list = c("PAY_0", "LIMIT_BAL", "PAY_AMT5", "PAY_3", "PAY_2")
+#' Formula = as.formula(paste("target", paste(x_list, collapse = ' + '), sep = ' ~ '))
+#' set.seed(46)
+#' lr_model = glm(Formula, data = dat_train[, c("target", x_list)], family = binomial(logit))
+#'
+#' dat_train$pred_LR = round(predict(lr_model, dat_train[, x_list], type = "response"), 5)
+#' dat_test$pred_LR = round(predict(lr_model, dat_test[, x_list], type = "response"), 5)
+#' # model evaluation
+#' t1 = perf_table(train_pred = dat_train, test_pred = dat_test, target = "target", score = "pred_LR")
+#' plot_table(t1)
+#' @export
+
+plot_table = function(grid_table,theme = c("cyan","grey","green","red","blue","purple"),
+                      title= NULL,title.size = 12,title.color = 'black',title.face = "bold", title.position='middle',
+                      subtitle= NULL,subtitle.size = 8,subtitle.color = 'black',subtitle.face = "plain",
+                      subtitle.position='middle',
+                      tile.color = 'white',tile.size = 1,
+                      colname.size = 3,colname.color = 'white',colname.face = 'bold',
+                      colname.fill.color =love_color("dark_cyan"),
+                      text.size = 3,text.color =love_color("dark_grey"),
+                      text.face = 'plain', text.fill.color = c('white',love_color("pale_grey"))
+){
+  opt = options('warn' = -1,scipen = 200, stringsAsFactors = FALSE, digits = 6) #
+  grid_table = rbind(colnames(grid_table),as.data.frame(grid_table))
+  grid_table = cbind(rows = rownames(grid_table),as.data.frame(grid_table))
+  table_1 = data.table::melt(setDT(grid_table), id=1, measure=2:ncol(grid_table), value.factor=TRUE)
+  table_1 = data.frame(table_1,ind =paste0("x",1:nrow(table_1)))
+
+  table_theme = check_table_theme(theme = theme)
+  if(!is.null(table_theme$colname.fill.color)&&!is.null(table_theme$text.fill.color)){
+    colname.fill.color = table_theme$colname.fill.color
+    text.fill.color = table_theme$text.fill.color
+  }
+  plot_ele = get_plot_elements(table_1 = table_1,grid_table = grid_table,colname.fill.color = colname.fill.color,
+  text.fill.color = text.fill.color,colname.color = colname.color,text.color = text.color,
+  colname.face = colname.face,text.face = text.face,colname.size = colname.size,text.size = text.size)
+  fill_colors = plot_ele$fill_colors
+  text_colors = plot_ele$text_colors
+  fill_size = plot_ele$fill_size
+  fill_bold = plot_ele$fill_bold
+  value_width = plot_ele$value_width
+  nudge_y = plot_ele$nudge_y
+  table_2 = rearrange_table(table_1 = table_1,grid_table = grid_table,colname.face = colname.face,
+  colname.size = colname.size, text.size = text.size)
+  pl_tb = ggplot(table_2,aes(x = table_2$n_cumsum ,y = table_2$rows ))+
+    geom_tile(aes(  fill = table_2$ind ,width = table_2$n_width ),height = value_width,
+              show.legend = FALSE,colour = tile.color, size = tile.size)+
+    geom_text(nudge_x = c(-(table_2$n_width[-c((nrow(table_2)- length(unique(table_2$rows))+1):nrow(table_2))]/4
+    ),table_2$n_width[c((nrow(table_2)- length(unique(table_2$rows))+1):nrow(table_2))]*0)
+    ,nudge_y = nudge_y, aes(label = table_2$value), size = fill_size,
+    colour =  text_colors,fontface = fill_bold)+
+    labs(title = title, subtitle = subtitle ,x = "",y = "") +
+    scale_fill_manual(limits = table_2$ind ,values = fill_colors )+
+    scale_x_discrete(limits = c(1:nrow(table_2)-1)) +
+    scale_y_discrete(limits = rev(unique(table_2$rows))) +
+    theme(
+      legend.position = 'none',axis.ticks = element_blank(),axis.text = element_blank(),
+      plot.title	= element_text(face =title.face,size = title.size,color = title.color,
+                                hjust = ifelse(title.position == 'middle',0.5,
+                                               ifelse(title.position == 'right', 1,0)), vjust = 0),
+      plot.subtitle	= element_text(face = subtitle.face,size = subtitle.size,color = subtitle.color,
+                                   hjust = ifelse(subtitle.position == 'middle',0.5,
+                                                  ifelse(subtitle.position == 'right', 1,0)),vjust = 0),
+      rect = element_blank())
+	return(pl_tb)  
+	 options(opt)
+
+}
+
+rearrange_table = function(table_1,grid_table,colname.face, colname.size , text.size){
+  variable = n_char =n_width = rows = NULL
+  table_1$value =  sapply(table_1$value,function(x){
+    if(!is.na(x) && !x %in% colnames(grid_table[1,-1])){
+      if( nrow(grid_table)> 10){
+        if(nchar(x) > 20 & nchar(x) <= 40){
+          x = paste(substr(x,1,20),substr(x, 21,nchar(x)),sep = "\n")
+        }else{
+          if(nchar(x) >40 & nchar(x) <= 60){
+            x = paste(substr(x,1,20),substr(x, 21,40),substr(x, 41,nchar(x)),sep = "\n")
+          }else{
+            if(nchar(x) > 60 & nchar(x) <= 80){
+              x = paste(substr(x,1,20),substr(x, 21,40),substr(x, 41,60),
+                        substr(x,61,nchar(x)),sep = "\n")
+            }else{
+              if(nchar(x) > 80 & nchar(x) <= 100){
+                x = paste(substr(x,1,20),substr(x,21,40),substr(x, 41,60),
+                          substr(x,61,80),substr(x,81,nchar(x)),sep = "\n")
+              }else{
+                if(nchar(x) > 100 & nchar(x) <= 120){
+                  x = paste(substr(x,1,20),substr(x, 21,40),substr(x, 41,60),
+                            substr(x,61,80),substr(x,81,100),substr(x,101,nchar(x)),sep = "\n")
+                }else{
+                  if(nchar(x) > 120 & nchar(x) <= 140){
+                    x = paste(substr(x,1,20),substr(x, 21,40),substr(x, 41,60),
+                              substr(x,61,80),substr(x,81,100),substr(x,101,120),
+                              substr(x,121,nchar(x)),sep = "\n")
+                  }else{
+                    if(nchar(x) > 140){
+                      x = paste(substr(x,1,20),substr(x, 21,40),substr(x, 41,60),
+                                substr(x,61,80),substr(x,81,100),substr(x,101,120),
+                                substr(x,121,140),substr(x,141,nchar(x)),sep = "\n")
+                    }else{
+                      x
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }else{
+        if(nchar(x) > 25 & nchar(x) <= 50){
+          x = paste(substr(x,1,25),substr(x, 26,nchar(x)),sep = "\n")
+        }else{
+          if(nchar(x) >50 & nchar(x) <= 75){
+            x = paste(substr(x,1,25),substr(x, 26,50),substr(x, 51,nchar(x)),sep = "\n")
+          }else{
+            if(nchar(x) > 75 & nchar(x) <= 100){
+              x = paste(substr(x,1,25),substr(x, 26,50),substr(x, 51,75),
+                        substr(x,76,nchar(x)),sep = "\n")
+            }else{
+              if(nchar(x) > 100 & nchar(x) <= 125){
+                x = paste(substr(x,1,25),substr(x,26,50),substr(x, 51,75),
+                          substr(x,76,100),substr(x,101,nchar(x)),sep = "\n")
+              }else{
+                if(nchar(x) > 125){
+                  x = paste(substr(x,1,25),substr(x, 26,50),substr(x, 51,75),
+                            substr(x,76,100),substr(x,101,125),substr(x,126,nchar(x)),sep = "\n")
+                }else{
+                  x
+                }
+              }
+            }
+          }
+        }
+      }
+    }else{
+      if(!is.na(x) &&nchar(x) > 10  & nchar(x) <= 15){
+        x = paste(substr(x,1,8),substr(x, 9,nchar(x)),sep = "\n")
+      }else{
+        if(!is.na(x) &&nchar(x) > 15 ){
+          x = paste(substr(x,1,12),substr(x,13,nchar(x)),sep = "\n")
+        }else{
+          x
+
+        }
+      }
+    }
+
+  })
+  table_2= table_1 %>%
+    dplyr::mutate(n_char = unlist(
+      sapply(table_1$value,
+	  function(x)ifelse( colname.face == 'bold' &
+	  x %in% colnames(grid_table[1,-1]) & colname.size - text.size ==0,
+	  nchar(strsplit(x,"\n")[[1]][1])+ 4 ,
+	  ifelse( colname.face == 'bold'&
+	  colname.size - text.size !=0 & x %in% colnames(grid_table[1,-1]),
+	  nchar(strsplit(x,"\n")[[1]][1])+4,
+	  ifelse(colname.face != 'bold' & colname.size - text.size !=0&
+	  x %in% colnames(grid_table[1,-1])
+	  ,nchar(strsplit(x,"\n")[[1]][1]) + 2,
+	  ifelse(colname.face == 'bold' &
+	  x %in% colnames(grid_table[1,-1]) & colname.size - text.size ==0 ,
+	  nchar(strsplit(x,"\n")[[1]][1])+2,
+	  ifelse(colname.face == 'bold'|colname.size - text.size !=0 ,
+	  nchar(strsplit(x,"\n")[[1]][1])+2,
+	  nchar(strsplit(x,"\n")[[1]][1]))))))))) %>%
+    dplyr::group_by(variable) %>%
+    dplyr::mutate(n_width = max(n_char,na.rm = TRUE)) %>%
+    dplyr::ungroup() %>%
+    dplyr::group_by(rows) %>%
+    dplyr::mutate(n_cumsum = base::cumsum(n_width/2))%>%
+    dplyr::ungroup()
+
+ return(table_2)
+}
+
+check_table_theme = function(theme = NULL){
+  colname.fill.color = text.fill.color = NULL
+  if(length(theme) >0 &&
+     any(sapply(theme,function(x)is.element(x,c("cyan","grey","green","red","blue","purple"))))){
+    if(theme[1] == 'cyan'){
+      dark_cyan = rgb(40, 70, 100, maxColorValue = 255)
+      shallow_cyan = rgb(200, 230, 245, maxColorValue = 255)
+      pale_cyan = rgb(220, 240, 255, maxColorValue = 255)
+      colname.fill.color = dark_cyan
+      text.fill.color = c(pale_cyan, shallow_cyan)
+    }else{
+      if(theme[1] == 'grey'){
+        dark_grey = rgb(102, 102, 102, maxColorValue = 255)
+        shallow_grey = rgb(225, 226, 225, maxColorValue = 255)
+        pale_grey = rgb(240, 240, 240, maxColorValue = 255)
+        colname.fill.color = dark_grey
+        text.fill.color = c(pale_grey,shallow_grey)
+
+      }else{
+        if(theme[1] == 'red'){
+          dark_red = rgb(180,40, 40, maxColorValue = 255)
+          shallow_red = rgb(255,230, 230, maxColorValue = 255)
+          pale_red =rgb(255,242, 242, maxColorValue = 255)
+          colname.fill.color = dark_red
+          text.fill.color = c(pale_red,shallow_red)
+        }else{
+          if(theme[1] == 'blue'){
+            deep_blue = rgb(80, 99, 139, maxColorValue = 255)
+            shallow_blue = rgb(210, 232, 255, maxColorValue = 255)
+            pale_blue = rgb(227,240, 255, maxColorValue = 255)
+            colname.fill.color = deep_blue
+            text.fill.color = c(pale_blue,shallow_blue)
+          }else{
+            if(theme[1] == 'green'){
+              deep_green = rgb(50, 150, 150, maxColorValue = 255)
+              shallow_green =rgb(200, 240, 240, maxColorValue = 255)
+              pale_green = rgb(225, 255, 255, maxColorValue = 255)
+              colname.fill.color = deep_green
+              text.fill.color = c(pale_green,shallow_green)
+            }else{
+              if(theme[1] == 'purple'){
+                dark_purple = rgb(180, 50, 105, maxColorValue = 255)
+                shallow_purple = rgb(245, 225, 245, maxColorValue = 255)
+                pale_purple = rgb(255, 240, 255, maxColorValue = 255)
+                colname.fill.color = dark_purple
+                text.fill.color = c(pale_purple,shallow_purple)
+              }
+
+            }
+          }
+        }
+      }
+    }
+  }
+  return(list(colname.fill.color = colname.fill.color,text.fill.color = text.fill.color))
+}
+
+get_plot_elements = function(table_1,grid_table,colname.fill.color,text.fill.color,
+       colname.color,text.color,colname.face,text.face,colname.size,text.size){
+  fill_colors =  c()
+  m = 0
+  for(i in 1:length(table_1$value )){
+    if(nrow(grid_table)%%2 == 0  ){
+      m = m+1
+    }
+    if(table_1$value[i] %in% colnames(grid_table[1,-1])){
+
+      fill_colors = c(fill_colors, colname.fill.color[1])
+    }else{
+      if(nrow(grid_table)%%2 != 0  ){
+        m = m+1
+      }
+      if(length(text.fill.color)>1){
+        if(m%%2 == 0  ){
+          fill_colors = c(fill_colors,text.fill.color[1])
+        }else{
+
+          fill_colors = c(fill_colors,text.fill.color[2])
+        }
+
+      }else{
+        fill_colors = c(fill_colors,text.fill.color[1])
+
+      }
+    }
+  }
+
+  text_colors = c()
+  for(i in 1:length(table_1$value )){
+    if(table_1$value[i] %in% colnames(grid_table[1,-1])){
+
+      text_colors = c(text_colors,colname.color)
+    }else{
+      text_colors = c(text_colors,text.color )
+    }
+  }
+
+  fill_size = c()
+  for(i in 1:length(table_1$value )){
+    if(table_1$value[i] %in% colnames(grid_table[1,-1])){
+
+      fill_size = c(fill_size, colname.size)
+    }else{
+      fill_size = c(fill_size,text.size)
+    }
+  }
+
+  fill_bold = c()
+  for(i in 1:length(table_1$value )){
+    if(table_1$value[i] %in% colnames(grid_table[1,-1])){
+      fill_bold =  c(fill_bold,colname.face)
+    }else{
+      fill_bold = c(fill_bold,text.face)
+    }
+  }
+  value_width = c()
+  for(i in 1:length(table_1$value )){
+    if(table_1$value[i] %in% colnames(grid_table[1,-1]) && any(nchar(colnames(grid_table[1,-1]))>10)){
+      value_width =  c(value_width,2)
+    }else{
+
+      value_width =  c(value_width,1)
+    }
+  }
+  nudge_y = c()
+  for(i in 1:length(table_1$value )){
+    if(table_1$value[i] %in% colnames(grid_table[1,-1]) && any(nchar(colnames(grid_table[1,-1]))>10)){
+      nudge_y =  c(nudge_y,0.05)
+    }else{
+
+      nudge_y =  c(nudge_y,0)
+    }
+  }
+
+  return(list(fill_colors = fill_colors ,text_colors = text_colors, fill_size = fill_size,
+           fill_bold = fill_bold,value_width = value_width,nudge_y = nudge_y ))
+}
+
+#' @title Arrange list of plots into a grid
+#' @name multi_grid
+#'
+#' @description Plot multiple ggplot-objects as a grid-arranged single plot.
+#'
+#' @param grobs A list of ggplot-objects to be arranged into the grid.
+#' @param nrow  Number of rows in the plot grid.
+#' @param ncol Number of columns in the plot grid.
+#' @param ... Other parameters.
+#'
+#' @return An object of class \code{gtable}.
+#'
+#' @details This function takes a \code{list} of ggplot-objects as argument.
+#'          Plotting functions of this package that produce multiple plot
+#'          objects (e.g., when there is an argument \code{facet.grid}) usually
+#'          return multiple plots as list.
+#'
+#' @examples
+#' library(ggplot2)
+#' sub = cv_split(UCICreditCard, k = 30)[[1]]
+#' dat = UCICreditCard[sub,]
+#' dat = re_name(dat, "default.payment.next.month", "target")
+#' dat = data_cleansing(dat, target = "target", obs_id = "ID",
+#' occur_time = "apply_date", miss_values = list("", -1))
+#' dat = process_nas(dat,default_miss = TRUE)
+#' train_test <- train_test_split(dat, split_type = "OOT", prop = 0.7,
+#'                                 occur_time = "apply_date")
+#' dat_train = train_test$train
+#' dat_test = train_test$test
+#' x_list = c("PAY_0", "LIMIT_BAL", "PAY_AMT5", "PAY_3", "PAY_2")
+#' Formula = as.formula(paste("target", paste(x_list, collapse = ' + '), sep = ' ~ '))
+#' set.seed(46)
+#' lr_model = glm(Formula, data = dat_train[, c("target", x_list)], family = binomial(logit))
+#'
+#' dat_train$pred_LR = round(predict(lr_model, dat_train[, x_list], type = "response"), 5)
+#' dat_test$pred_LR = round(predict(lr_model, dat_test[, x_list], type = "response"), 5)
+#' # model evaluation
+#' p1 =  ks_plot(train_pred = dat_train, test_pred = dat_test, target = "target", score = "pred_LR")
+#' p2 =  roc_plot(train_pred = dat_train, test_pred = dat_test, target = "target", score = "pred_LR")
+#' p3 =  lift_plot(train_pred = dat_train, test_pred = dat_test, target = "target", score = "pred_LR")
+#' p4 = score_distribution_plot(train_pred = dat_train, test_pred = dat_test,
+#' target = "target", score = "pred_LR")
+#' p_plots= multi_grid(p1,p2,p3,p4)
+#' plot(p_plots)
+#' @export
+
+multi_grid <- function(...,grobs=list(...),
+                         nrow=NULL, ncol=NULL){
+  n <- length(grobs)
+  if (is.null(nrow) && !is.null(ncol)) {
+    nrow <- ceiling(n/ncol)
+  }
+  if (is.null(ncol) && !is.null(nrow)) {
+    ncol <- ceiling(n/nrow)
+  }
+  stopifnot(nrow * ncol >= n)
+  if(is.null(nrow) && is.null(ncol)) {
+    if(n <= 3){
+      nrow = n
+      ncol = 1
+      }else{
+        if(n <= 6){
+          nrow = (n + 1)%/%2
+          ncol = 2
+          }else{
+            if(n <= 12){
+              nrow = (n + 2)%/%3
+              ncol = 3
+              }else{
+                nrow = ceiling(sqrt(n))
+                ncol = ceiling(n/nrow)
+              }
+          }
+      }
+  }
+  inherit.ggplot <-  unlist(lapply(grobs, inherits, what="ggplot"))
+
+  if(any(inherit.ggplot)) {
+    stopifnot(requireNamespace("ggplot2", quietly = TRUE))
+    toconv <- which(inherit.ggplot)
+    grobs[toconv] <- lapply(grobs[toconv], ggplot2::ggplotGrob)
+  }
+  positions <- expand.grid(t = seq_len(nrow),
+                           l = seq_len(ncol))
+  positions$b <- positions$t
+  positions$r <- positions$l
+  positions <- positions[order(positions$t),]
+  positions <- positions[seq_along(grobs), ]
+  ## sizes
+  widths <- unit(rep(1, ncol), "null")
+  heights <- unit(rep(1,nrow), "null")
+
+  grob_table <- to_gtable(name="arrange",
+
+               heights = heights,
+               widths = widths)
+
+  grob_table <- add_grobs(x = grob_table, grobs,
+                        t = positions$t,
+                        b = positions$b,
+                        l = positions$l,
+                        r = positions$r,
+                        z = seq_along(grobs),
+                        clip =  "off")
+  grob_table
+}
+
+to_gtable = function (widths = list(), heights = list(),
+                   name = "layout"){
+  layout <- new_data_frame(list(t = numeric(), l = numeric(),
+                                b = numeric(), r = numeric(), z = numeric(), clip = character(),
+                                name = character()), n = 0)
+  grid::gTree(grobs = list(), layout = layout, widths = widths, heights = heights,
+              respect = FALSE, name = name, rownames = NULL,
+              colnames = NULL, vp = NULL, cl = "gtable")
+}
+
+
+add_grobs = function (x, grobs, t, l, b = t, r = l, z = Inf, clip = "off",
+                            name = x$name){
+
+  n_grobs <- length(grobs)
+  layout <- unclass(x$layout)
+  z <- rep(z, length.out = n_grobs)
+  zval <- c(layout$z, z[!is.infinite(z)])
+  if (length(zval) == 0) {
+    zmin <- 1
+    zmax <- 0
+  } else {
+    zmin <- min(zval)
+    zmax <- max(zval)
+  }
+  z[z == -Inf] <- zmin - rev(seq_len(sum(z == -Inf)))
+  z[z == Inf] <- zmax + seq_len(sum(z == Inf))
+  x_row <- length(x$heights)
+  x_col <- length(x$widths)
+  t <- rep(neg_to_pos(t, x_row), length.out = n_grobs)
+  b <- rep(neg_to_pos(b, x_row), length.out = n_grobs)
+  l <- rep(neg_to_pos(l, x_col), length.out = n_grobs)
+  r <- rep(neg_to_pos(r, x_col), length.out = n_grobs)
+  clip <- rep(clip, length.out = n_grobs)
+  name <- rep(name, length.out = n_grobs)
+  x$grobs <- c(x$grobs, grobs)
+  x$layout <- new_data_frame(list(t = c(layout$t, t), l = c(layout$l,
+                                                            l), b = c(layout$b, b),
+                                  r = c(layout$r, r), z = c(layout$z,   z),
+                                  clip = c(layout$clip, clip), name = c(layout$name,
+                                                                        name)))
+  x
+}
+
+neg_to_pos <- function(x, max) {
+  ifelse(x >= 0, x, max + 1 + x)
+}
+
+new_data_frame <- function(x = list(), n = NULL) {
+  if (length(x) != 0 && is.null(names(x))) stop("Elements must be named", call. = FALSE)
+  lengths <- vapply(x, length, integer(1))
+  if (is.null(n)) {
+    n <- if (length(x) == 0 || min(lengths) == 0) 0 else max(lengths)
+  }
+  for (i in seq_along(x)) {
+    if (lengths[i] == n) next
+    if (lengths[i] != 1) stop("Elements must equal the number of rows or 1", call. = FALSE)
+    x[[i]] <- rep(x[[i]], n)
+  }
+
+  class(x) <- "data.frame"
+
+  attr(x, "row.names") <- .set_row_names(n)
+  x
 }

@@ -21,11 +21,9 @@ A data.frame
 \code{char_to_num} is  for transfering character variables which are actually numerical numbers containing strings  to numeric.
 }
 \examples{
-dat_sub = lendingclub[c("mths_since_recent_revol_delinq", "mths_since_last_record")]
+dat_sub = lendingclub[c('dti_joint',	'emp_length')]
 str(dat_sub)
 #variables that are converted to numbers containing strings
-dat_sub[is.na(dat_sub)] = "Missing"
-str(dat_sub)
 dat_sub = char_to_num(dat_sub)
 str(dat_sub)
 }

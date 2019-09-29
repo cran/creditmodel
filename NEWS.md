@@ -1,3 +1,8 @@
+# creditmodel-1.1.4
+* New function log_trans() is for logarithmic transformation
+* New function plot_table() make it possible to generate table graph.
+* New funciton multi_grid() for arranging list of plots into a grid.
+
 # creditmodel1.1.3
 **In this version I have:**
 
