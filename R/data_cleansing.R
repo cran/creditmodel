@@ -65,12 +65,10 @@
 #' @export
 
 
-
-data_cleansing <- function(dat, target = NULL, obs_id = NULL, occur_time = NULL,x_list = NULL,
-                          pos_flag = NULL, miss_values = NULL, ex_cols = NULL,
+data_cleansing <- function(dat, target = NULL, obs_id = NULL, occur_time = NULL, x_list = NULL, pos_flag = NULL, miss_values = NULL, ex_cols = NULL,
                           low_var = TRUE, outlier_proc = TRUE, missing_proc = TRUE, merge_cat = TRUE,
-						  trans_log = FALSE, one_hot = FALSE, p = 0.001, m = 20,
-                          lvp = 0.99,nr = 0.97,cor_dif = 0.01, 
+                          trans_log = FALSE, one_hot = FALSE, p = 0.001, m = 20,
+                          lvp = 0.999, nr = 0.999, cor_dif = 0.01,
                           parallel = FALSE, note = FALSE,
                           save_data = FALSE, file_name = NULL, dir_path = tempdir()) {
     #delete variables that values are all nas.
@@ -82,62 +80,61 @@ data_cleansing <- function(dat, target = NULL, obs_id = NULL, occur_time = NULL,
         if (!dir.exists(dir_path)) dir.create(dir_path)
         if (!is.character(file_name)) file_name = NULL
         }
-    if (note)cat_line("-- Cleansing data", col = love_color("dark_green"))
-    if(is.null(x_list)){
-    x_list = get_names(dat = dat,
-                              types = c('logical', 'factor', 'character', 'numeric','integer64',
+    if (note) cat_line("-- Cleansing data", col = love_color("dark_green"))
+    if (is.null(x_list)) {
+        x_list = get_names(dat = dat,
+                              types = c('logical', 'factor', 'character', 'numeric', 'integer64',
                                         'integer', 'double', "Date", "POSIXlt", "POSIXct", "POSIXt"),
                               ex_cols = ex_cols, get_ex = FALSE)
-	}						  
+    }
     ex_x_cols = ex_x_cols2 = NULL
     ex_x_cols = get_names(dat = dat,
-                              types = c('logical', 'factor', 'character', 'numeric','integer64',
+                              types = c('logical', 'factor', 'character', 'numeric', 'integer64',
                                         'integer', 'double', "Date", "POSIXlt", "POSIXct", "POSIXt"),
                               ex_cols = ex_cols, get_ex = TRUE)
     if (length(dat) > 0) {
         if (!is.null(x_list)) {
-            dat = dat[unique(c(obs_id, target, occur_time, x_list))]
+            dat = dat[intersect(names(dat),unique(unlist(c(obs_id, target, occur_time, x_list))))]
         }
-
-        dat =  null_blank_na(dat = dat, miss_values = miss_values, note = note)
+        dat = null_blank_na(dat = dat, miss_values = miss_values, note = note)
 
         #delete variables that all nas.
         if (low_var) {
             #delecte low vaiance variables
             dat = dat[!colAllnas(dat)] %>%
-                      low_variance_filter(lvp = lvp, note = note)
+                      low_variance_filter(lvp = lvp, note = note) %>%
+                      entry_rate_na(nr = nr, note = note)
             x_list_2 = get_names(dat = dat,
-                              types = c('logical', 'factor', 'character', 'numeric','integer64',
+                              types = c('logical', 'factor', 'character', 'numeric', 'integer64',
                                         'integer', 'double', "Date", "POSIXlt", "POSIXct", "POSIXt"),
                               ex_cols = ex_cols, get_ex = FALSE)
             ex_x_cols2 = setdiff(x_list, x_list_2)
             ex_x_cols = unique(c(ex_x_cols, ex_x_cols2))
         }
         if (length(ex_x_cols) > 0) {
-		
-		   cat_line("-- Following variables are excluded:", col = love_color("dark_green"))
+
+            cat_line("-- Following variables are excluded:", col = love_color("dark_green"))
             cat_bullet(paste0(format(ex_x_cols)), col = "darkgrey")
 
         }
         #transfer time variables to date formation
         dat = time_transfer(dat = dat, date_cols = NULL, ex_cols = c(obs_id, target, ex_cols), note = note) %>%
         char_to_num(ex_cols = c(obs_id, target, occur_time, ex_cols), note = note) %>%
-        remove_duplicated(obs_id = obs_id, occur_time = occur_time, note = note) %>%
-		entry_rate_na(nr = nr, note = note)
+        remove_duplicated(obs_id = obs_id, occur_time = occur_time, note = note)
         #merge categories of character variables that  is more than 20.
-		if(merge_cat){
+        if (merge_cat) {
 
-		dat = merge_category(dat = dat, ex_cols = c(obs_id, target, occur_time, ex_cols),
-                         p =p, m = m, note = note)
+            dat = merge_category(dat = dat, ex_cols = c(obs_id, target, occur_time, ex_cols),
+                         p = p, m = m, note = note)
 
-		}
+        }
 
         char_x_list = get_names(dat = dat,
                                 types = c('factor', 'character'),
                                 ex_cols = c(obs_id, target, occur_time, ex_cols),
                                 get_ex = FALSE)
         num_x_list = get_names(dat = dat,
-                               types = c('numeric', 'integer', 'double','integer64'),
+                               types = c('logical', 'numeric', 'integer', 'double', 'integer64'),
                                ex_cols = c(obs_id, target, occur_time, ex_cols),
                                get_ex = FALSE)
         date_x_list = get_names(dat = dat,
@@ -149,43 +146,42 @@ data_cleansing <- function(dat, target = NULL, obs_id = NULL, occur_time = NULL,
                                         'integer', 'double', "Date", "POSIXlt", "POSIXct", "POSIXt"),
                               ex_cols = c(obs_id, occur_time, target),
                               get_ex = TRUE)
-							  
-				  
+
+
         dat = dat[, c(flag_list, date_x_list, char_x_list, num_x_list)]
- 
-        if(length(char_x_list) > 0 ){		
-		dat[,char_x_list] = lapply(dat[,char_x_list],function(x)gsub("[^\u4e00-\u9fa5,^a-zA-Z,^0-9,^_]", "_", x))
-		}
+
+        if (length(char_x_list) > 0) {
+            dat[, char_x_list] = lapply(dat[, char_x_list], function(x) gsub("[^\u4e00-\u9fa5,^a-zA-Z,^0-9,^_]", "_", x))
+        }
         if (outlier_proc) {
             dat = process_outliers(dat = dat, target = target,
                                    x_list = num_x_list, ex_cols = c(obs_id, occur_time, target),
-                                   parallel = parallel, note = note, save_data = save_data, file_name = file_name,dir_path = dir_path)
+                                   parallel = parallel, note = FALSE, save_data = save_data, file_name = file_name, dir_path = dir_path)
         }
         if (missing_proc) {
             dat = process_nas(dat = dat, class_var = FALSE, x_list = c(num_x_list, char_x_list),
                               ex_cols = c(obs_id, occur_time, target),
                               default_miss = FALSE, parallel = parallel,
-                              method = "median", note = note, save_data = save_data, file_name = file_name, dir_path = dir_path)
+                              method = "median", note = FALSE, save_data = save_data, file_name = file_name, dir_path = dir_path)
         } else {
             dat = process_nas(dat = dat, class_var = FALSE, x_list = c(num_x_list, char_x_list),
                               ex_cols = c(obs_id, occur_time, target),
                               default_miss = TRUE, parallel = parallel,
-                              method = "median", note = note, save_data = save_data, file_name = file_name, dir_path = dir_path)
+                              method = "median", note = FALSE, save_data = save_data, file_name = file_name, dir_path = dir_path)
         }
-		
-		re_x_list = gsub("[^\u4e00-\u9fa5,^a-zA-Z,^0-9,^_]", "", c(char_x_list, num_x_list))
-        
+
+        re_x_list = gsub("[^\u4e00-\u9fa5,^a-zA-Z,^0-9,^_]", "", c(char_x_list, num_x_list))
+
         dat = re_name(dat, oldname = c(char_x_list, num_x_list), newname = re_x_list)
 
 
         if (save_data) {
-            save_dt(dat, dir_path = dir_path, file_name = ifelse(is.null(file_name), "data_cleansing", paste(file_name, "data_cleansing", sep = ".")), append = FALSE, note = note)
+            save_data(dat, dir_path = dir_path, file_name = ifelse(is.null(file_name), "data_cleansing", paste(file_name, "data_cleansing", sep = ".")), append = FALSE, note = note)
         }
     }
-    options(opt) # reset warnings
     return(dat)
+    options(opt) # reset
 }
-
 
 #' Remove Duplicated Observations
 #'

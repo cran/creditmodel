@@ -13,6 +13,11 @@
 \alias{rowMins}
 \alias{rowMaxMins}
 \alias{colMaxMins}
+\alias{cnt_x}
+\alias{sum_x}
+\alias{max_x}
+\alias{min_x}
+\alias{avg_x}
 \title{Functions for vector operation.}
 \usage{
 rowAny(x)
@@ -38,6 +43,16 @@ rowMins(x, na.rm = FALSE)
 rowMaxMins(x, na.rm = FALSE)
 
 colMaxMins(x, na.rm = FALSE)
+
+cnt_x(x)
+
+sum_x(x)
+
+max_x(x)
+
+min_x(x)
+
+avg_x(x)
 }
 \arguments{
 \item{x}{A data.frame or Matrix.}

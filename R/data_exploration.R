@@ -62,7 +62,7 @@ data_exploration <- function(dat,  save_data = FALSE, file_name = NULL, dir_path
       dir_path = ifelse(!is.character(dir_path), tempdir(), dir_path)
       if (!dir.exists(dir_path)) dir.create(dir_path)
       if (!is.character(file_name)) { file_name = NULL }
-      save_dt(view_num1, file_name = ifelse(is.null(file_name), "feature_exploration_numeric", 
+      save_data(view_num1, file_name = ifelse(is.null(file_name), "feature_exploration_numeric", 
                                             paste(file_name, "feature_exploration_numeric", sep = ".")),
               dir_path = dir_path, note = TRUE, as_list = FALSE)
     }
@@ -93,7 +93,7 @@ data_exploration <- function(dat,  save_data = FALSE, file_name = NULL, dir_path
       dir_path = ifelse(!is.character(dir_path), tempdir(), dir_path)
       if (!dir.exists(dir_path)) dir.create(dir_path)
       if (!is.character(file_name)) { file_name = NULL }
-      save_dt(view_char1, file_name = ifelse(is.null(file_name), "feature_exploration_character", 
+      save_data(view_char1, file_name = ifelse(is.null(file_name), "feature_exploration_character", 
                                              paste(file_name, "feature_exploration_character", sep = ".")),
               dir_path = dir_path, note = TRUE, as_list = FALSE)
     }

@@ -6,9 +6,9 @@
 \usage{
 xgb_filter(dat_train, dat_test = NULL, target = NULL,
   pos_flag = NULL, x_list = NULL, occur_time = NULL,
-  ex_cols = NULL, xgb_params = list(nrounds = 100, max.depth = 6, eta =
+  ex_cols = NULL, xgb_params = list(nrounds = 100, max_depth = 6, eta =
   0.1, min_child_weight = 1, subsample = 1, colsample_bytree = 1, gamma =
-  0, max_delta_step = 0, early_stopping_rounds = 10, eval_metric = "auc",
+  0, scale_pos_weight = 1, early_stopping_rounds = 10, eval_metric = "auc",
   objective = "binary:logistic"), cv_folds = 1, cp = NULL, seed = 46,
   vars_name = TRUE, note = TRUE, save_data = FALSE,
   file_name = NULL, dir_path = tempdir(), ...)
@@ -42,7 +42,7 @@ xgb_filter(dat_train, dat_test = NULL, target = NULL,
 
 \item{save_data}{Logical, save results results in locally specified folder. Default is FALSE.}
 
-\item{file_name}{The name for periodically saved results files.  Default is "Featrue_importance_XGB".}
+\item{file_name}{The name for periodically saved results files.  Default is "Feature_importance_XGB".}
 
 \item{dir_path}{The path for periodically saved results files.  Default is "./variable".}
 
@@ -61,5 +61,5 @@ target = "default.payment.next.month", occur_time = "apply_date",
 cv_folds = 1, ex_cols = "ID$|date$|default.payment.next.month$", vars_name = FALSE)
 }
 \seealso{
-\code{\link{psi_iv_filter}}, \code{\link{gbm_filter}}, \code{\link{feature_select_wrapper}}
+\code{\link{psi_iv_filter}}, \code{\link{gbm_filter}}, \code{\link{feature_selector}}
 }

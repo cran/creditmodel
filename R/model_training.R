@@ -20,7 +20,7 @@
 #' @param trans_log  Logical, Logarithmic transformation. Default is FALSE.
 #' @param low_var  Logical, delete low variance variables or not. Default is TRUE.
 #' @param merge_cat merge categories of character variables that  is more than m.
-#' @param feature_filter  Parameters for selecting important and stable features.See details at: \code{\link{feature_select_wrapper}}
+#' @param feature_filter  Parameters for selecting important and stable features.See details at: \code{\link{feature_selector}}
 #' @param algorithm  Algorithms for training a model. list("LR", "XGB", "GBDT", "RF") are available.
 #' @param LR.params  Parameters of logistic regression & scorecard. See details at :  \code{\link{lr_params}}.
 #' @param XGB.params Parameters of xgboost. See details at :  \code{\link{xgb_params}}.
@@ -35,18 +35,18 @@
 #' @param ...  Other parameters.
 #' @param seed  Random number seed. Default is 46.
 #' @return A list containing Model Objects.
-#' @seealso   \code{\link{train_test_split}},\code{\link{data_cleansing}}, \code{\link{feature_select_wrapper}},   \code{\link{lr_params}}, \code{\link{xgb_params}}, \code{\link{gbm_params}}, \code{\link{rf_params}},\code{\link{fast_high_cor_filter}},\code{\link{get_breaks_all}},\code{\link{lasso_filter}}, \code{\link{woe_trans_all}}, \code{\link{get_logistic_coef}}, \code{\link{score_transfer}},\code{\link{get_score_card}}, \code{\link{model_key_index}},\code{\link{ks_psi_plot}},\code{\link{get_plots}},\code{\link{ks_table_plot}}
+#' @seealso   \code{\link{train_test_split}},\code{\link{data_cleansing}}, \code{\link{feature_selector}},   \code{\link{lr_params}}, \code{\link{xgb_params}}, \code{\link{gbm_params}}, \code{\link{rf_params}},\code{\link{fast_high_cor_filter}},\code{\link{get_breaks_all}},\code{\link{lasso_filter}}, \code{\link{woe_trans_all}}, \code{\link{get_logistic_coef}}, \code{\link{score_transfer}},\code{\link{get_score_card}}, \code{\link{model_key_index}},\code{\link{ks_psi_plot}},\code{\link{get_plots}},\code{\link{ks_table_plot}}
 #' @examples
-#' sub = cv_split(UCICreditCard, k = 60)[[1]]
+#' sub = cv_split(UCICreditCard, k = 30)[[1]]
 #' dat = UCICreditCard[sub,]
-#' x_list = c("LIMIT_BAL","PAY_0")
+#' x_list = c("LIMIT_BAL")
 #' B_model = training_model(dat = dat,
-#'                          model_name = "UCICreditCard", 
-#'                          target = "default.payment.next.month", 
-#'							x_list = x_list,
-#'                          occur_time = "apply_date", 
-#'                          obs_id = "ID", 
-#'							dat_test = NULL,
+#'                          model_name = "UCICreditCard",
+#'                          target = "default.payment.next.month",
+#' 							x_list = x_list,
+#'                          occur_time =NULL,
+#'                          obs_id =NULL,
+#' 							dat_test = NULL,
 #'                          preproc = FALSE,
 #'                          outlier_proc = FALSE,
 #'                          missing_proc = FALSE,
@@ -56,13 +56,14 @@
 #'                                                step_wise = FALSE,
 #'                                                  score_card = FALSE),
 #'                          breaks_list = NULL,
-#'                          parallel = FALSE, 
+#'                          parallel = FALSE,
 #'                          cores_num = NULL,
-#'                          save_pmml = FALSE, 
+#'                          save_pmml = FALSE,
 #'                          plot_show = FALSE,
 #'                          vars_plot = FALSE,
 #'                          model_path = tempdir(),
 #'                          seed = 46)
+#'
 #' @import ggplot2
 #' @importFrom foreach foreach
 #' @importFrom pdp partial
@@ -82,23 +83,23 @@
 #' @export
 
 training_model <- function(model_name = "mymodel",
-                           dat, 
+                           dat,
                            dat_test = NULL,
-                           target = NULL, 
-						   occur_time = NULL, 
-						   obs_id = NULL,
-                           x_list = NULL, 
-						   ex_cols = NULL,
-                           pos_flag = NULL, 
-						   prop = 0.7,
-                           preproc = TRUE, 
-						   low_var = TRUE,
-						   merge_cat = TRUE,
-						   one_hot = FALSE,
-						   trans_log = FALSE,  
-                           outlier_proc = TRUE, 
-						   missing_proc = TRUE,
-						   miss_values = NULL,
+                           target = NULL,
+                           occur_time = NULL,
+                           obs_id = NULL,
+                           x_list = NULL,
+                           ex_cols = NULL,
+                           pos_flag = NULL,
+                           prop = 0.7,
+                           preproc = TRUE,
+                           low_var = TRUE,
+                           merge_cat = TRUE,
+                           one_hot = FALSE,
+                           trans_log = FALSE,
+                           outlier_proc = TRUE,
+                           missing_proc = TRUE,
+                           miss_values = NULL,
                            feature_filter = list(filter = c("IV", "PSI", "COR", "XGB"),
                                                  iv_cp = 0.02, psi_cp = 0.1, xgb_cp = 0,
                                                  cv_folds = 1, hopper = FALSE),
@@ -114,180 +115,180 @@ training_model <- function(model_name = "mymodel",
                            model_path = tempdir(),
                            seed = 46, ...) {
 
-  opt = options(scipen = 200, stringsAsFactors = FALSE, digits = 10)
-  cat_rule(left = "Building", right = model_name, col = "cyan")
-  if (is.null(algorithm)) {
-    stop(paste("algorithm is missing.\n"))
-  }
-  if (!any(is.element(algorithm, c("LR", "XGB", "GBM", "RF")))) {
-    stop("In algorithm, only LR, XGB, GBM, RF are supported.\n")
-  }
-  if (length(x_list) > 0 && any(x_list == target)) {
-    stop(paste("x_list  contains", target, ".\n"))
-  }
-  cat_rule("Creating the model output file path", col = love_color("light_cyan"))
-  if (!dir.exists(model_path)) dir.create(model_path)
-  if (!is.character(model_name)) model_name = "my_model"
-  model_path = ifelse(!is.character(model_path),
+    opt = options(scipen = 200, stringsAsFactors = FALSE, digits = 10)
+    cat_rule(left = "Building", right = model_name, col = "cyan")
+    if (is.null(algorithm)) {
+        stop(paste("algorithm is missing.\n"))
+    }
+    if (!any(is.element(algorithm, c("LR", "XGB", "GBM", "RF")))) {
+        stop("In algorithm, only LR, XGB, GBM, RF are supported.\n")
+    }
+    if (length(x_list) > 0 && any(x_list == target)) {
+        stop(paste("x_list  contains", target, ".\n"))
+    }
+    cat_rule("Creating the model output file path", col = love_color("light_cyan"))
+    if (!dir.exists(model_path)) dir.create(model_path)
+    if (!is.character(model_name)) model_name = "my_model"
+    model_path = ifelse(!is.character(model_path),
                       paste(tempdir(), model_name, sep = "/"), paste(model_path, model_name, sep = "/"))
-  if (!dir.exists(model_path)) dir.create(model_path)
-  model_dir_path = paste(model_path, "model", sep = "/")
-  data_dir_path = paste(model_path, "data", sep = "/")
-  var_dir_path = paste(model_path, "variable", sep = "/")
-  perf_dir_path = paste(model_path, "performance", sep = "/")
-  pred_dir_path = paste(model_path, "predict", sep = "/")
-  if (!dir.exists(model_dir_path)) dir.create(model_dir_path)
-  if (!dir.exists(data_dir_path)) dir.create(data_dir_path)
-  if (!dir.exists(var_dir_path)) dir.create(var_dir_path)
-  if (!dir.exists(perf_dir_path)) dir.create(perf_dir_path)
-  if (!dir.exists(pred_dir_path)) dir.create(pred_dir_path)
-  paths = list(model= model_dir_path, data = data_dir_path,
+    if (!dir.exists(model_path)) dir.create(model_path)
+    model_dir_path = paste(model_path, "model", sep = "/")
+    data_dir_path = paste(model_path, "data", sep = "/")
+    var_dir_path = paste(model_path, "variable", sep = "/")
+    perf_dir_path = paste(model_path, "performance", sep = "/")
+    pred_dir_path = paste(model_path, "predict", sep = "/")
+    if (!dir.exists(model_dir_path)) dir.create(model_dir_path)
+    if (!dir.exists(data_dir_path)) dir.create(data_dir_path)
+    if (!dir.exists(var_dir_path)) dir.create(var_dir_path)
+    if (!dir.exists(perf_dir_path)) dir.create(perf_dir_path)
+    if (!dir.exists(pred_dir_path)) dir.create(pred_dir_path)
+    paths = list(model = model_dir_path, data = data_dir_path,
                variable = var_dir_path, performance = perf_dir_path,
                predict = pred_dir_path)
-  cat_line("-- Seting model output file path:",  col = love_color("dark_green"))
-  cat_bullet(paste0(format(names(paths)), ": ", unname(paths)), col = "darkgrey")
-  #prepare parallel computing
-  if (parallel) {
-    parallel <- start_parallel_computing(parallel)
-    stopCluster <- TRUE
-  } else {
-    parallel <- stopCluster <- FALSE
-  }
-  if (is.null(cores_num)) {
-    cores_num = parallel::detectCores()
-  }
-  if (parallel)cat_line(paste("--",cores_num, "cores will be used for parallel computing.\n"),  col = love_color("sky_blue"))
-  on.exit(if (parallel & stopCluster) stop_parallel_computing(attr(parallel, "cluster")))
+    cat_line("-- Seting model output file path:", col = love_color("dark_green"))
+    cat_bullet(paste0(format(names(paths)), ": ", unname(paths)), col = "darkgrey")
+    #prepare parallel computing
+    if (parallel) {
+        parallel <- start_parallel_computing(parallel)
+        stopCluster <- TRUE
+    } else {
+        parallel <- stopCluster <- FALSE
+    }
+    if (is.null(cores_num)) {
+        cores_num = parallel::detectCores()
+    }
+    if (parallel) cat_line(paste("--", cores_num, "cores will be used for parallel computing.\n"), col = love_color("sky_blue"))
+    on.exit(if (parallel & stopCluster) stop_parallel_computing(attr(parallel, "cluster")))
 
-  cat_rule("Checking datasets and target", col = love_color("light_cyan"))
-  if (!is.null(dat_test)) {
-    dat = checking_data(dat = dat, target = target, pos_flag = pos_flag)
-    dat_test = checking_data(dat = dat_test, target = target, pos_flag = pos_flag)
-    x_list = get_x_list(x_list = x_list,note = TRUE,
+    cat_rule("Checking datasets and target", col = love_color("light_cyan"))
+    if (!is.null(dat_test)) {
+        dat = checking_data(dat = dat, target = target, pos_flag = pos_flag)
+        dat_test = checking_data(dat = dat_test, target = target, pos_flag = pos_flag)
+        x_list = get_x_list(x_list = x_list, note = TRUE,
                         dat_train = dat, dat_test = dat_test,
                         ex_cols = c(target, obs_id, occur_time, ex_cols))
-    nr = nrow(dat)
-    com_list = unique(c(obs_id, occur_time, target, x_list))
-    dat = dat[, com_list]
-    dat_test = dat_test[, com_list]
-    dat = rbind(dat, dat_test)
-  } else {
-    dat = checking_data(dat = dat, target = target, pos_flag = pos_flag)
-    x_list = get_x_list(x_list = x_list,note = TRUE,
+        nr = nrow(dat)
+        com_list = unique(c(obs_id, occur_time, target, x_list))
+        dat = dat[, com_list]
+        dat_test = dat_test[, com_list]
+        dat = rbind(dat, dat_test)
+    } else {
+        dat = checking_data(dat = dat, target = target, pos_flag = pos_flag)
+        x_list = get_x_list(x_list = x_list, note = TRUE,
                         dat_train = dat, dat_test = dat_test,
                         ex_cols = c(target, obs_id, occur_time, ex_cols))
-  }
+    }
     if (!is.null(x_list)) {
         dat = dat[unique(c(obs_id, target, occur_time, x_list))]
     }
 
 
-  if (preproc) {
-    cat_rule("Cleansing & Prepocessing data", col = love_color("light_cyan"))
-    dat = data_cleansing(dat = dat, x_list = x_list,
+    if (preproc) {
+        cat_rule("Cleansing & Prepocessing data", col = love_color("light_cyan"))
+        dat = data_cleansing(dat = dat, x_list = x_list,
                          target = target, obs_id = obs_id, occur_time = occur_time,
-                         ex_cols = ex_cols,outlier_proc = FALSE, missing_proc = FALSE,
-                         miss_values = miss_values, 
-                         low_var = low_var,merge_cat = merge_cat, parallel = parallel, note = TRUE,
+                         ex_cols = ex_cols, outlier_proc = FALSE, missing_proc = FALSE,
+                         miss_values = miss_values,
+                         low_var = low_var, merge_cat = merge_cat, parallel = parallel, note = TRUE,
                          save_data = TRUE, dir_path = data_dir_path, file_name = NULL)
-   }
-   char_x_list = get_names(dat = dat[x_list],
+    }
+    char_x_list = get_names(dat = dat,
                           types = c('factor', 'character'),
                           ex_cols = c(obs_id, target, occur_time, ex_cols),
                           get_ex = FALSE)
-   num_x_list = get_names(dat = dat[x_list],
-                         types = c('numeric', 'integer', 'double','integer64'),
+    num_x_list = get_names(dat = dat,
+                         types = c('numeric', 'integer', 'double', 'integer64'),
                          ex_cols = c(obs_id, target, occur_time, ex_cols),
                          get_ex = FALSE)
-						 
-						 
-    if(trans_log & length(num_x_list) > 0 & !is.null(target)){
-		dat = log_trans(dat = dat, target = target, x_list = num_x_list,cor_dif = 0.01,
-		ex_cols = ex_cols, note = TRUE)
-		num_x_list = get_names(dat = dat,
-                               types = c('numeric', 'integer', 'double','integer64'),
+
+
+    if (trans_log & length(num_x_list) > 0 & !is.null(target)) {
+        dat = log_trans(dat = dat, target = target, x_list = num_x_list, cor_dif = 0.01,
+        ex_cols = ex_cols, note = TRUE)
+        num_x_list = get_names(dat = dat,
+                               types = c('numeric', 'integer', 'double', 'integer64'),
                                ex_cols = c(obs_id, target, occur_time, ex_cols),
                                get_ex = FALSE)
-		
-	}
 
-	if (one_hot & length(char_x_list) > 0){
-      dat = one_hot_encoding(dat = dat, cat_vars = char_x_list, na_act = FALSE, note = TRUE)
-      char_x_list = get_names(dat = dat,
+    }
+
+    if (one_hot & length(char_x_list) > 0) {
+        dat = one_hot_encoding(dat = dat, cat_vars = char_x_list, na_act = FALSE, note = TRUE)
+        char_x_list = get_names(dat = dat,
                           types = c('factor', 'character'),
                           ex_cols = c(obs_id, target, occur_time, ex_cols),
                           get_ex = FALSE)
-      num_x_list = get_names(dat = dat,
-                         types = c('numeric', 'integer', 'double','integer64'),
+        num_x_list = get_names(dat = dat,
+                         types = c('numeric', 'integer', 'double', 'integer64'),
                          ex_cols = c(obs_id, target, occur_time, ex_cols),
                          get_ex = FALSE)
-	}
-	x_list = c(char_x_list,num_x_list)
-  #train test spliting
+    }
+    x_list = c(char_x_list, num_x_list)
+    #train test spliting
 
-  if (is.null(dat_test)) {
-    cat_rule("Spliting train & test", col = love_color("light_cyan"))
-    train_test <- train_test_split(dat, split_type = "OOT",
+    if (is.null(dat_test)) {
+        cat_rule("Spliting train & test", col = love_color("light_cyan"))
+        train_test <- train_test_split(dat, split_type = "OOT",
                                    prop = prop, occur_time = occur_time, note = TRUE,
                                    save_data = TRUE, dir_path = data_dir_path,
                                    file_name = NULL,
                                    seed = seed)
-    dat_train = train_test$train
-    dat_test = train_test$test
-  } else {
-    train_test = train_test_split(dat, split_type = "byRow", prop = nr / nrow(dat),
+        dat_train = train_test$train
+        dat_test = train_test$test
+    } else {
+        train_test = train_test_split(dat, split_type = "byRow", prop = nr / nrow(dat),
                                   occur_time = occur_time, seed = seed, note = TRUE,
                                   save_data = TRUE, dir_path = data_dir_path, file_name = NULL)
-    dat_train = train_test$train
-    dat_test = train_test$test
-  }
-
-  if (outlier_proc) {
-    dat_train = process_outliers(dat = dat_train, target = target, 
-                                 x_list = num_x_list, ex_cols = c(obs_id, occur_time, target),
-                                 parallel = parallel, note = TRUE, save_data = TRUE, 
-								 file_name = NULL,dir_path = data_dir_path)
-  }
-  if (missing_proc) {
-    dat_train = process_nas(dat = dat_train, class_var = FALSE, x_list = x_list,
-                            ex_cols = c(obs_id, occur_time, target),
-							miss_values = unique(append(miss_values,list(-1,"Missing"))),
-                            default_miss = FALSE, parallel = parallel,
-                            method = "median", note = TRUE, save_data = TRUE, 
-							file_name = NULL, dir_path = data_dir_path)
-  }else{
-    dat_train = process_nas(dat = dat_train, class_var = FALSE, x_list = x_list,
-                            ex_cols = c(obs_id, occur_time, target),
-							miss_values = unique(append(miss_values,list(-1,"Missing"))),
-                            default_miss = TRUE, parallel = parallel,
-                            method = "median", note = FALSE, save_data = FALSE, 
-							file_name = NULL, dir_path = data_dir_path)	
-  }
-   dat_test = process_nas(dat = dat_test, class_var = FALSE, x_list = x_list,
-                            ex_cols = c(obs_id, occur_time, target),
-							miss_values = unique(append(miss_values,list(-1,"Missing"))),
-                            default_miss = TRUE, parallel = parallel,
-                            method = "median", note = FALSE, save_data = FALSE, 
-							file_name = NULL, dir_path = data_dir_path)					
-
-
-  if (!is.null(feature_filter)) {
-
-    sel_list = NULL
-    if (!is.null(feature_filter[["filter"]]) &&
-        any(is.element(feature_filter[["filter"]], c("IV", "PSI", "XGB", "COR")))) {
-      filter = feature_filter[["filter"]]
-    } else {
-      filter = c("IV", "PSI", "XGB", "COR")
+        dat_train = train_test$train
+        dat_test = train_test$test
     }
-    cat_rule("Filtering features", col = love_color("light_cyan"))
-    cv_folds = ifelse(!is.null(feature_filter[["cv_folds"]]), feature_filter[["cv_folds"]], 1)
-    iv_cp = ifelse(!is.null(feature_filter[["iv_cp"]]), feature_filter[["iv_cp"]], 0.01)
-    psi_cp = ifelse(!is.null(feature_filter[["psi_cp"]]), feature_filter[["psi_cp"]], 0.1)
-    xgb_cp = ifelse(!is.null(feature_filter[["xgb_cp"]]), feature_filter[["xgb_cp"]], 0)
-    cor_cp = ifelse(!is.null(feature_filter[["cor_cp"]]), feature_filter[["cor_cp"]], 0.98)
-    hopper = ifelse(!is.null(feature_filter[["hopper"]]), feature_filter[["hopper"]], TRUE)
-    sel_list = feature_select_wrapper(dat_train = dat_train,
+
+    if (outlier_proc) {
+        dat_train = process_outliers(dat = dat_train, target = target,
+                                 x_list = num_x_list, ex_cols = c(obs_id, occur_time, target),
+                                 parallel = parallel, note = TRUE, save_data = TRUE,
+                                 file_name = NULL, dir_path = data_dir_path)
+    }
+    if (missing_proc) {
+        dat_train = process_nas(dat = dat_train, class_var = FALSE, x_list = x_list,
+                            ex_cols = c(obs_id, occur_time, target),
+                            miss_values = unique(append(miss_values, list(-1, "Missing"))),
+                            default_miss = FALSE, parallel = parallel,
+                            method = "median", note = TRUE, save_data = TRUE,
+                            file_name = NULL, dir_path = data_dir_path)
+    } else {
+        dat_train = process_nas(dat = dat_train, class_var = FALSE, x_list = x_list,
+                            ex_cols = c(obs_id, occur_time, target),
+                            miss_values = unique(append(miss_values, list(-1, "Missing"))),
+                            default_miss = TRUE, parallel = parallel,
+                            method = "median", note = FALSE, save_data = FALSE,
+                            file_name = NULL, dir_path = data_dir_path)
+    }
+    dat_test = process_nas(dat = dat_test, class_var = FALSE, x_list = x_list,
+                            ex_cols = c(obs_id, occur_time, target),
+                            miss_values = unique(append(miss_values, list(-1, "Missing"))),
+                            default_miss = TRUE, parallel = parallel,
+                            method = "median", note = FALSE, save_data = FALSE,
+                            file_name = NULL, dir_path = data_dir_path)
+
+
+    if (!is.null(feature_filter)) {
+
+        sel_list = NULL
+        if (!is.null(feature_filter[["filter"]]) &&
+            any(is.element(feature_filter[["filter"]], c("IV", "PSI", "XGB", "COR")))) {
+            filter = feature_filter[["filter"]]
+        } else {
+            filter = c("IV", "PSI", "XGB", "COR")
+        }
+        cat_rule("Filtering features", col = love_color("light_cyan"))
+        cv_folds = ifelse(!is.null(feature_filter[["cv_folds"]]), feature_filter[["cv_folds"]], 1)
+        iv_cp = ifelse(!is.null(feature_filter[["iv_cp"]]), feature_filter[["iv_cp"]], 0.01)
+        psi_cp = ifelse(!is.null(feature_filter[["psi_cp"]]), feature_filter[["psi_cp"]], 0.1)
+        xgb_cp = ifelse(!is.null(feature_filter[["xgb_cp"]]), feature_filter[["xgb_cp"]], 0)
+        cor_cp = ifelse(!is.null(feature_filter[["cor_cp"]]), feature_filter[["cor_cp"]], 0.98)
+        hopper = ifelse(!is.null(feature_filter[["hopper"]]), feature_filter[["hopper"]], TRUE)
+        sel_list = feature_selector(dat_train = dat_train,
                                       target = target,
                                       x_list = x_list, occur_time = occur_time,
                                       ex_cols = c(obs_id, occur_time, target, ex_cols),
@@ -298,95 +299,95 @@ training_model <- function(model_name = "mymodel",
                                       cores_num = cores_num, seed = seed,
                                       file_name = NULL, note = TRUE,
                                       dir_path = var_dir_path)
-    if (length(sel_list) > 0) {
-      x_list = get_x_list(x_list = sel_list,
+        if (length(sel_list) > 0) {
+            x_list = get_x_list(x_list = sel_list,
                           dat_train = dat_train, dat_test = dat_test,
                           ex_cols = c(target, obs_id, occur_time, ex_cols))
-    } else {
-      warning("No feature satisfies the criteria for feature selection, use the previous x_list.\n")
+        } else {
+            warning("No feature satisfies the criteria for feature selection, use the previous x_list.\n")
+        }
     }
-  }
-  model_new = lr_model_new = xgb_model_new = gbdt_model_new = rf_model_new = NULL
-  # Train Models
-  if (length(unique(dat_train[, target])) == 2) {
-    if (any(algorithm == "LR")) {
-      cat_rule("Training logistic regression model/scorecard",  col = "cyan")
+    model_new = lr_model_new = xgb_model_new = gbdt_model_new = rf_model_new = NULL
+    # Train Models
+    if (length(unique(dat_train[, target])) == 2) {
+        if (any(algorithm == "LR")) {
+            cat_rule("Training logistic regression model/scorecard", col = "cyan")
 
-      LR_model_dir_path = paste(model_dir_path, "LR", sep = "/")
-      LR_var_dir_path = paste(var_dir_path, "LR", sep = "/")
-      LR_perf_dir_path = paste(perf_dir_path, "LR", sep = "/")
-      LR_pred_dir_path = paste(pred_dir_path, "LR", sep = "/")
-      LR_data_dir_path = paste(data_dir_path, "LR", sep = "/")
+            LR_model_dir_path = paste(model_dir_path, "LR", sep = "/")
+            LR_var_dir_path = paste(var_dir_path, "LR", sep = "/")
+            LR_perf_dir_path = paste(perf_dir_path, "LR", sep = "/")
+            LR_pred_dir_path = paste(pred_dir_path, "LR", sep = "/")
+            LR_data_dir_path = paste(data_dir_path, "LR", sep = "/")
 
-      if (!dir.exists(LR_model_dir_path)) dir.create(LR_model_dir_path)
-      if (!dir.exists(LR_var_dir_path)) dir.create(LR_var_dir_path)
-      if (!dir.exists(LR_perf_dir_path)) dir.create(LR_perf_dir_path)
-      if (!dir.exists(LR_pred_dir_path)) dir.create(LR_pred_dir_path)
-      if (!dir.exists(LR_data_dir_path)) dir.create(LR_data_dir_path)
-      if (is.null(LR.params)) {
-        LR.params = lr_params()
-      }
-      obsweight = ifelse(!is.null(LR.params[["obsweight"]]), LR.params[["obsweight"]], 1)
-      step_wise = ifelse(!is.null(LR.params[["step_wise"]]), LR.params[["step_wise"]], TRUE)
-      lasso = ifelse(!is.null(LR.params[["lasso"]]), LR.params[["lasso"]], TRUE)
-      score_card = ifelse(!is.null(LR.params[["score_card"]]), LR.params[["score_card"]], TRUE)
-      sp_values = LR.params[["sp_values"]]
-      forced_in = LR.params[["forced_in"]]
-      iters = ifelse(!is.null(LR.params[["iters"]]), LR.params[["iters"]], 10)
-      thresholds = LR.params[["thresholds"]]
-      cor_p = thresholds$cor_p
-      iv_i= thresholds$iv_i
-      psi_i = thresholds$psi_i
-      cos_i = thresholds$cos_i
-      f_eval = ifelse(!is.null(LR.params[["f_eval"]]), LR.params[["f_eval"]], "ks")
-      method = ifelse(!is.null(LR.params[["method"]]), LR.params[["method"]], "grid_search")
-      best_lambda = ifelse(!is.null(LR.params[["best_lambda"]]), LR.params[["best_lambda"]], "lambda.ks")
-      tree_control = if (!is.null(LR.params["tree_control"])) {
-        LR.params[["tree_control"]]
-      } else {
-        list(p = 0.02, cp = 0.00000001, xval = 5, maxdepth = 10)
-      }
+            if (!dir.exists(LR_model_dir_path)) dir.create(LR_model_dir_path)
+            if (!dir.exists(LR_var_dir_path)) dir.create(LR_var_dir_path)
+            if (!dir.exists(LR_perf_dir_path)) dir.create(LR_perf_dir_path)
+            if (!dir.exists(LR_pred_dir_path)) dir.create(LR_pred_dir_path)
+            if (!dir.exists(LR_data_dir_path)) dir.create(LR_data_dir_path)
+            if (is.null(LR.params)) {
+                LR.params = lr_params()
+            }
+            obsweight = ifelse(!is.null(LR.params[["obsweight"]]), LR.params[["obsweight"]], 1)
+            step_wise = ifelse(!is.null(LR.params[["step_wise"]]), LR.params[["step_wise"]], TRUE)
+            lasso = ifelse(!is.null(LR.params[["lasso"]]), LR.params[["lasso"]], TRUE)
+            score_card = ifelse(!is.null(LR.params[["score_card"]]), LR.params[["score_card"]], TRUE)
+            sp_values = LR.params[["sp_values"]]
+            forced_in = LR.params[["forced_in"]]
+            iters = ifelse(!is.null(LR.params[["iters"]]), LR.params[["iters"]], 10)
+            thresholds = LR.params[["thresholds"]]
+            cor_p = thresholds$cor_p
+            iv_i = thresholds$iv_i
+            psi_i = thresholds$psi_i
+            cos_i = thresholds$cos_i
+            f_eval = ifelse(!is.null(LR.params[["f_eval"]]), LR.params[["f_eval"]], "ks")
+            method = ifelse(!is.null(LR.params[["method"]]), LR.params[["method"]], "grid_search")
+            best_lambda = ifelse(!is.null(LR.params[["best_lambda"]]), LR.params[["best_lambda"]], "lambda.ks")
+            tree_control = if (!is.null(LR.params["tree_control"])) {
+                LR.params[["tree_control"]]
+            } else {
+                list(p = 0.02, cp = 0.00000001, xval = 5, maxdepth = 10)
+            }
 
-      bins_control = if (!is.null(LR.params["bins_control"])) {
-        LR.params[["bins_control"]]
-      } else {
-        list(bins_num = 10, bins_pct = 0.05,
+            bins_control = if (!is.null(LR.params["bins_control"])) {
+                LR.params[["bins_control"]]
+            } else {
+                list(bins_num = 10, bins_pct = 0.05,
              b_chi = 0.02, b_odds = 0.1, b_psi = 0.03,
              b_or = 0.15, mono = 0.2, odds_psi = 0.15, kc = 1)
-      }
-      if (length(obsweight) > 1 && is.vector(obsweight, mode = "numeric")) {
-        obsweighted <- ifelse(dat_train[, target] == 0, obsweight[1], obsweight[2])
-      } else {
-        obsweighted = NULL
-      }
-      bins_params = bins_control
+            }
+            if (length(obsweight) > 1 && is.vector(obsweight, mode = "numeric")) {
+                obsweighted <- ifelse(dat_train[, target] == 0, obsweight[1], obsweight[2])
+            } else {
+                obsweighted = NULL
+            }
+            bins_params = bins_control
 
-      if(any(sapply(tree_control,length) >1 ,sapply(bins_control,length)>1 ,sapply(thresholds,length)>1)){
-        cat_rule("Searching optimal binning & feature selection parameters", col = love_color("light_cyan"))
-        lr.params.search = lr_params_search(method = method,dat_train = dat_train,target = target,
-                                     		iters = iters,x_list = x_list,
+            if (any(sapply(tree_control, length) > 1, sapply(bins_control, length) > 1, sapply(thresholds, length) > 1)) {
+                cat_rule("Searching optimal binning & feature selection parameters", col = love_color("light_cyan"))
+                lr.params.search = lr_params_search(method = method, dat_train = dat_train, target = target,
+                                           iters = iters, x_list = x_list,
                                             occur_time = occur_time,
                                             tree_control = tree_control,
                                             bins_control = bins_control,
                                             thresholds = thresholds,
-                                            lasso = lasso,step_wise = step_wise,
+                                            lasso = lasso, step_wise = step_wise,
                                             f_eval = f_eval)
-        bins_control = lr.params.search$bins_control
-        tree_control = lr.params.search$tree_control
-        thresholds= lr.params.search$thresholds
-        cor_p = thresholds$cor_p
-        iv_i = thresholds$iv_i
-        psi_i = thresholds$psi_i
-        cos_i = thresholds$cos_i
-        x_list = lr.params.search$x_list
-        seed = lr.params.search$best_seed
-      }
-      #bins breaks
-      x_list = unique(c(forced_in, unlist(x_list)))
-      if (is.null(breaks_list) || length(breaks_list) < 1) {
-        cat_rule("Constrained optimal binning of varibles", col = love_color("light_cyan"))
+                bins_control = lr.params.search$bins_control
+                tree_control = lr.params.search$tree_control
+                thresholds = lr.params.search$thresholds
+                cor_p = thresholds$cor_p
+                iv_i = thresholds$iv_i
+                psi_i = thresholds$psi_i
+                cos_i = thresholds$cos_i
+                x_list = lr.params.search$x_list
+                seed = lr.params.search$best_seed
+            }
+            #bins breaks
+            x_list = unique(c(forced_in, unlist(x_list)))
+            if (is.null(breaks_list) || length(breaks_list) < 1) {
+                cat_rule("Constrained optimal binning of varibles", col = love_color("light_cyan"))
 
-        breaks_list = get_breaks_all(dat = dat_train,
+                breaks_list = get_breaks_all(dat = dat_train,
                                      x_list = x_list,
                                      ex_cols = c(obs_id, occur_time, target, ex_cols),
                                      occur_time = occur_time, oot_pct = prop,
@@ -399,34 +400,37 @@ training_model <- function(model_name = "mymodel",
                                      save_data = TRUE,
                                      file_name = "breaks_list",
                                      dir_path = LR_var_dir_path)
-      }
+            }
 
-      #psi_iv_filter
-      cat_rule("Filtering variables by IV & PSI", col = love_color("light_cyan"))
+            #psi_iv_filter
+            cat_rule("Filtering variables by IV & PSI", col = love_color("light_cyan"))
 
-      iv_psi_list = psi_iv_filter(dat = dat_train, dat_test = dat_test,
+            iv_psi_list = psi_iv_filter(dat = dat_train, dat_test = dat_test,
                                   x_list = x_list, target = target,
                                   occur_time = occur_time, oot_pct = prop,
                                   parallel = parallel,
                                   ex_cols = c(obs_id, occur_time, target, ex_cols),
                                   breaks_list = breaks_list,
-                                  psi_i = psi_i, iv_i = iv_i,cos_i = cos_i,
+                                  psi_i = psi_i, iv_i = iv_i, cos_i = cos_i,
                                   note = TRUE,
                                   save_data = TRUE,
                                   file_name = NULL,
                                   dir_path = LR_var_dir_path)
-      if (length(iv_psi_list) < 1) {
-        stop(paste("No variable satisfies the psi & iv condition.\n"))
-      }
+            if (length(iv_psi_list) > 0 && nrow(iv_psi_list) >= 1) {
+                select_vars = as.character(iv_psi_list[, "Feature"])
+            } else {
+                select_vars = x_list
+                cat_rule(paste("No variable satisfies the psi & iv condition.\n"), col = love_color("deep_orange"))
+            }
 
-      select_vars = as.character(iv_psi_list[, "Feature"])
-      select_vars = unique(c(forced_in, unlist(select_vars)))
-      save_dt(select_vars, as_list = TRUE, row_names = FALSE, note = TRUE,
+
+            select_vars = unique(c(forced_in, unlist(select_vars)))
+            save_data(select_vars, as_list = TRUE, row_names = FALSE, note = TRUE,
               file_name = "LR.IV_PSI_features",
               dir_path = LR_var_dir_path)
-      cat_rule("Transforming WOE", col = love_color("light_cyan"))
+            cat_rule("Transforming WOE", col = love_color("light_cyan"))
 
-      train_woe = woe_trans_all(dat = dat_train,
+            train_woe = woe_trans_all(dat = dat_train,
                                 x_list = select_vars,
                                 target = target,
                                 ex_cols = c(target, occur_time, obs_id),
@@ -436,10 +440,10 @@ training_model <- function(model_name = "mymodel",
                                 save_data = TRUE, file_name = "lr_train",
                                 dir_path = LR_data_dir_path)
 
-      cat_rule("Filtering variables by correlation", col = love_color("light_cyan"))
+            cat_rule("Filtering variables by correlation", col = love_color("light_cyan"))
 
-
-      select_vars = fast_high_cor_filter(dat = train_woe,
+            if (length(select_vars) > 1) {
+                select_vars = fast_high_cor_filter(dat = train_woe,
                                          x_list = select_vars,
                                          com_list = iv_psi_list,
                                          ex_cols = c(target, occur_time, obs_id, ex_cols),
@@ -448,8 +452,9 @@ training_model <- function(model_name = "mymodel",
                                          save_data = TRUE,
                                          file_name = model_name,
                                          dir_path = LR_var_dir_path)
-      select_vars = unique(c(forced_in, unlist(select_vars)))
-      bins_table = get_bins_table_all(dat = dat_train, target = target,
+                select_vars = unique(c(forced_in, unlist(select_vars)))
+            }
+            bins_table = get_bins_table_all(dat = dat_train, target = target,
                                       ex_cols = c(target, occur_time, obs_id, ex_cols),
                                       x_list = select_vars, breaks_list = breaks_list,
                                       dat_test = dat_test,
@@ -457,7 +462,7 @@ training_model <- function(model_name = "mymodel",
                                       file_name = model_name,
                                       dir_path = LR_perf_dir_path)
 
-      test_woe = woe_trans_all(dat = dat_test,
+            test_woe = woe_trans_all(dat = dat_test,
                                x_list = unlist(select_vars),
                                target = target,
                                ex_cols = c(target, occur_time, obs_id),
@@ -467,10 +472,10 @@ training_model <- function(model_name = "mymodel",
                                save_data = TRUE, file_name = "lr_test",
                                dir_path = LR_data_dir_path)
 
-      if (lasso) {
-        cat_rule("Filtering variables by LASSO", col = love_color("light_cyan"))
+            if (lasso) {
+                cat_rule("Filtering variables by LASSO", col = love_color("light_cyan"))
 
-        select_vars = lasso_filter(dat_train = train_woe, dat_test = test_woe,
+                select_vars = lasso_filter(dat_train = train_woe, dat_test = test_woe,
                                    x_list = select_vars,
                                    target = target,
                                    ex_cols = c(target, occur_time, obs_id, ex_cols),
@@ -478,221 +483,223 @@ training_model <- function(model_name = "mymodel",
                                    best_lambda = best_lambda,
                                    plot.it = FALSE, seed = seed,
                                    save_data = TRUE, file_name = "LR", dir_path = LR_var_dir_path)
-      }
-      save_dt(select_vars, as_list = TRUE, row_names = FALSE, note = TRUE,
-              file_name =  "lr_premodel_features", dir_path = LR_var_dir_path)
+            }
+            save_data(select_vars, as_list = TRUE, row_names = FALSE, note = TRUE,
+              file_name = "lr_premodel_features", dir_path = LR_var_dir_path)
 
-      cat_rule("Start training lr model", col = love_color("light_cyan"))
-      Formula = as.formula(paste(target, paste(unique(c(forced_in, select_vars)), collapse = ' + '),
+            cat_rule("Start training lr model", col = love_color("light_cyan"))
+            Formula = as.formula(paste(target, paste(unique(c(forced_in, select_vars)), collapse = ' + '),
                                  sep = ' ~ '))
-      if (!is.null(seed)) set.seed(seed) else set.seed(46)
-      lr_model = glm(Formula,
+            if (!is.null(seed)) set.seed(seed) else set.seed(46)
+            lr_model = glm(Formula,
                      data = train_woe[, c(target, unique(c(forced_in, select_vars)))],
                      family = binomial(logit),
                      weights = obsweighted)
-      dt_coef = data.frame(summary(lr_model)$coefficients)
-      lg_coef = subset(dt_coef, abs(dt_coef$Estimate) > 0)
-      glm_vars = row.names(lg_coef)[-1]
-      Formula = as.formula(paste(target, paste(unique(c(forced_in, glm_vars)), collapse = ' + '), sep = ' ~ '))
-      lr_model_new = glm(Formula,
+            dt_coef = data.frame(summary(lr_model)$coefficients)
+            lg_coef = subset(dt_coef, abs(dt_coef$Estimate) > 0)
+            glm_vars = row.names(lg_coef)[-1]
+            Formula = as.formula(paste(target, paste(unique(c(forced_in, glm_vars)), collapse = ' + '), sep = ' ~ '))
+            lr_model_new = glm(Formula,
                          data = train_woe[, c(target, unique(c(forced_in, glm_vars)))],
                          family = binomial(logit),
                          weights = obsweighted)
-      #step wise
-      if (step_wise) {
-        lr_model_step = stats::step(lr_model_new, dir_pathection = "both", trace = TRUE)
-        dt_step_coef = data.frame(summary(lr_model_step)$coefficients)
-        step_vars = row.names(dt_step_coef)[-1]
-        Formula = as.formula(paste(target, paste(unique(c(forced_in, step_vars)), collapse = ' + '), sep = ' ~ '))
-        lr_model_new = glm(Formula,
+            #step wise
+            if (step_wise) {
+                lr_model_step = stats::step(lr_model_new, dir_pathection = "both", trace = TRUE)
+                dt_step_coef = data.frame(summary(lr_model_step)$coefficients)
+                step_vars = row.names(dt_step_coef)[-1]
+                Formula = as.formula(paste(target, paste(unique(c(forced_in, step_vars)), collapse = ' + '), sep = ' ~ '))
+                lr_model_new = glm(Formula,
                            data = train_woe[, c(target, unique(c(forced_in, step_vars)))],
                            family = binomial(logit),
                            weights = obsweighted)
-      }
-      # get lr coef
-      dt_imp_LR = get_logistic_coef(lg_model = lr_model_new, file_name = NULL,
+            }
+            # get lr coef
+            dt_imp_LR = get_logistic_coef(lg_model = lr_model_new, file_name = NULL,
                                     dir_path = LR_perf_dir_path, save_data = FALSE)
-      lr_vars = dt_imp_LR[-1, "Feature"]
-      save_dt(lr_vars, as_list = TRUE,
+            lr_vars = dt_imp_LR[-1, "Feature"]
+            save_data(lr_vars, as_list = TRUE,
               file_name = "lr_model_features",
               dir_path = LR_var_dir_path, note = TRUE)
-      LR_iv_psi <- subset(iv_psi_list, iv_psi_list$Feature %in% lr_vars)[1:3]
-      LR_iv_psi <- rbind(c("(Intercept)", 0, 0), LR_iv_psi)
-      dt_imp_LR = merge(dt_imp_LR, LR_iv_psi)
-      imp_vars = dt_imp_LR[-1, "Feature"]
-      save_dt(dt_imp_LR,
-              file_name = paste0(model_name,".lr_coef"),
+            if (length(iv_psi_list) > 0 && nrow(iv_psi_list) > 1) {
+                LR_iv_psi = subset(iv_psi_list, iv_psi_list$Feature %in% lr_vars)[1:3]
+                LR_iv_psi = rbind(c("(Intercept)", 0, 0), LR_iv_psi)
+                dt_imp_LR = merge(dt_imp_LR, LR_iv_psi)
+            }
+            imp_vars = dt_imp_LR[-1, "Feature"]
+            save_data(dt_imp_LR,
+              file_name = paste0(model_name, ".lr_coef"),
               dir_path = LR_perf_dir_path, note = TRUE)
-      #correlation matrix plot of input variables
-      if (vars_plot & length(imp_vars) > 1) {
-        cat_line("-- Ploting correlation matrix of input variables", col = love_color("deep_green"))
+            #correlation matrix plot of input variables
+            if (vars_plot & length(imp_vars) > 1) {
+                cat_line("-- Ploting correlation matrix of input variables", col = love_color("deep_green"))
 
-        cor_plot(dat = train_woe, x_list = imp_vars,
+                cor_plot(dat = train_woe, x_list = imp_vars,
                  dir_path = LR_var_dir_path, save_data = TRUE,
                  gtitle = "lr.")
-        cat_line("-- Ploting distribution of input variables", col = love_color("deep_green"))
+                cat_line("-- Ploting distribution of input variables", col = love_color("deep_green"))
 
-        get_plots(dat_train = dat_train, dat_test = dat_test,
+                get_plots(dat_train = dat_train, dat_test = dat_test,
                   x_list = lr_vars, target = target,
                   ex_cols = ex_cols,
                   breaks_list = breaks_list,
                   save_data = TRUE, parallel = parallel, plot_show = FALSE,
                   g_width = 8, dir_path = LR_var_dir_path)
-      }
+            }
 
-      if (score_card) {
-        # standard socre card
-        cat_rule("Generating standard socrecard", col = love_color("light_cyan"))
+            if (score_card) {
+                # standard socre card
+                cat_rule("Generating standard socrecard", col = love_color("light_cyan"))
 
-        LR_score_card = get_score_card(lg_model = lr_model_new,
+                LR_score_card = get_score_card(lg_model = lr_model_new,
                                         bins_table, target = target,
-                                        file_name =model_name,
+                                        file_name = model_name,
                                         dir_path = LR_perf_dir_path,
                                         save_data = TRUE)
-        cat_line("-- Using scorecard to predict the train and test", col = love_color("deep_green"))
+                cat_line("-- Using scorecard to predict the train and test", col = love_color("deep_green"))
 
-        train_score = dat_train[c(obs_id, occur_time, target)]
-        test_score = dat_test[c(obs_id, occur_time, target)]
-        train_score$score_LR = score_transfer(model = lr_model_new,
+                train_score = dat_train[c(obs_id, occur_time, target)]
+                test_score = dat_test[c(obs_id, occur_time, target)]
+                train_score$score_LR = score_transfer(model = lr_model_new,
                                               tbl_woe = train_woe,
                                               save_data = TRUE)[, "score"]
-        test_score$score_LR = score_transfer(model = lr_model_new,
+                test_score$score_LR = score_transfer(model = lr_model_new,
                                              tbl_woe = test_woe,
                                              save_data = TRUE)[, "score"]
-        save_dt(train_score, file_name = "lr_train_score",
+                save_data(train_score, file_name = "lr_train_score",
                 dir_path = LR_pred_dir_path, note = TRUE)
-        save_dt(test_score, file_name = "lr_test_score",
+                save_data(test_score, file_name = "lr_test_score",
                 dir_path = LR_pred_dir_path, note = TRUE)
-      }
+            }
 
 
-      train_pred = dat_train[c(obs_id, occur_time, target)]
-      test_pred = dat_test[c(obs_id, occur_time, target)]
-      train_pred$prob_LR = round(predict(lr_model_new, train_woe[, imp_vars], type = "response"), 5)
-      test_pred$prob_LR = round(predict(lr_model_new, test_woe[, imp_vars], type = "response"), 5)
-      save_dt(train_pred, file_name = "lr_train_prob",
+            train_pred = dat_train[c(obs_id, occur_time, target)]
+            test_pred = dat_test[c(obs_id, occur_time, target)]
+            train_pred$prob_LR = round(predict(lr_model_new, train_woe[imp_vars], type = "response"), 5)
+            test_pred$prob_LR = round(predict(lr_model_new, test_woe[imp_vars], type = "response"), 5)
+            save_data(train_pred, file_name = "lr_train_prob",
               dir_path = LR_pred_dir_path, note = TRUE)
-      save_dt(test_pred, file_name = "lr_test_prob",
+            save_data(test_pred, file_name = "lr_test_prob",
               dir_path = LR_pred_dir_path, note = TRUE)
-      #plot the model results
+            #plot the model results
 
-      if (score_card) {
-        cat_line("-- Producing plots that characterize performance of scorecard", col = love_color("deep_green"))
-        perf_tb = model_result_plot(train_pred = train_score, test_pred = test_score, target = target,
-                                    score = "score_LR",gtitle = paste0(model_name,".LR"),perf_dir_path = LR_perf_dir_path,
-                                    save_data = TRUE,plot_show = plot_show,total = TRUE)
-      }else{
-        cat_line("-- Producing plots that characterize the performance of Logistic Regression", col = love_color("deep_green"))
-        perf_tb = model_result_plot(train_pred = train_pred, test_pred = test_pred, target = target,
-                                    score = "prob_LR", gtitle = paste0(model_name,".LR"),perf_dir_path = LR_perf_dir_path,
-                                    save_data = TRUE,plot_show = plot_show,total = TRUE)
-      }
+            if (score_card) {
+                cat_line("-- Producing plots that characterize performance of scorecard", col = love_color("deep_green"))
+                perf_tb = model_result_plot(train_pred = train_score, test_pred = test_score, target = target,
+                                    score = "score_LR", gtitle = paste0(model_name, ".LR"), perf_dir_path = LR_perf_dir_path,
+                                    save_data = TRUE, plot_show = plot_show, total = TRUE)
+            } else {
+                cat_line("-- Producing plots that characterize the performance of Logistic Regression", col = love_color("deep_green"))
+                perf_tb = model_result_plot(train_pred = train_pred, test_pred = test_pred, target = target,
+                                    score = "prob_LR", gtitle = paste0(model_name, ".LR"), perf_dir_path = LR_perf_dir_path,
+                                    save_data = TRUE, plot_show = plot_show, total = TRUE)
+            }
 
-      key_index = model_key_index(perf_tb)
-      params_key_index = data.frame(tree_control,bins_control,thresholds, key_index)
-      save_dt(params_key_index,
+            key_index = model_key_index(perf_tb)
+            params_key_index = data.frame(tree_control, bins_control, thresholds, key_index)
+            save_data(params_key_index,
               file_name = "LR.params",
               dir_path = LR_perf_dir_path,
               append = TRUE, note = TRUE)
 
-      #transfer to pmml
-      if (save_pmml){	  
-        cat_rule("Converting LR model to pmml", col = love_color("light_cyan"))
-        if (!requireNamespace("pmml", quietly = TRUE)&!requireNamespace("XML", quietly = TRUE) ){
-        cat_rule("Package `pmml`,`XML` needed for PMML transfering to work. Please install it.", col = love_color("deep_red"))
-        }else{
-        model_pmml <- pmml::pmml(lr_model_new,
+            #transfer to pmml
+            if (save_pmml) {
+                cat_rule("Converting LR model to pmml", col = love_color("light_cyan"))
+                if (!requireNamespace("pmml", quietly = TRUE) & !requireNamespace("XML", quietly = TRUE)) {
+                    cat_rule("Package `pmml`,`XML` needed for PMML transfering to work. Please install it.", col = love_color("deep_red"))
+                } else {
+                    model_pmml <- pmml::pmml(lr_model_new,
                            model.name = "Logistic_Regression_Model",
                            description = "Logistic Regression Model",
                            copyright = NULL,
                            transforms = NULL,
                            unknownValue = NULL,
                            weights = NULL)
-        XML::saveXML(model_pmml, file = paste0(LR_model_dir_path, "/lr_model.pmml"))
-      }
-	 }
+                    XML::saveXML(model_pmml, file = paste0(LR_model_dir_path, "/lr_model.pmml"))
+                }
+            }
 
-      save(lr_model_new, file = paste0(LR_model_dir_path, "/lg_model.RData")) #save model
-      model_new = list(lr_model = lr_model_new)
-    }
+            save(lr_model_new, file = paste0(LR_model_dir_path, "/lg_model.RData")) #save model
+            model_new = list(lr_model = lr_model_new)
+        }
 
-    if (any(algorithm == "XGB")) {
-      cat_rule("Training XGboost Model",  col = "cyan")
+        if (any(algorithm == "XGB")) {
+            cat_rule("Training XGboost Model", col = "cyan")
 
-      XGB_model_dir_path = paste(model_dir_path, "XGB", sep = "/")
-      XGB_var_dir_path = paste(var_dir_path, "XGB", sep = "/")
-      XGB_perf_dir_path = paste(perf_dir_path, "XGB", sep = "/")
-      XGB_pred_dir_path = paste(pred_dir_path, "XGB", sep = "/")
-      XGB_data_dir_path = paste(data_dir_path, "XGB", sep = "/")
-      if (!dir.exists(XGB_model_dir_path)) dir.create(XGB_model_dir_path)
-      if (!dir.exists(XGB_var_dir_path)) dir.create(XGB_var_dir_path)
-      if (!dir.exists(XGB_perf_dir_path)) dir.create(XGB_perf_dir_path)
-      if (!dir.exists(XGB_pred_dir_path)) dir.create(XGB_pred_dir_path)
-      if (!dir.exists(XGB_data_dir_path)) dir.create(XGB_data_dir_path)
+            XGB_model_dir_path = paste(model_dir_path, "XGB", sep = "/")
+            XGB_var_dir_path = paste(var_dir_path, "XGB", sep = "/")
+            XGB_perf_dir_path = paste(perf_dir_path, "XGB", sep = "/")
+            XGB_pred_dir_path = paste(pred_dir_path, "XGB", sep = "/")
+            XGB_data_dir_path = paste(data_dir_path, "XGB", sep = "/")
+            if (!dir.exists(XGB_model_dir_path)) dir.create(XGB_model_dir_path)
+            if (!dir.exists(XGB_var_dir_path)) dir.create(XGB_var_dir_path)
+            if (!dir.exists(XGB_perf_dir_path)) dir.create(XGB_perf_dir_path)
+            if (!dir.exists(XGB_pred_dir_path)) dir.create(XGB_pred_dir_path)
+            if (!dir.exists(XGB_data_dir_path)) dir.create(XGB_data_dir_path)
 
-      #get parameters
-      if (is.null(XGB.params)) {
-        XGB.params = xgb_params()
-      }
-      nrounds = ifelse(!is.null(XGB.params[["nrounds"]]),
+            #get parameters
+            if (is.null(XGB.params)) {
+                XGB.params = xgb_params()
+            }
+            nrounds = ifelse(!is.null(XGB.params[["nrounds"]]),
                        XGB.params[["nrounds"]], 1000)
-      if (!is.null(XGB.params[["params"]])) {
-        params = XGB.params[["params"]]
-      } else {
-        params = list(max.depth = 6,
-                      eta = 0,
-                      gamma =0,
+            if (!is.null(XGB.params[["params"]])) {
+                params = XGB.params[["params"]]
+            } else {
+                params = list(max_depth = 6,
+                      eta = 0.01,
+                      gamma = 0.01,
                       min_child_weight = 1,
                       subsample = 1,
                       colsample_bytree = 1,
-                      max_delta_step = 0)
-      }
-      early_stopping_rounds = ifelse(!is.null(XGB.params[["early_stopping_rounds"]]),
+                      scale_pos_weight = 1)
+            }
+            early_stopping_rounds = ifelse(!is.null(XGB.params[["early_stopping_rounds"]]),
                                      XGB.params[["early_stopping_rounds"]], 100)
-      method = ifelse(!is.null(XGB.params[["method"]]),
+            method = ifelse(!is.null(XGB.params[["method"]]),
                       XGB.params[["method"]], 'random_search')
-      iters = ifelse(!is.null(XGB.params[["iters"]]),
+            iters = ifelse(!is.null(XGB.params[["iters"]]),
                      XGB.params[["iters"]], 10)
-      f_eval = ifelse(!is.null(XGB.params[["f_eval"]]),
+            f_eval = ifelse(!is.null(XGB.params[["f_eval"]]),
                     XGB.params[["f_eval"]], 'auc')
-      nthread = ifelse(!is.null(XGB.params[["nthread"]]),
+            nthread = ifelse(!is.null(XGB.params[["nthread"]]),
                        XGB.params[["nthread"]], 2)
-      nfold = ifelse(!is.null(XGB.params[["nfold"]]),
+            nfold = ifelse(!is.null(XGB.params[["nfold"]]),
                      XGB.params[["nfold"]], 1)
-      seed_number = ifelse(!is.null(seed),seed,46)
-      if(any(sapply(params,length)>1)){
+            seed_number = ifelse(!is.null(seed), seed, 46)
+            if (any(sapply(params, length) > 1)) {
 
-        cat_rule("Searching optimal parameters of XGboost", col = love_color("light_cyan"))
+                cat_rule("Searching optimal parameters of XGboost", col = love_color("light_cyan"))
 
-        xgb.params.search = xgb_params_search(dat_train = dat_train, target = target, x_list = x_list, prop = prop,
+                xgb.params.search = xgb_params_search(dat_train = dat_train, target = target, x_list = x_list, prop = prop,
                                               method = method, iters = iters,
-                                              nrounds = nrounds,
+                                              nrounds = nrounds, occur_time = occur_time,
                                               early_stopping_rounds = early_stopping_rounds,
                                               params = params,
                                               f_eval = f_eval, nfold = nfold, nthread = nthread)
 
 
 
-        params = xgb.params.search$params
-        early_stopping_rounds =  xgb.params.search$early_stopping_rounds
-        
-        seed_number = xgb.params.search$seed_number
-      }
-      xgb_list =  xgb_data(dat_train = dat_train, target = target,dat_test = dat_test, x_list = x_list, prop = prop)
-      dtrain = xgb_list$dtrain
-      dtest = xgb_list$dtest
-      watchlist = xgb_list$watchlist
-      x_list = xgb_list$x_list
-      x_train =  xgb_list$x_train
-      x_test =  xgb_list$x_test
-      y_train =  xgb_list$y_train
-      y_test =  xgb_list$y_test
-      save_dt(x_train, file_name = "XGB.x_train", dir_path = XGB_data_dir_path, note = TRUE)
-      save_dt(x_test, file_name = "XGB.x_test", dir_path = XGB_data_dir_path, note = TRUE)
-      save_dt(y_train, file_name = "XGB.y_train", dir_path = XGB_data_dir_path, note = TRUE)
-      save_dt(y_test, file_name = "XGB.y_test", dir_path = XGB_data_dir_path, note = TRUE)
-      # Train a model
-      train_iter = train_xgb(seed_number = seed_number, dtrain = dtrain,
+                params = xgb.params.search$params
+                early_stopping_rounds = xgb.params.search$early_stopping_rounds
+
+                seed_number = xgb.params.search$seed_number
+            }
+            xgb_list = xgb_data(dat_train = dat_train, target = target, dat_test = dat_test, x_list = x_list, prop = prop)
+            dtrain = xgb_list$dtrain
+            dtest = xgb_list$dtest
+            watchlist = xgb_list$watchlist
+           xgb_x_list = xgb_list$x_list
+            x_train = xgb_list$x_train
+            x_test = xgb_list$x_test
+            y_train = xgb_list$y_train
+            y_test = xgb_list$y_test
+            save_data(x_train, file_name = "XGB.x_train", dir_path = XGB_data_dir_path, note = TRUE)
+            save_data(x_test, file_name = "XGB.x_test", dir_path = XGB_data_dir_path, note = TRUE)
+            save_data(y_train, file_name = "XGB.y_train", dir_path = XGB_data_dir_path, note = TRUE)
+            save_data(y_test, file_name = "XGB.y_test", dir_path = XGB_data_dir_path, note = TRUE)
+            # Train a model
+            train_iter = train_xgb(seed_number = seed_number, dtrain = dtrain,
                              nthread = nthread,
                              nfold = nfold,
                              watchlist = watchlist,
@@ -700,128 +707,131 @@ training_model <- function(model_name = "mymodel",
                              early_stopping_rounds = early_stopping_rounds,
                              verbose = 1,
                              params = params)
-      max_iter = train_iter$max_iter
-      max_iter_index = train_iter$max_iter_index
-      xgb_model_new = train_iter$xgb_model
-	  input_vars = data.frame(vars_order = 1:xgb_model_new$nfeatures,feature_names =  unlist(xgb_model_new$feature_names))
-	  save_dt(input_vars, file_name = paste(model_name,"XGB_input_vars",sep = "."),
+            max_iter = train_iter$max_iter
+            max_iter_index = train_iter$max_iter_index
+            xgb_model_new = train_iter$xgb_model
+            if (length(unlist(xgb_model_new$feature_names)) > 0) {
+                input_vars = data.frame(feature_order = 1:xgb_model_new$nfeatures,
+                              feature_names = unlist(xgb_model_new$feature_names))
+                save_data(input_vars, file_name = paste(model_name, "XGB_input_vars", sep = "."),
               dir_path = XGB_model_dir_path, note = TRUE)
-      # feature importance1111
-      dat_names <- dimnames(x_train)[[2]]
-      imp_XGB <- xgb.importance(dat_names, model = xgb_model_new)
-      imp_XGB = as.data.frame(imp_XGB)
-      dt_imp_XGB = data.frame(Feature = imp_XGB[, "Feature"],
+            }
+            # feature importance1111
+            dat_names <- dimnames(x_train)[[2]]
+            imp_XGB <- xgb.importance(dat_names, model = xgb_model_new)
+            imp_XGB = as.data.frame(imp_XGB)
+            dt_imp_XGB = data.frame(Feature = imp_XGB[, "Feature"],
                               Importance = round(imp_XGB[, 'Gain'], 5),
                               stringsAsFactors = FALSE)
 
-      save_dt(dt_imp_XGB, file_name = "XGB_feature_importance",
+            save_data(dt_imp_XGB, file_name = "XGB_feature_importance",
               dir_path = XGB_var_dir_path, note = TRUE)
 
-      if (vars_plot & length(as.character(dt_imp_XGB[,1])) > 1) {
-        cat_line("-- Ploting partial dependence of input variables", col = love_color("deep_green"))
-        pd_list = get_partial_dependence_plots(model = xgb_model_new, x_list = dt_imp_XGB[,1],
-                                               x_train = x_train, save_data = TRUE,plot_show = FALSE, dir_path = XGB_var_dir_path)
-      }
+            if (vars_plot & length(as.character(dt_imp_XGB[, 1])) > 1) {
+                cat_line("-- Ploting partial dependence of input variables", col = love_color("deep_green"))
+                pd_list = get_partial_dependence_plots(model = xgb_model_new, x_list = unlist(dt_imp_XGB[, 1]), parallel = parallel,
+                                               x_train = x_train, save_data = TRUE, plot_show = FALSE, dir_path = XGB_var_dir_path)
+            }
 
-      train_pred = dat_train[c(obs_id, occur_time, target)]
-      test_pred = dat_test[c(obs_id, occur_time, target)]
-      train_pred$prob_XGB = round(predict(xgb_model_new,
+            train_pred = dat_train[c(obs_id, occur_time, target)]
+            test_pred = dat_test[c(obs_id, occur_time, target)]
+            train_pred$prob_XGB = round(predict(xgb_model_new,
                                           x_train, type = "response"), 5)
-      test_pred$prob_XGB = round(predict(xgb_model_new,
+            test_pred$prob_XGB = round(predict(xgb_model_new,
                                          x_test, type = "response"), 5)
-      save_dt(train_pred, file_name = "XGB.train_prob", dir_path = XGB_pred_dir_path, note = TRUE)
-      save_dt(test_pred, file_name = "XGB.test_prob", dir_path = XGB_pred_dir_path, note = TRUE)
-      cat_line("-- Producing plots that characterize the performance of XGboost", col = love_color("deep_green"))
-      perf_tb = model_result_plot(train_pred = train_pred, test_pred = test_pred, target = target,
-                                  score = "prob_XGB", gtitle = paste0(model_name,".XGB"),perf_dir_path = XGB_perf_dir_path,
-                                  save_data = TRUE,plot_show = plot_show,total = TRUE)
-      key_index = model_key_index(perf_tb)
-      params_key_index = data.frame(c(params), key_index)
-      save_dt(params_key_index,
+            save_data(train_pred, file_name = "XGB.train_prob", dir_path = XGB_pred_dir_path, note = TRUE)
+            save_data(test_pred, file_name = "XGB.test_prob", dir_path = XGB_pred_dir_path, note = TRUE)
+            cat_line("-- Producing plots that characterize the performance of XGboost", col = love_color("deep_green"))
+            perf_tb = model_result_plot(train_pred = train_pred, test_pred = test_pred, target = target,
+                                  score = "prob_XGB", gtitle = paste0(model_name, ".XGB"), perf_dir_path = XGB_perf_dir_path,
+                                  save_data = TRUE, plot_show = plot_show, total = TRUE)
+            key_index = model_key_index(perf_tb)
+            params_key_index = data.frame(c(params), key_index)
+            save_data(params_key_index,
               file_name = "XGB.params",
               dir_path = XGB_perf_dir_path, append = TRUE, note = TRUE)
 
-      if (save_pmml) {
-        cat_rule("Converting  XGboost model to pmml", col = love_color("light_cyan"))
-        if (!requireNamespace("pmml", quietly = TRUE)&!requireNamespace("XML", quietly = TRUE) ){
-        cat_rule("Package `pmml`,`XML` needed for PMML transfering to work. Please install it.", col = love_color("deep_red"))
-        }else{
-        # save the tree information file
-        xgb.dump(xgb_model_new, paste0(XGB_model_dir_path, "/xgb_model.dumped.trees"))
-        # Export the model to PMML.
-        xgb_model_pmml = pmml::pmml(xgb_model_new,
-                              inputFeatureNames = x_list,
+            if (save_pmml) {
+                cat_rule("Converting  XGboost model to pmml", col = love_color("light_cyan"))
+                if (!requireNamespace("pmml", quietly = TRUE) & !requireNamespace("XML", quietly = TRUE)) {
+                    cat_rule("Package `pmml`,`XML` needed for PMML transfering to work. Please install it.", col = love_color("deep_red"))
+                } else {
+                    # save the tree information file
+                    xgb.dump(xgb_model_new, paste0(XGB_model_dir_path, "/xgb_model.dumped.trees"))
+                    # Export the model to PMML.
+                    xgb_model_pmml = pmml::pmml(xgb_model_new,
+                              inputFeatureNames = unlist(xgb_model_new$feature_names),
                               outputLabelName = target,
                               outputCategories = c(0, 1),
                               xgbDumpFile = paste0(XGB_model_dir_path, "/xgb_model.dumped.trees"),
                               model.name = "xgboost_Model",
-                              app.name = "R-PMML",
+                              app.name = "XGB-PMML",
                               description = "Extreme Gradient Boosting Model",
                               copyright = NULL, transforms = NULL,
                               unknownValue = NULL,
                               parentInvalidValueTreatment = "returnInvalid",
                               childInvalidValueTreatment = "asIs"
         )
-        XML::saveXML(xgb_model_pmml, file = paste0(XGB_model_dir_path, "/xgb_model.pmml"))
-       }
-	  }
-      xgb.save(xgb_model_new, paste0(XGB_model_dir_path,paste0("/",model_name,"_xgb.model")))
-      save(xgb_model_new, file = paste0(XGB_model_dir_path, "/xgb_model.RData")) #save model
-      model_new = append(model_new, list(xgb_model = xgb_model_new), 1)
-      rm(x_train, y_train, xgb_model_new)
-    }
+                    XML::saveXML(xgb_model_pmml, file = paste0(XGB_model_dir_path, "/xgb_model.pmml"))
+                }
+            }
+            xgb.save(xgb_model_new, paste0(XGB_model_dir_path, paste0("/", model_name, "_xgb.model")))
+            save(xgb_model_new, file = paste0(XGB_model_dir_path, "/xgb_model.RData")) #save model
+            model_new = append(model_new, list(xgb_model = xgb_model_new), 1)
+            rm(x_train, y_train, xgb_model_new)
+        }
 
-    if (any(algorithm == "GBM")) {
-      cat_rule("Training GBM model",  col = "cyan")
+        if (any(algorithm == "GBM")) {
+            cat_rule("Training GBM model", col = "cyan")
 
-      GBM_model_dir_path = paste(model_dir_path, "GBM", sep = "/")
-      GBM_var_dir_path = paste(var_dir_path, "GBM", sep = "/")
-      GBM_perf_dir_path = paste(perf_dir_path, "GBM", sep = "/")
-      GBM_pred_dir_path = paste(pred_dir_path, "GBM", sep = "/")
-      GBM_data_dir_path = paste(data_dir_path, "GBM", sep = "/")
-      if (!dir.exists(GBM_model_dir_path)) dir.create(GBM_model_dir_path)
-      if (!dir.exists(GBM_var_dir_path)) dir.create(GBM_var_dir_path)
-      if (!dir.exists(GBM_perf_dir_path)) dir.create(GBM_perf_dir_path)
-      if (!dir.exists(GBM_pred_dir_path)) dir.create(GBM_pred_dir_path)
-      if (!dir.exists(GBM_data_dir_path)) dir.create(GBM_data_dir_path)
-      if (is.null(GBM.params)) {
-        GBM.params = gbm_params()
-      }
-      n.trees = ifelse(!is.null(GBM.params[["n.trees"]]),
+            GBM_model_dir_path = paste(model_dir_path, "GBM", sep = "/")
+            GBM_var_dir_path = paste(var_dir_path, "GBM", sep = "/")
+            GBM_perf_dir_path = paste(perf_dir_path, "GBM", sep = "/")
+            GBM_pred_dir_path = paste(pred_dir_path, "GBM", sep = "/")
+            GBM_data_dir_path = paste(data_dir_path, "GBM", sep = "/")
+            if (!dir.exists(GBM_model_dir_path)) dir.create(GBM_model_dir_path)
+            if (!dir.exists(GBM_var_dir_path)) dir.create(GBM_var_dir_path)
+            if (!dir.exists(GBM_perf_dir_path)) dir.create(GBM_perf_dir_path)
+            if (!dir.exists(GBM_pred_dir_path)) dir.create(GBM_pred_dir_path)
+            if (!dir.exists(GBM_data_dir_path)) dir.create(GBM_data_dir_path)
+            if (is.null(GBM.params)) {
+                GBM.params = gbm_params()
+            }
+            n.trees = ifelse(!is.null(GBM.params[["n.trees"]]),
                        GBM.params[["n.trees"]], 100)
-      interaction.depth = ifelse(!is.null(GBM.params[["interaction.depth"]]),
+            interaction.depth = ifelse(!is.null(GBM.params[["interaction.depth"]]),
                                  GBM.params[["interaction.depth"]], 6)
-      shrinkage = ifelse(!is.null(GBM.params[["shrinkage"]]),
+            shrinkage = ifelse(!is.null(GBM.params[["shrinkage"]]),
                          GBM.params[["shrinkage"]], 0.01)
-      n.minobsinnode = ifelse(!is.null(GBM.params[["n.minobsinnode"]]),
+            n.minobsinnode = ifelse(!is.null(GBM.params[["n.minobsinnode"]]),
                               GBM.params[["n.minobsinnode"]], 30)
-      bag.fraction = ifelse(!is.null(GBM.params[["bag.fraction"]]),
+            bag.fraction = ifelse(!is.null(GBM.params[["bag.fraction"]]),
                             GBM.params[["bag.fraction"]], 0.5)
-      train.fraction = ifelse(!is.null(GBM.params[["train.fraction"]]),
+            train.fraction = ifelse(!is.null(GBM.params[["train.fraction"]]),
                               GBM.params[["train.fraction"]], 1)
-      cv.folds = ifelse(!is.null(GBM.params[["cv.folds"]]),
+            cv.folds = ifelse(!is.null(GBM.params[["cv.folds"]]),
                         GBM.params[["cv.folds"]], 5)
 
-      char_x_list = get_names(dat = dat_train[, x_list],
+            char_x_list = get_names(dat = dat_train[, x_list],
                               types = c('character', 'factor'),
                               ex_cols = c(target, obs_id, occur_time, ex_cols),
                               get_ex = FALSE)
-      if (length(char_x_list) > 0) {
-        nr = nrow(dat_train)
-        var_list = unique(c(target, obs_id, occur_time, x_list))
-        dat_ts = rbind(dat_train[, var_list], dat_test[, var_list])
-        dat_ts = one_hot_encoding(dat = dat_ts, cat_vars = char_x_list, na_act = FALSE)
-        dat_train = dat_ts[1:nr,]
-        dat_test = dat_ts[-c(1:nr),]
-        x_list = get_x_list(x_list = NULL,
+            if (length(char_x_list) > 0) {
+                nr = nrow(dat_train)
+                var_list = unique(c(target, obs_id, occur_time, x_list))
+                dat_ts = rbind(dat_train[, var_list], dat_test[, var_list])
+                dat_ts = one_hot_encoding(dat = dat_ts, cat_vars = char_x_list, na_act = FALSE)
+                dat_train = dat_ts[1:nr,]
+                dat_test = dat_ts[-c(1:nr),]
+                x_list = get_x_list(x_list = NULL,
                             dat_train = dat_train, dat_test = dat_test,
                             ex_cols = c(target, obs_id, occur_time, ex_cols))
-      }
-      save_dt(dat_train, file_name = "GBM.train", dir_path = GBM_data_dir_path, note = TRUE)
-      save_dt(dat_test, file_name = "GBM.test", dir_path = GBM_data_dir_path, note = TRUE)
-      Formula = as.formula(paste(target, paste(x_list, collapse = ' + '), sep = ' ~ '))
-      if (!is.null(seed)) set.seed(seed) else set.seed(46)
-      gbm_model_new = gbm(
+            }
+            save_data(dat_train, file_name = "GBM.train", dir_path = GBM_data_dir_path, note = TRUE)
+            save_data(dat_test, file_name = "GBM.test", dir_path = GBM_data_dir_path, note = TRUE)
+            Formula = as.formula(paste(target, paste(x_list, collapse = ' + '), sep = ' ~ '))
+            if (!is.null(seed)) set.seed(seed) else set.seed(46)
+            gbm_model_new = gbm(
         Formula,
         data = dat_train,
         distribution = "bernoulli",
@@ -837,50 +847,50 @@ training_model <- function(model_name = "mymodel",
         verbose = TRUE,
         n.cores = cores_num
       )
-      # check performance using cross-validation.
-      best.iter = gbm.perf(gbm_model_new, method = "cv", plot.it = FALSE, oobag.curve = FALSE)
-      imp_gbm = as.data.frame(summary(gbm_model_new, best.iter,plot = FALSE))
-      dt_imp_GBM = data.frame(Feature = imp_gbm[, "var"],
+            # check performance using cross-validation.
+            best.iter = gbm.perf(gbm_model_new, method = "cv", plot.it = FALSE, oobag.curve = FALSE)
+            imp_gbm = as.data.frame(summary(gbm_model_new, best.iter, plot = FALSE))
+            dt_imp_GBM = data.frame(Feature = imp_gbm[, "var"],
                               Importance = round(imp_gbm[, 'rel.inf'], 5),
                               stringsAsFactors = FALSE)
-      imp_vars_gbm = subset(dt_imp_GBM, dt_imp_GBM$Importance > 0)[, "Feature"]
-      save_dt(dt_imp_GBM, file_name =  "GBM.feature_importance",
+            imp_vars_gbm = subset(dt_imp_GBM, dt_imp_GBM$Importance > 0)[, "Feature"]
+            save_data(dt_imp_GBM, file_name = "GBM.feature_importance",
               dir_path = GBM_var_dir_path, note = TRUE)
 
-      if (vars_plot & length(imp_vars_gbm) > 1) {
-        cat_line("-- Ploting partial dependence of input variables", col = love_color("deep_green"))
-        pd_list = get_partial_dependence_plots(model = gbm_model_new, x_list = imp_vars_gbm,
-                                               x_train = dat_train,n.trees = best.iter, save_data = TRUE,plot_show = FALSE, dir_path = GBM_var_dir_path)
-      }
-      train_pred = dat_train[c(obs_id, occur_time, target)]
-      test_pred = dat_test[c(obs_id, occur_time, target)]
-      train_pred$prob_GBM = round(predict(gbm_model_new, dat_train[, x_list],
+            if (vars_plot & length(imp_vars_gbm) > 1) {
+                cat_line("-- Ploting partial dependence of input variables", col = love_color("deep_green"))
+                pd_list = get_partial_dependence_plots(model = gbm_model_new, x_list = imp_vars_gbm, parallel = parallel,
+                                               x_train = dat_train, n.trees = best.iter, save_data = TRUE, plot_show = FALSE, dir_path = GBM_var_dir_path)
+            }
+            train_pred = dat_train[c(obs_id, occur_time, target)]
+            test_pred = dat_test[c(obs_id, occur_time, target)]
+            train_pred$prob_GBM = round(predict(gbm_model_new, dat_train[, x_list],
                                           best.iter, type = "response"), 5)
-      test_pred$prob_GBM = round(predict(gbm_model_new, dat_test[, x_list],
+            test_pred$prob_GBM = round(predict(gbm_model_new, dat_test[, x_list],
                                          best.iter, type = "response"), 5)
-      save_dt(train_pred, file_name = "GBM.train_prob",
+            save_data(train_pred, file_name = "GBM.train_prob",
               dir_path = GBM_pred_dir_path, note = TRUE)
-      save_dt(test_pred, file_name = "GBM.test_prob",
+            save_data(test_pred, file_name = "GBM.test_prob",
               dir_path = GBM_pred_dir_path, note = TRUE)
 
-      cat_line("-- Producing plots that characterize the performance of GBM", col = love_color("deep_green"))
-      perf_tb = model_result_plot(train_pred = train_pred, test_pred = test_pred, target = target,
-                                  score = "prob_GBM", gtitle = paste0(model_name,".GBM"),perf_dir_path = GBM_perf_dir_path,
-                                  save_data = TRUE,plot_show = plot_show,total = TRUE)
+            cat_line("-- Producing plots that characterize the performance of GBM", col = love_color("deep_green"))
+            perf_tb = model_result_plot(train_pred = train_pred, test_pred = test_pred, target = target,
+                                  score = "prob_GBM", gtitle = paste0(model_name, ".GBM"), perf_dir_path = GBM_perf_dir_path,
+                                  save_data = TRUE, plot_show = plot_show, total = TRUE)
 
-      key_index = model_key_index(perf_tb)
-      params_key_index = data.frame(c(GBM.params), key_index)
-      save_dt(params_key_index, file_name = "GBM.params",
+            key_index = model_key_index(perf_tb)
+            params_key_index = data.frame(c(GBM.params), key_index)
+            save_data(params_key_index, file_name = "GBM.params",
               dir_path = GBM_perf_dir_path, append = TRUE, note = TRUE)
-      if (save_pmml) {
+            if (save_pmml) {
 
-        cat_rule("Converting  GBM model to pmml", col = love_color("light_cyan"))
-        if (!requireNamespace("pmml", quietly = TRUE)&!requireNamespace("XML", quietly = TRUE) ){
-        cat_rule("Package `pmml`,`XML` needed for PMML transfering to work. Please install it.", col = love_color("deep_red"))
-        }else{
-        gbm_model_pmml = pmml::pmml(gbm_model_new,
+                cat_rule("Converting  GBM model to pmml", col = love_color("light_cyan"))
+                if (!requireNamespace("pmml", quietly = TRUE) & !requireNamespace("XML", quietly = TRUE)) {
+                    cat_rule("Package `pmml`,`XML` needed for PMML transfering to work. Please install it.", col = love_color("deep_red"))
+                } else {
+                    gbm_model_pmml = pmml::pmml(gbm_model_new,
                               model.name = "GBM_Model",
-                              app.name = "R-PMML",
+                              app.name = "GBM-PMML",
                               description = "Gradient Boosting Decision Tree Model",
                               copyright = NULL,
                               transforms = NULL,
@@ -888,72 +898,72 @@ training_model <- function(model_name = "mymodel",
                               parentInvalidValueTreatment = "returnInvalid",
                               childInvalidValueTreatment = "asIs"
         )
-        XML::saveXML(gbm_model_pmml, file = paste0(GBM_model_dir_path, "/gbm_model.pmml"))
-      }
-	 }
-      #save model
-      save(gbm_model_new, file = paste0(GBM_model_dir_path, "/gbm_model.RData"))
-      model_new = append(model_new, list(gbm_model = gbm_model_new), 1)
-      rm(gbm_model_new)
-    }
+                    XML::saveXML(gbm_model_pmml, file = paste0(GBM_model_dir_path, "/gbm_model.pmml"))
+                }
+            }
+            #save model
+            save(gbm_model_new, file = paste0(GBM_model_dir_path, "/gbm_model.RData"))
+            model_new = append(model_new, list(gbm_model = gbm_model_new), 1)
+            rm(gbm_model_new)
+        }
 
-    if (any(algorithm == "RF")) {
-      cat_rule("Training RandomForest Model",  col = "cyan")
+        if (any(algorithm == "RF")) {
+            cat_rule("Training RandomForest Model", col = "cyan")
 
 
-      RF_model_dir_path = paste(model_dir_path, "RF", sep = "/")
-      RF_var_dir_path = paste(var_dir_path, "RF", sep = "/")
-      RF_perf_dir_path = paste(perf_dir_path, "RF", sep = "/")
-      RF_pred_dir_path = paste(pred_dir_path, "RF", sep = "/")
-      RF_data_dir_path = paste(data_dir_path, "RF", sep = "/")
-      if (!dir.exists(RF_model_dir_path)) dir.create(RF_model_dir_path)
-      if (!dir.exists(RF_var_dir_path)) dir.create(RF_var_dir_path)
-      if (!dir.exists(RF_perf_dir_path)) dir.create(RF_perf_dir_path)
-      if (!dir.exists(RF_pred_dir_path)) dir.create(RF_pred_dir_path)
-      if (!dir.exists(RF_data_dir_path)) dir.create(RF_data_dir_path)
-      `%DO%` = if (parallel) `%dopar%` else `%do%`
-      if (is.null(RF.params)) {
-        RF.params = rf_params()
-      }
-      ntree = ifelse(!is.null(RF.params[["ntree"]]),
+            RF_model_dir_path = paste(model_dir_path, "RF", sep = "/")
+            RF_var_dir_path = paste(var_dir_path, "RF", sep = "/")
+            RF_perf_dir_path = paste(perf_dir_path, "RF", sep = "/")
+            RF_pred_dir_path = paste(pred_dir_path, "RF", sep = "/")
+            RF_data_dir_path = paste(data_dir_path, "RF", sep = "/")
+            if (!dir.exists(RF_model_dir_path)) dir.create(RF_model_dir_path)
+            if (!dir.exists(RF_var_dir_path)) dir.create(RF_var_dir_path)
+            if (!dir.exists(RF_perf_dir_path)) dir.create(RF_perf_dir_path)
+            if (!dir.exists(RF_pred_dir_path)) dir.create(RF_pred_dir_path)
+            if (!dir.exists(RF_data_dir_path)) dir.create(RF_data_dir_path)
+            `%DO%` = if (parallel) `%dopar%` else `%do%`
+            if (is.null(RF.params)) {
+                RF.params = rf_params()
+            }
+            ntree = ifelse(!is.null(RF.params[["ntree"]]),
                      RF.params[["ntree"]], 100)
-      nodesize = ifelse(!is.null(RF.params[["nodesize"]]),
+            nodesize = ifelse(!is.null(RF.params[["nodesize"]]),
                         RF.params[["nodesize"]], 30)
-      samp_rate = ifelse(!is.null(RF.params[["samp_rate"]]),
+            samp_rate = ifelse(!is.null(RF.params[["samp_rate"]]),
                          RF.params[["samp_rate"]], 0.1)
-      tune_rf = ifelse(!is.null(RF.params[["tune_rf"]]),
+            tune_rf = ifelse(!is.null(RF.params[["tune_rf"]]),
                        RF.params[["tune_rf"]], TRUE)
 
-      tmp = as.vector(table(dat_train[, target]));
-      num_clases = length(tmp);
-      min_size = tmp[order(tmp, decreasing = FALSE)[1]] * samp_rate
-      vector_for_sampsize = rep(min_size, num_clases);
+            tmp = as.vector(table(dat_train[, target]));
+            num_clases = length(tmp);
+            min_size = tmp[order(tmp, decreasing = FALSE)[1]] * samp_rate
+            vector_for_sampsize = rep(min_size, num_clases);
 
-      char_x_list = get_names(dat = dat_train[, x_list],
+            char_x_list = get_names(dat = dat_train[, x_list],
                               types = c('character', 'factor'),
                               ex_cols = c(target, obs_id, occur_time, ex_cols),
                               get_ex = FALSE)
-      if (length(char_x_list) > 0) {
-        nr = nrow(dat_train)
-        var_list = unique(c(target, obs_id, occur_time, x_list))
-        dat_ts = rbind(dat_train[, var_list], dat_test[, var_list])
-        dat_ts = one_hot_encoding(dat = dat_ts, cat_vars = char_x_list, na_act = FALSE)
-        dat_train = dat_ts[1:nr,]
-        dat_test = dat_ts[-c(1:nr),]
-        x_list = get_names(dat = dat_train,
+            if (length(char_x_list) > 0) {
+                nr = nrow(dat_train)
+                var_list = unique(c(target, obs_id, occur_time, x_list))
+                dat_ts = rbind(dat_train[, var_list], dat_test[, var_list])
+                dat_ts = one_hot_encoding(dat = dat_ts, cat_vars = char_x_list, na_act = FALSE)
+                dat_train = dat_ts[1:nr,]
+                dat_test = dat_ts[-c(1:nr),]
+                x_list = get_names(dat = dat_train,
                            types = c('numeric', 'integer', 'double'),
                            ex_cols = c(target, obs_id, occur_time, ex_cols),
                            get_ex = FALSE)
-      }
+            }
 
-      dat_train[, target] = as.factor(as.character(dat_train[, target]))
-      if (!is.null(seed)) set.seed(seed) else set.seed(46)
-      if (tune_rf) {
-        #Tune Random Forest Model
-        tRF = foreach(n_tree = rep(round(10 / cores_num), cores_num),
+            dat_train[, target] = as.factor(as.character(dat_train[, target]))
+            if (!is.null(seed)) set.seed(seed) else set.seed(46)
+            if (tune_rf) {
+                #Tune Random Forest Model
+                tRF = foreach(n_tree = rep(round(10 / cores_num), cores_num),
                       .combine = randomForest::combine,
                       .packages = "randomForest") %DO% {
-                        tuneRF(x = as.matrix(dat_train[, x_list]),
+                          tuneRF(x = as.matrix(dat_train[, x_list]),
                                y = dat_train[, target],
                                stepFactor = 0.5,
                                plot = FALSE,
@@ -967,23 +977,23 @@ training_model <- function(model_name = "mymodel",
                                proximity = FALSE)
                       }
 
-        n_tree = tRF$ntree
-        mtry = tRF$mtry
-        imp_rf = as.data.frame(randomForest::importance(tRF))
-        vars_rf = rownames(imp_rf[which(imp_rf$MeanDecreaseAccuracy > 0),])
-      } else {
-        n_tree = ntree
-        mtry = floor(sqrt(length(x_list)))
-        vars_rf = x_list
-      }
+                n_tree = tRF$ntree
+                mtry = tRF$mtry
+                imp_rf = as.data.frame(randomForest::importance(tRF))
+                vars_rf = rownames(imp_rf[which(imp_rf$MeanDecreaseAccuracy > 0),])
+            } else {
+                n_tree = ntree
+                mtry = floor(sqrt(length(x_list)))
+                vars_rf = x_list
+            }
 
-      #Fit the Random Forest Model After Tuning
-      Formula = as.formula(paste(target, paste(vars_rf, collapse = ' + '), sep = ' ~ '))
-      if (!is.null(seed)) set.seed(seed) else set.seed(46)
-      rf_model_new <- foreach(n_tree = rep(round(ntree / cores_num), cores_num),
+            #Fit the Random Forest Model After Tuning
+            Formula = as.formula(paste(target, paste(vars_rf, collapse = ' + '), sep = ' ~ '))
+            if (!is.null(seed)) set.seed(seed) else set.seed(46)
+            rf_model_new <- foreach(n_tree = rep(round(ntree / cores_num), cores_num),
                               .combine = randomForest::combine,
                               .packages = "randomForest") %DO% {
-                                randomForest(Formula,
+                                  randomForest(Formula,
                                              data = dat_train,
                                              sampsize = vector_for_sampsize,
                                              ntree = n_tree,
@@ -992,70 +1002,70 @@ training_model <- function(model_name = "mymodel",
                                              proximity = FALSE,
                                              mtry = mtry)
                               }
-      imp_rf = randomForest::importance(rf_model_new)
-      dt_imp_RF = data.frame(Feature = row.names(imp_rf),
+            imp_rf = randomForest::importance(rf_model_new)
+            dt_imp_RF = data.frame(Feature = row.names(imp_rf),
                              Importance = round(imp_rf[, 'MeanDecreaseAccuracy'], 5),
                              stringsAsFactors = FALSE)
-      imp_vars_rf = subset(dt_imp_RF, dt_imp_RF$Importance > 0)[, "Feature"]
+            imp_vars_rf = subset(dt_imp_RF, dt_imp_RF$Importance > 0)[, "Feature"]
 
-      save_dt(dt_imp_RF, file_name = "RF.feature_importance",
+            save_data(dt_imp_RF, file_name = "RF.feature_importance",
               dir_path = RF_var_dir_path, note = TRUE)
-      dat_train[, target] = as.numeric(as.character(dat_train[, target]))
+            dat_train[, target] = as.numeric(as.character(dat_train[, target]))
 
 
-      if (vars_plot & length(imp_vars_rf) > 1) {
-        cat_line("-- Ploting partial dependence of input variables", col = love_color("deep_green"))
-        pd_list = get_partial_dependence_plots(model = rf_model_new, x_list = imp_vars_rf,
-                                               x_train = dat_train, save_data = TRUE,plot_show = FALSE, dir_path = RF_var_dir_path)
-      }
+            if (vars_plot & length(imp_vars_rf) > 1) {
+                cat_line("-- Ploting partial dependence of input variables", col = love_color("deep_green"))
+                pd_list = get_partial_dependence_plots(model = rf_model_new, x_list = imp_vars_rf, parallel = parallel,
+                                               x_train = dat_train, save_data = TRUE, plot_show = FALSE, dir_path = RF_var_dir_path)
+            }
 
-      train_pred = dat_train[c(obs_id, occur_time, target)]
-      test_pred = dat_test[c(obs_id, occur_time, target)]
-      train_pred$prob_RF = round(predict(rf_model_new,
+            train_pred = dat_train[c(obs_id, occur_time, target)]
+            test_pred = dat_test[c(obs_id, occur_time, target)]
+            train_pred$prob_RF = round(predict(rf_model_new,
                                          dat_train[, vars_rf],
                                          type = c("prob"))[, 2], 5)
-      test_pred$prob_RF = round(predict(rf_model_new,
+            test_pred$prob_RF = round(predict(rf_model_new,
                                         dat_test[, vars_rf],
                                         type = c("prob"))[, 2], 5)
-      save_dt(train_pred, file_name = "RF.train_prob",dir_path = RF_pred_dir_path, note = TRUE)
-      save_dt(test_pred, file_name = "RF.test_prob",dir_path = RF_pred_dir_path, note = TRUE)
-      cat_line("-- Producing plots that characterize the performance of RandomForest", col = love_color("deep_green"))
-      perf_tb = model_result_plot(train_pred = train_pred, test_pred = test_pred, target = target,
-                                  score = "prob_RF", gtitle = paste0(model_name,".RF"),perf_dir_path = RF_perf_dir_path,
-                                  save_data = TRUE,plot_show = plot_show,total = TRUE)
-      key_index = model_key_index(perf_tb)
-      params_key_index = data.frame(c(RF.params), key_index)
-      save_dt(params_key_index, file_name = "RF.params",
+            save_data(train_pred, file_name = "RF.train_prob", dir_path = RF_pred_dir_path, note = TRUE)
+            save_data(test_pred, file_name = "RF.test_prob", dir_path = RF_pred_dir_path, note = TRUE)
+            cat_line("-- Producing plots that characterize the performance of RandomForest", col = love_color("deep_green"))
+            perf_tb = model_result_plot(train_pred = train_pred, test_pred = test_pred, target = target,
+                                  score = "prob_RF", gtitle = paste0(model_name, ".RF"), perf_dir_path = RF_perf_dir_path,
+                                  save_data = TRUE, plot_show = plot_show, total = TRUE)
+            key_index = model_key_index(perf_tb)
+            params_key_index = data.frame(c(RF.params), key_index)
+            save_data(params_key_index, file_name = "RF.params",
               dir_path = RF_perf_dir_path,
               append = TRUE, note = TRUE)
 
-      if (save_pmml) {
+            if (save_pmml) {
 
-        cat_rule("Converting  RandomForest model to pmml", col = love_color("light_cyan"))
-        if (!requireNamespace("pmml", quietly = TRUE)&!requireNamespace("XML", quietly = TRUE) ){
-        cat_rule("Package `pmml`,`XML` needed for PMML transfering to work. Please install it.", col = love_color("deep_red"))
-        }else{
-        rf_model_pmml = pmml::pmml(tRF,
+                cat_rule("Converting  RandomForest model to pmml", col = love_color("light_cyan"))
+                if (!requireNamespace("pmml", quietly = TRUE) & !requireNamespace("XML", quietly = TRUE)) {
+                    cat_rule("Package `pmml`,`XML` needed for PMML transfering to work. Please install it.", col = love_color("deep_red"))
+                } else {
+                    rf_model_pmml = pmml::pmml(tRF,
                              model.name = "randomForest_Model",
-                             app.name = "R-PMML",
+                             app.name = "RF-PMML",
                              description = "Random Forest Tree Model",
                              copyright = NULL,
                              transforms = NULL,
                              unknownValue = NULL,
                              parentInvalidValueTreatment = "returnInvalid",
                              childInvalidValueTreatment = "asIs")
-        XML::saveXML(rf_model_pmml, file = paste0(RF_model_dir_path, "/rf_model.pmml"))
-		}
-      }
-      save(rf_model_new, file = paste0(RF_model_dir_path, "/rf_model.RData")) #save model
-      model_new = append(model_new, list(rf_model = rf_model_new), 1)
-      rm(rf_model_new)
+                    XML::saveXML(rf_model_pmml, file = paste0(RF_model_dir_path, "/rf_model.pmml"))
+                }
+            }
+            save(rf_model_new, file = paste0(RF_model_dir_path, "/rf_model.RData")) #save model
+            model_new = append(model_new, list(rf_model = rf_model_new), 1)
+            rm(rf_model_new)
+        }
+    } else {
+        stop(paste("target must be binomial.\n"))
     }
-  } else {
-    stop(paste("target must be binomial.\n"))
-  }
-  return(model_new)
-  options(opt) # reset
+    return(model_new)
+    options(opt) # reset
 }
 
 
@@ -1088,7 +1098,7 @@ training_model <- function(model_name = "mymodel",
 #' @seealso  \code{\link{training_model}}, \code{\link{xgb_params}}, \code{\link{gbm_params}}, \code{\link{rf_params}}
 #' @export
 
-lr_params = function(tree_control = list(p = 0.02, cp = 0.00000001, xval = 5, maxdepth = 10),
+lr_params <- function(tree_control = list(p = 0.02, cp = 0.00000001, xval = 5, maxdepth = 10),
                      bins_control = list(bins_num = 10, bins_pct = 0.05, b_chi = 0.02,
                                          b_odds = 0.1, b_psi = 0.03, b_or = 0.15,
                                          mono = 0.2, odds_psi = 0.15, kc = 1),
@@ -1115,7 +1125,7 @@ lr_params = function(tree_control = list(p = 0.02, cp = 0.00000001, xval = 5, ma
 #' @param occur_time The name of the variable that represents the time at which each observation takes place.Default is NULL.
 #' @export
 
-lr_params_search = function( method = "random_search",dat_train, target,
+lr_params_search <- function( method = "random_search",dat_train, target,
                              dat_test = NULL,occur_time= NULL,
                              x_list = NULL , prop = 0.7,iters = 10,
                              tree_control = list(p = 0.02,
@@ -1152,24 +1162,41 @@ lr_params_search = function( method = "random_search",dat_train, target,
   }else{
     best_lambda ='lambda.auc'
   }
-
+  p = ifelse(!is.null(tree_control[["p"]]),
+             tree_control[["p"]], 0.05)
   p = tree_control$p
-  cp = tree_control$cp
-  xval = tree_control$xval
-  maxdepth =tree_control$maxdepth
-  bins_num = bins_control$bins_num
-  bins_pct = bins_control$bins_pct
-  b_chi = bins_control$b_chi
-  b_odds = bins_control$b_odds
-  b_psi = bins_control$b_psi
-  b_or = bins_control$b_or
-  mono = bins_control$mono
-  odds_psi = bins_control$odds_psi
-  kc = bins_control$kc
-  cor_p = thresholds$cor_p
-  iv_i=thresholds$iv_i
-  psi_i = thresholds$psi_i
-  cos_i = thresholds$cos_i
+  cp = ifelse(!is.null(tree_control[["cp"]]),
+              tree_control[["cp"]], 0.0000001)
+  xval = ifelse(!is.null(tree_control[["xval"]]),
+                tree_control[["xval"]], 5)
+  maxdepth =ifelse(!is.null(tree_control[["maxdepth"]]),
+                   tree_control[["maxdepth"]], 10)
+  bins_num = ifelse(!is.null(bins_control[["bins_num"]]),
+                    bins_control[["bins_num"]],10)
+  bins_pct =ifelse(!is.null(bins_control[["bins_pct"]]),
+                   bins_control[["bins_pct"]],0.02)
+  b_chi = ifelse(!is.null(bins_control[["b_chi"]]),
+                 bins_control[["b_chi"]],0.02)
+  b_odds = ifelse(!is.null(bins_control[["b_odds"]]),
+                  bins_control[["b_odds"]],0.05)
+  b_psi = ifelse(!is.null(bins_control[["b_psi"]]),
+                 bins_control[["b_psi"]],0.05)
+  b_or = ifelse(!is.null(bins_control[["b_or"]]),
+                bins_control[["b_or"]],0.15)
+  mono = ifelse(!is.null(bins_control[["mono"]]),
+                bins_control[["mono"]],0.3)
+  odds_psi = ifelse(!is.null(bins_control[["odds_psi"]]),
+                    bins_control[["odds_psi"]],0.2)
+  kc =ifelse(!is.null(bins_control[["kc"]]),
+             bins_control[["kc"]],1)
+  cor_p = ifelse(!is.null(thresholds[["cor_p"]]),
+                 thresholds[["cor_p"]],0.7)
+  iv_i=   ifelse(!is.null(thresholds[["iv_i"]]),
+                 thresholds[["iv_i"]],0.01)
+  psi_i =   ifelse(!is.null(thresholds[["psi_i"]]),
+                   thresholds[["psi_i"]],0.1)
+  cos_i = ifelse(!is.null(thresholds[["cos_i"]]),
+                 thresholds[["cos_i"]],0.5)
   best_x_list=c()
   best_tree_control = list()
   best_bins_control = list()
@@ -1183,27 +1210,27 @@ lr_params_search = function( method = "random_search",dat_train, target,
     if (method == "random_search"){
       for (iter in 1:iters) {
         tree_control= list(
-          p = ifelse(length(p) > 1, sample(p, 1), p),
-          cp =  ifelse(length(cp) > 1, sample(cp, 1), cp),
-          xval =  ifelse(length(xval) > 1, sample(xval, 1), xval),
-          maxdepth = ifelse(length(maxdepth) > 1, sample(maxdepth, 1), maxdepth)
+          p = ifelse(length(p) > 1, sample(p, 1,replace = TRUE), p),
+          cp =  ifelse(length(cp) > 1, sample(cp,  1,replace = TRUE), cp),
+          xval =  ifelse(length(xval) > 1, sample(xval, 1,replace = TRUE), xval),
+          maxdepth = ifelse(length(maxdepth) > 1, sample(maxdepth,  1,replace = TRUE), maxdepth)
 
         )
 
-        bins_control = list(bins_num = ifelse(length(bins_num) > 1, sample(bins_num, 1), bins_num),
-                            bins_pct = ifelse(length(bins_pct) > 1, sample(bins_pct, 1), bins_pct),
-                            b_chi = ifelse(length(b_chi) > 1, sample(b_chi, 1), b_chi),
-                            b_odds = ifelse(length(b_odds) > 1, sample(b_odds, 1), b_odds),
-                            b_psi = ifelse(length(b_psi) > 1, sample(b_psi, 1), b_psi),
-                            b_or =ifelse(length(b_or) > 1, sample(b_or, 1), b_or),
-                            mono = ifelse(length(mono) > 1, sample(mono, 1), mono),
-                            odds_psi = ifelse(length(odds_psi) > 1, sample(odds_psi, 1), odds_psi),
-                            kc = ifelse(length(kc) > 1, sample(kc, 1), kc))
+        bins_control = list(bins_num = ifelse(length(bins_num) > 1, sample(bins_num, 1,replace = TRUE), bins_num),
+                            bins_pct = ifelse(length(bins_pct) > 1, sample(bins_pct,  1,replace = TRUE), bins_pct),
+                            b_chi = ifelse(length(b_chi) > 1, sample(b_chi,1,replace = TRUE), b_chi),
+                            b_odds = ifelse(length(b_odds) > 1, sample(b_odds,1,replace = TRUE), b_odds),
+                            b_psi = ifelse(length(b_psi) > 1, sample(b_psi, 1,replace = TRUE), b_psi),
+                            b_or =ifelse(length(b_or) > 1, sample(b_or, 1,replace = TRUE), b_or),
+                            mono = ifelse(length(mono) > 1, sample(mono, 1,replace = TRUE), mono),
+                            odds_psi = ifelse(length(odds_psi) > 1, sample(odds_psi, 1,replace = TRUE), odds_psi),
+                            kc = ifelse(length(kc) > 1, sample(kc,  1,replace = TRUE), kc))
 
-        thresholds = list(cor_p = ifelse(length(cor_p) > 1, sample(cor_p, 1), cor_p),
-                          iv_i =ifelse(length(iv_i) > 1, sample(iv_i, 1), iv_i),
-                          psi_i = ifelse(length(psi_i) > 1, sample(psi_i, 1), psi_i),
-                          cos_i = ifelse(length(cos_i) > 1, sample(cos_i, 1), cos_i))
+        thresholds = list(cor_p = ifelse(length(cor_p) > 1, sample(cor_p, 1,replace = TRUE), cor_p),
+                          iv_i =ifelse(length(iv_i) > 1, sample(iv_i,  1,replace = TRUE), iv_i),
+                          psi_i = ifelse(length(psi_i) > 1, sample(psi_i, 1,replace = TRUE), psi_i),
+                          cos_i = ifelse(length(cos_i) > 1, sample(cos_i, 1,replace = TRUE), cos_i))
         seed_number = sample.int(10000, 1)[[1]]
         train_iter = train_lr(dat_train = dat_train,dat_test = dat_test, target = target,
                               x_list= x_list, occur_time = occur_time,prop = prop,
@@ -1619,7 +1646,7 @@ lr_params_search = function( method = "random_search",dat_train, target,
                   tree_control = best_tree_control,
                   bins_control = best_bins_control,
                   thresholds = best_thresholds,
-                  best_seed = seed_number))
+                  best_seed = best_seed))
 }
 
 #' Trainig LR model
@@ -1649,7 +1676,7 @@ lr_params_search = function( method = "random_search",dat_train, target,
 #' @export
 
 
-train_lr = function(dat_train,dat_test = NULL, target,x_list= NULL, occur_time = NULL,prop = 0.7,
+train_lr <- function(dat_train,dat_test = NULL, target,x_list= NULL, occur_time = NULL,prop = 0.7,
                     tree_control = list(p = 0.02, cp = 0.00000001,
                                         xval = 5, maxdepth = 10),
                     bins_control = list(bins_num = 10, bins_pct = 0.05,
@@ -1669,10 +1696,10 @@ train_lr = function(dat_train,dat_test = NULL, target,x_list= NULL, occur_time =
     dat_test = train_test$test
   }
 
-  cor_p = ifelse(!is.null(thresholds$cor_p),thresholds$cor_p,1)
-  iv_i= ifelse(!is.null(thresholds$iv_i),thresholds$iv_i,0)
-  psi_i = ifelse(!is.null(thresholds$psi_i),thresholds$psi_i,1)
-  cos_i = ifelse(!is.null(thresholds$cos_i),thresholds$cos_i,0)
+  cor_p = ifelse(!is.null(thresholds$cor_p),thresholds$cor_p,0.7)
+  iv_i= ifelse(!is.null(thresholds$iv_i),thresholds$iv_i,0.01)
+  psi_i = ifelse(!is.null(thresholds$psi_i),thresholds$psi_i,0.1)
+  cos_i = ifelse(!is.null(thresholds$cos_i),thresholds$cos_i,0.5)
   x_list = get_x_list(dat_train = dat_train, dat_test = dat_test,
                       x_list = x_list,ex_cols = c(target,occur_time))
   if(is.null(tree_control)){
@@ -1723,15 +1750,15 @@ train_lr = function(dat_train,dat_test = NULL, target,x_list= NULL, occur_time =
                             breaks_list = breaks_list,
                             woe_name = FALSE, note = FALSE,
                             save_data = FALSE)
-
-  select_vars = fast_high_cor_filter(dat = train_woe,
+   if(length(select_vars)>1){
+    select_vars = fast_high_cor_filter(dat = train_woe,
                                      x_list = select_vars,
                                      com_list = iv_psi_list,
                                      p = cor_p,
                                      note = FALSE,
                                      save_data = FALSE)
 
-
+    }
 
   bins_table = get_bins_table_all(dat = dat_train, target = target,
                                   x_list = select_vars, breaks_list = breaks_list,
@@ -1818,10 +1845,10 @@ train_lr = function(dat_train,dat_test = NULL, target,x_list= NULL, occur_time =
 #' @seealso \code{\link{training_model}}, \code{\link{lr_params}},\code{\link{gbm_params}}, \code{\link{rf_params}}
 #' @export
 
-xgb_params = function(nrounds = 1000,
-                      params = list(max.depth = 6, eta = 0.1, gamma = 0,min_child_weight = 1,
+xgb_params <- function(nrounds = 1000,
+                      params = list(max_depth = 6, eta = 0.01, gamma = 0,min_child_weight = 1,
                                     subsample = 1,colsample_bytree = 1,
-                                    max_delta_step = 0),
+                                    scale_pos_weight = 1),
                       early_stopping_rounds = 100, method = 'random_search', iters = 10, f_eval = "auc",
                       nfold = 1, nthread = 2,...) {
   structure(list(nrounds = nrounds, params = params,f_eval = f_eval, method = method,iters = iters,
@@ -1839,17 +1866,17 @@ xgb_params = function(nrounds = 1000,
 #' @param occur_time The name of the variable that represents the time at which each observation takes place.Default is NULL.
 #' @export
 
-xgb_params_search = function(dat_train, target,dat_test = NULL, x_list = NULL, prop = 0.7,occur_time = NULL,
+xgb_params_search <- function(dat_train, target,dat_test = NULL, x_list = NULL, prop = 0.7,occur_time = NULL,
                              method = "random_search", iters = 10,
                              nrounds = 100,
                              early_stopping_rounds = 10,
-                             params = list(max.depth = 6,
-                                           eta = 0,
+                             params = list(max_depth = 6,
+                                           eta = 0.01,
                                            gamma =0,
                                            min_child_weight = 1,
                                            subsample = 1,
                                            colsample_bytree = 1,
-                                           max_delta_step = 0),
+                                           scale_pos_weight = 1),
                              f_eval = 'auc', nfold = 1, nthread = 2,
                              ...) {
 
@@ -1859,13 +1886,13 @@ xgb_params_search = function(dat_train, target,dat_test = NULL, x_list = NULL, p
   dtrain = xgb_list$dtrain
   dtest = xgb_list$dtest
   watchlist = xgb_list$watchlist
-  max.depth = params$max.depth
-  eta = params$eta
-  gamma = params$gamma
-  min_child_weight = params$min_child_weight
-  subsample = params$subsample
-  colsample_bytree = params$colsample_bytree
-  max_delta_step = params$max_delta_step
+  max_depth = ifelse(!is.null(params$max_depth),params$max_depth,6)
+  eta = ifelse(!is.null(params$eta),params$eta,0.01)
+  gamma = ifelse(!is.null(params$gamma),params$gamma,0)
+  min_child_weight = ifelse(!is.null(params$min_child_weight),params$min_child_weight,1)
+  subsample =  ifelse(!is.null(params$subsample),params$subsample,1)
+  colsample_bytree =  ifelse(!is.null(params$colsample_bytree),params$colsample_bytree,1)
+  scale_pos_weight = ifelse(!is.null(params$scale_pos_weight),params$scale_pos_weight,1)
   best_x_list=c()
   verbose = 0
   best_param = list()
@@ -1881,13 +1908,13 @@ xgb_params_search = function(dat_train, target,dat_test = NULL, x_list = NULL, p
     if (method == "random_search") {
       for (iter in 1:iters) {
         params = list(
-          max_depth = ifelse(length(max.depth) > 1, sample(max.depth, 1), max.depth),
-          eta = ifelse(length(eta) > 1, sample(eta, 1), eta),
-          gamma = ifelse(length(gamma) > 1, sample(gamma, 1), gamma),
-          min_child_weight = ifelse(length(min_child_weight) > 1, sample(min_child_weight, 1), min_child_weight),
-          subsample = ifelse(length(subsample) > 1, sample(subsample, 1), subsample),
-          colsample_bytree = ifelse(length(colsample_bytree) > 1, sample(colsample_bytree, 1), colsample_bytree),
-          max_delta_step = ifelse(length(max_delta_step) > 1, sample(max_delta_step, 1), max_delta_step)
+          max_depth = ifelse(length(max_depth) > 1, sample(max_depth, 1,replace = TRUE), max_depth),
+          eta = ifelse(length(eta) > 1, sample(eta, 1,replace = TRUE), eta),
+          gamma = ifelse(length(gamma) > 1, sample(gamma, 1,replace = TRUE), gamma),
+          min_child_weight = ifelse(length(min_child_weight) > 1, sample(min_child_weight, 1,replace = TRUE), min_child_weight),
+          subsample = ifelse(length(subsample) > 1, sample(subsample,1,replace = TRUE), subsample),
+          colsample_bytree = ifelse(length(colsample_bytree) > 1, sample(colsample_bytree, 1,replace = TRUE), colsample_bytree),
+          scale_pos_weight = ifelse(length(scale_pos_weight) > 1, sample(scale_pos_weight, 1,replace = TRUE), scale_pos_weight)
         )
 
         seed_number = sample.int(10000, 1)[[1]]
@@ -1929,13 +1956,13 @@ xgb_params_search = function(dat_train, target,dat_test = NULL, x_list = NULL, p
     } else {
       if (method == "grid_search") {
         iter = 1
-        for (max_d in max.depth) {
+        for (max_d in max_depth) {
           for (et in eta) {
             for (ga in gamma) {
               for (min_child in min_child_weight) {
                 for (subs in subsample) {
                   for (cols in colsample_bytree) {
-                    for (max_delta in max_delta_step) {
+                    for (scale_pos in scale_pos_weight) {
                       params = list(
                         max_depth = max_d,
                         eta = et,
@@ -1943,7 +1970,7 @@ xgb_params_search = function(dat_train, target,dat_test = NULL, x_list = NULL, p
                         min_child_weight = min_child,
                         subsample = subs,
                         colsample_bytree = cols,
-                        max_delta_step = max_delta
+                        scale_pos_weight = scale_pos
                       )
                       seed_number = sample.int(10000, 1)[[1]]
                       train_iter = train_xgb(seed_number = seed_number, dtrain = dtrain,
@@ -1996,7 +2023,7 @@ xgb_params_search = function(dat_train, target,dat_test = NULL, x_list = NULL, p
       } else {
         if (method == "local_search") {
           iter = 1
-          for (max_d in max.depth) {
+          for (max_d in max_depth) {
             params = list(
               max_depth = max_d,
               eta = ifelse(length(eta) > 1, eta[1], eta),
@@ -2004,7 +2031,7 @@ xgb_params_search = function(dat_train, target,dat_test = NULL, x_list = NULL, p
               min_child_weight = ifelse(length(min_child_weight) > 1, min_child_weight[1], min_child_weight),
               subsample = ifelse(length(subsample) > 1, subsample[1], subsample),
               colsample_bytree = ifelse(length(colsample_bytree) > 1, colsample_bytree[1], colsample_bytree),
-              max_delta_step = ifelse(length(max_delta_step) > 1, max_delta_step[1], max_delta_step)
+              scale_pos_weight = ifelse(length(scale_pos_weight) > 1, scale_pos_weight[1], scale_pos_weight)
             )
             seed_number = sample.int(10000, 1)[[1]]
             train_iter = train_xgb(seed_number = seed_number, dtrain = dtrain,
@@ -2206,10 +2233,10 @@ xgb_params_search = function(dat_train, target,dat_test = NULL, x_list = NULL, p
 
             }
           }
-          if (length(max_delta_step) > 1) {
-            for (max_delta in max_delta_step) {
+          if (length(scale_pos_weight) > 1) {
+            for (scale_pos in scale_pos_weight) {
               params = best_param
-              params$max_delta_step = max_delta
+              params$scale_pos_weight = scale_pos
               seed_number = sample.int(10000, 1)[[1]]
               train_iter = train_xgb(seed_number = seed_number, dtrain = dtrain,
                                      nthread = nthread,
@@ -2254,13 +2281,13 @@ xgb_params_search = function(dat_train, target,dat_test = NULL, x_list = NULL, p
     iter = 1
     params = list(
 
-      max_depth = max.depth,
+      max_depth = max_depth,
       eta = ifelse(length(eta) > 1, eta[1], eta),
       gamma = ifelse(length(gamma) > 1, gamma[1], gamma),
       min_child_weight = ifelse(length(min_child_weight) > 1, min_child_weight[1], min_child_weight),
       subsample = ifelse(length(subsample) > 1, subsample[1], subsample),
       colsample_bytree = ifelse(length(colsample_bytree) > 1, colsample_bytree[1], colsample_bytree),
-      max_delta_step = ifelse(length(max_delta_step) > 1, max_delta_step[1], max_delta_step)
+      scale_pos_weight = ifelse(length(scale_pos_weight) > 1, scale_pos_weight[1], scale_pos_weight)
     )
     seed_number = sample.int(10000, 1)[[1]]
     train_iter = train_xgb(seed_number = seed_number, dtrain = dtrain,
@@ -2299,7 +2326,7 @@ xgb_params_search = function(dat_train, target,dat_test = NULL, x_list = NULL, p
   }
 
   structure(list(xgb_model = best_xgb_model, nrounds = best_iter_index, params = best_param,
-                 early_stopping_rounds = early_stopping_rounds, seed_number = seed_number))
+                 early_stopping_rounds = early_stopping_rounds, seed_number = best_seed))
 }
 
 #' XGboost data
@@ -2315,7 +2342,7 @@ xgb_params_search = function(dat_train, target,dat_test = NULL, x_list = NULL, p
 #' @importFrom xgboost xgb.importance xgb.train xgb.DMatrix xgb.dump xgb.save xgb.cv getinfo
 #' @export
 
-xgb_data = function(dat_train, target, dat_test = NULL,x_list = NULL,prop = 0.7,occur_time = NULL){
+xgb_data <- function(dat_train, target, dat_test = NULL,x_list = NULL,prop = 0.7,occur_time = NULL){
   if (is.null(dat_test)) {
     train_test = train_test_split(dat_train,split_type = "OOT",prop = prop,occur_time = occur_time)
     dat_train = train_test$train
@@ -2371,7 +2398,7 @@ xgb_data = function(dat_train, target, dat_test = NULL,x_list = NULL,prop = 0.7,
 #' @importFrom xgboost xgb.importance xgb.train xgb.DMatrix xgb.dump xgb.save xgb.cv getinfo
 #' @export
 
-train_xgb = function(seed_number = 1234, dtrain,
+train_xgb <- function(seed_number = 1234, dtrain,
                      nthread = 2,
                      nfold = 1,
                      watchlist = NULL,
@@ -2433,7 +2460,7 @@ train_xgb = function(seed_number = 1234, dtrain,
         eval_log = c("train_lift","eval_lift")
       }
     }else{
-	
+
       feval = f_eval
       if (!is.null(nfold) && nfold > 1) {
         eval_log = c('train_mean','test_mean')
@@ -2492,7 +2519,7 @@ train_xgb = function(seed_number = 1234, dtrain,
 #' @export
 
 
-gbm_params = function(n.trees = 1000, interaction.depth = 6, shrinkage = 0.01,
+gbm_params <- function(n.trees = 1000, interaction.depth = 6, shrinkage = 0.01,
                       bag.fraction = 0.5, train.fraction = 0.7, n.minobsinnode = 30,
                       cv.folds = 5, ...) {
   structure(list(n.trees = n.trees, interaction.depth = interaction.depth,
@@ -2514,7 +2541,7 @@ gbm_params = function(n.trees = 1000, interaction.depth = 6, shrinkage = 0.01,
 #' @seealso  \code{\link{training_model}}, \code{\link{lr_params}}, \code{\link{gbm_params}}, \code{\link{xgb_params}}
 #' @export
 
-rf_params = function(ntree = 100, nodesize = 30, samp_rate = 0.5, tune_rf = FALSE, ...) {
+rf_params <- function(ntree = 100, nodesize = 30, samp_rate = 0.5, tune_rf = FALSE, ...) {
   structure(list(ntree = ntree, nodesize = nodesize,
                  samp_rate = samp_rate, tune_rf = tune_rf))
 }
@@ -2605,7 +2632,7 @@ score_transfer <- function(model, tbl_woe, a = 600, b = 50,
     if (!dir.exists(dir_path)) dir.create(dir_path)
     if (!is.character(file_name)) file_name = NULL
 
-    save_dt(tbl_woe, file_name = ifelse(is.null(file_name), "lr_score", paste(file_name, "lr_score", sep = ".")), dir_path = dir_path, note = FALSE)
+    save_data(tbl_woe, file_name = ifelse(is.null(file_name), "lr_score", paste(file_name, "lr_score", sep = ".")), dir_path = dir_path, note = FALSE)
   }
   tbl_woe
 }
@@ -2698,7 +2725,7 @@ get_score_card <- function(lg_model, target, bins_table, a = 600, b = 50,
                       tempdir(), dir_path)
     if (!dir.exists(dir_path)) dir.create(dir_path)
     if (!is.character(file_name)) file_name = NULL
-    save_dt(dt_score_card, file_name = ifelse(is.null(file_name), "scorecard", paste(file_name, "scorecard", sep = ".")), dir_path = dir_path, note = FALSE)
+    save_data(dt_score_card, file_name = ifelse(is.null(file_name), "scorecard", paste(file_name, "scorecard", sep = ".")), dir_path = dir_path, note = FALSE)
   }
   dt_score_card
 }
@@ -2760,7 +2787,7 @@ get_score_card <- function(lg_model, target, bins_table, a = 600, b = 50,
 #' test_pred$pred_LR = score_transfer(model = lr_model,
 #' tbl_woe = test_woe, save_data = FALSE)[, "score"]
 #' @export
-get_logistic_coef = function(lg_model, file_name = NULL,
+get_logistic_coef <- function(lg_model, file_name = NULL,
                              dir_path = tempdir(), save_data = FALSE) {
   lg_coef = data.frame(summary(lg_model)$coefficients)
   lg_coef[4] = round(lg_coef[4], 5)
@@ -2776,7 +2803,7 @@ get_logistic_coef = function(lg_model, file_name = NULL,
     dir_path = ifelse(!is.character(dir_path), tempdir(), dir_path)
     if (!dir.exists(dir_path)) dir.create(dir_path)
     if (!is.character(file_name)) file_name = NULL
-    save_dt(lg_coef, file_name = ifelse(is.null(file_name), "logistic.coef", paste(file_name, "logistic.coef", sep = ".")), dir_path = dir_path, note = FALSE)
+    save_data(lg_coef, file_name = ifelse(is.null(file_name), "logistic.coef", paste(file_name, "logistic.coef", sep = ".")), dir_path = dir_path, note = FALSE)
   }
   return(lg_coef)
 }
@@ -2841,7 +2868,7 @@ lr_vif <- function(lr_model) {
 #' @export
 
 
-pred_score = function(model, dat, x_list = NULL, bins_table = NULL, obs_id = NULL, miss_values = list(-1,"-1","NULL","-1","-9999","-9996","-9997","-9995","-9998",
+pred_score <- function(model, dat, x_list = NULL, bins_table = NULL, obs_id = NULL, miss_values = list(-1,"-1","NULL","-1","-9999","-9996","-9997","-9995","-9998",
                                                                     -9999,-9998,-9997,-9996,-9995),
                       woe_name = TRUE) {
   dat = data_cleansing(dat,low_var = FALSE,nr = 1, miss_values = miss_values, merge_cat = FALSE)
@@ -2868,20 +2895,21 @@ pred_score = function(model, dat, x_list = NULL, bins_table = NULL, obs_id = NUL
 #' @importFrom xgboost xgb.load
 #' @export
 
-pred_xgb = function(xgb_model = NULL, dat,  x_list = NULL,miss_values = NULL, model_name = NULL, model_path = getwd()){
-  if(is.null(xgb_model)){
-    model_path_s =  paste0(paste0(model_path,"/",model_name),"/model","/XGB/",paste0(model_name,"_xgb.model"))    
-    xgb_model = xgb.load(model_path_s)
-  }  
-  if(is.null(x_list)){
-    x_list_path = paste0(paste0(model_path,"/",model_name),"/model","/XGB/",paste(model_name,"XGB_input_vars.csv",sep = "_"))
-    x_list = read_dt(x_list_path)[,2]
-  }
-  dat = data_cleansing(dat,x_list = x_list,low_var = FALSE,nr = 1, missing_proc = TRUE,
-                        outlier_proc = FALSE,merge_cat = FALSE,miss_values = miss_values )
-  dat_mat = as.matrix(dat[x_list])
-  xgb_pred = predict(xgb_model,dat_mat)
-  return(xgb_pred)
+pred_xgb <- function(xgb_model = NULL, dat, x_list = NULL, miss_values = NULL, model_name = NULL, model_path = getwd()) {
+    if (is.null(xgb_model)) {
+        model_path_s = paste0(paste0(model_path, "/", model_name), "/model", "/XGB/", paste0(model_name, "_xgb.model"))
+        xgb_model = xgb.load(model_path_s)
+    }
+    if (is.null(x_list)) {
+        x_list_path = paste0(paste0(model_path, "/", model_name), "/model", "/XGB/",
+		paste(model_name, "XGB_input_vars.csv", sep = "."))
+        x_list = read_data(x_list_path)[, 2]
+    }
+    dat = data_cleansing(dat, x_list = x_list, low_var = FALSE, nr = 1.1, missing_proc = FALSE,
+                        outlier_proc = FALSE, merge_cat = FALSE, miss_values = miss_values)
+    dat_mat = as.matrix(dat[x_list])
+    xgb_pred = predict(xgb_model, dat_mat)
+    return(xgb_pred)
 }
 
 #' prob to socre

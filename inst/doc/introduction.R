@@ -1,22 +1,4 @@
----
-title: "Introduction to creditmodel"
-date: "`r Sys.Date()`"
-
-output: rmarkdown::html_vignette
-
-vignette: >
-
-  %\VignetteIndexEntry{Introduction to creditmodel}
-
-  %\VignetteEngine{knitr::rmarkdown}
-
-  %\VignetteEncoding{UTF-8}
-
----
-
-
-
-```{r setup, include = FALSE}
+## ----setup, include = FALSE----------------------------------------------
 
 knitr::opts_chunk$set(
 
@@ -26,20 +8,8 @@ knitr::opts_chunk$set(
 
 )
 
-```
 
-The **creditmodel** package provides a highly efficient R tool suite for Credit Modeling Analysis and Visualization. Contains infrastructure functionalities such as data exploration and preparation, missing values treatment, outliers treatment, variable derivation, variable selection, dimensionality reduction, grid search for hyper parameters, data mining and visualization, model evaluation, strategy analysis etc. 
-creditmodel can facilitate reliable predictive models (such as xgboost or scorecard) and data analysis on a standard laptop computer within minutes.
-This introductory vignette provides a brief glance at the training_model module of the package.
-
-### Quick Modeling
-
-When I first wrote the creditmodel package, its primary purpose was to provide a tool to make the development of binary classification models (machine learning based models as well as credit scorecard) simpler and faster. Therefore, I wrote the package to automatically build model. However, as the package grew in functionality, this choice was increasingly problematic.
-
-Importantly, the creditmodel package now provides a set of complementary tools with different missions.
-Now, Let's start with quick modeling.
-
-```{r 
+## ----echo= TRUE, warning=FALSE, message= TRUE,fig.height= 6.5,fig.width= 7.2----
 
 library(creditmodel)
 
@@ -54,7 +24,7 @@ B_model = training_model(dat = UCICreditCard,
                          miss_values = c(-1, -2),
                          missing_proc = TRUE,
                          outlier_proc = TRUE,
-                         trans_log = FALSE,
+                         trans_log = TRUE,
                          feature_filter = list(filter = c("IV", "PSI", "COR", "XGB"),
                                                cv_folds = 1,
                                                iv_cp = 0.02,
@@ -88,13 +58,13 @@ B_model = training_model(dat = UCICreditCard,
                            iter = 3,
                            method = 'random_search',
                            params = list(
-                             max.depth = c(3:6),
+                             max_depth = c(3:6),
                              eta = c(0.01, 0.05, 0.1, 0.2),
                              gamma = c(0.01, 0.05, 0.1),
                              min_child_weight = c(1, 5, 10, 20, 30, 40, 50),
                              subsample = c(0.8, 0.7, 0.6, 0.5),
                              colsample_bytree = c(0.8, 0.7, 0.6, 0.5),
-                             max_delta_step = c(0, 1, 2, 5, 10)),
+                             scale_pos_weight = c(1, 2, 3)),
                            f_eval = 'auc'),
                          parallel = FALSE,
                          cores_num = NULL,
@@ -102,5 +72,4 @@ B_model = training_model(dat = UCICreditCard,
                          plot_show = TRUE,
                          model_path = tempdir(),
                          seed = 46)
-```
-In a few minutes, the program completed data cleaning and pretreatment, variable screening, scorecard, Xgboost, GBDT, RandomForest four models development and evaluation.
+

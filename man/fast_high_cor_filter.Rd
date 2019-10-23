@@ -5,19 +5,19 @@
 \alias{high_cor_filter}
 \title{high_cor_filter}
 \usage{
-fast_high_cor_filter(dat, p = 0.7, x_list = NULL, com_list = NULL,
+fast_high_cor_filter(dat, p = 0.95, x_list = NULL, com_list = NULL,
   ex_cols = NULL, save_data = FALSE, cor_class = TRUE,
-  parallel = FALSE, note = FALSE, file_name = NULL,
-  dir_path = tempdir(), ...)
+  vars_name = TRUE, parallel = FALSE, note = FALSE,
+  file_name = NULL, dir_path = tempdir(), ...)
 
 high_cor_filter(dat, com_list = NULL, x_list = NULL, ex_cols = NULL,
-  onehot = TRUE, parallel = TRUE, p = 0.7, file_name = NULL,
+  onehot = TRUE, parallel = FALSE, p = 0.7, file_name = NULL,
   dir_path = tempdir(), save_data = FALSE, note = FALSE, ...)
 }
 \arguments{
 \item{dat}{A data.frame with independent variables.}
 
-\item{p}{Threshold of correlation between features. Default is 0.7.}
+\item{p}{Threshold of correlation between features. Default is 0.95.}
 
 \item{x_list}{Names of independent variables.}
 
@@ -28,6 +28,8 @@ high_cor_filter(dat, com_list = NULL, x_list = NULL, ex_cols = NULL,
 \item{save_data}{Logical, save results in locally specified folder. Default is FALSE.}
 
 \item{cor_class}{Culculate catagery variables's correlation matrix. Default is FALSE.}
+
+\item{vars_name}{Logical, output a list of filtered variables or table with detailed compared value of each variable. Default is TRUE.}
 
 \item{parallel}{Logical, parallel computing. Default is FALSE.}
 
@@ -50,7 +52,7 @@ A list of selected variables.
 }
 \examples{
 # calculate iv for each variable.
-iv_list = feature_select_wrapper(dat_train = UCICreditCard[1:1000,], dat_test = NULL,
+iv_list = feature_selector(dat_train = UCICreditCard[1:1000,], dat_test = NULL,
 target = "default.payment.next.month",
 occur_time = "apply_date",
 filter = c("IV"), cv_folds = 1, iv_cp = 0.01,
@@ -62,5 +64,5 @@ ex_cols = "ID$|date$|default.payment.next.month$",
 p = 0.9, cor_class = FALSE ,var_name = FALSE)
 }
 \seealso{
-\code{\link{get_correlation_group}}, \code{\link{reduce_high_cor}}, \code{\link{char_cor_vars}}
+\code{\link{get_correlation_group}}, \code{\link{high_cor_selector}}, \code{\link{char_cor_vars}}
 }

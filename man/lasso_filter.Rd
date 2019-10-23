@@ -64,5 +64,5 @@ A list of filtered x variables by lasso.
                             woe_name = FALSE)
  lasso_filter(dat_train = train_woe, 
          target = "target", x_list = x_list,
-       save_data = FALSE, plot.it = TRUE)
+       save_data = FALSE, plot.it = FALSE)
 }

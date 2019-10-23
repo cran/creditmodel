@@ -5,13 +5,15 @@
 \alias{derived_ts}
 \title{Derivation of Behavioral Variables}
 \usage{
-derived_ts_vars(dat, grx, td = 12, der = c("cvs", "sums", "means",
+derived_ts_vars(dat, grx = NULL, td = NULL, ID = NULL,
+  ex_cols = NULL, x_list = NULL, der = c("cvs", "sums", "means",
   "maxs", "max_mins", "time_intervals", "cnt_intervals", "total_pcts",
   "cum_pcts", "partial_acfs"), parallel = TRUE, note = TRUE)
 
-derived_ts(dat = dat, grx_x = NULL, td = 12, der = c("cvs", "sums",
-  "means", "maxs", "max_mins", "time_intervals", "cnt_intervals",
-  "total_pcts", "cum_pcts", "partial_acfs"))
+derived_ts(dat, grx_x = NULL, x_list = NULL, td = NULL, ID = NULL,
+  ex_cols = NULL, der = c("cvs", "sums", "means", "maxs", "max_mins",
+  "time_intervals", "cnt_intervals", "total_pcts", "cum_pcts",
+  "partial_acfs"))
 }
 \arguments{
 \item{dat}{A data.frame contained only predict variables.}
@@ -19,6 +21,12 @@ derived_ts(dat = dat, grx_x = NULL, td = 12, der = c("cvs", "sums",
 \item{grx}{Regular expressions used to match variable names.}
 
 \item{td}{Number of variables to derivate.}
+
+\item{ID}{The name of ID of observations or key variable of data. Default is NULL.}
+
+\item{ex_cols}{A list of excluded variables. Regular expressions can also be used to match variable names. Default is NULL.}
+
+\item{x_list}{Names of independent variables.}
 
 \item{der}{Variables to derivate}
 

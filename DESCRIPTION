@@ -1,6 +1,6 @@
 Package: creditmodel
-Version: 1.1.4
-Date: 2019-09-22
+Version: 1.1.5
+Date: 2019-10-14
 Title: Toolkit for Credit Modeling
 Authors@R: c(person(given = "Dongping", family = "Fan",email = "fdp@pku.edu.cn",role = c("aut", "cre")))
 Maintainer: Dongping Fan <fdp@pku.edu.cn>
@@ -9,7 +9,7 @@ Description:
 Depends: R(>= 3.3.0)
 Imports:
         data.table,dplyr,ggplot2,foreach,doParallel,glmnet,rpart,xgboost,gbm,randomForest,pdp,cli
-Suggests: pmml,XML,rmarkdown,knitr,testthat
+Suggests: pmml,XML,rmarkdown,knitr
 VignetteBuilder: knitr
 Encoding: UTF-8
 ByteCompile: yes
@@ -18,7 +18,7 @@ LazyLoad: yes
 License: AGPL-3
 RoxygenNote: 6.1.1
 NeedsCompilation: no
-Packaged: 2019-09-28 14:26:42 UTC; HANSEN
+Packaged: 2019-10-23 17:08:25 UTC; HANSEN
 Author: Dongping Fan [aut, cre]
 Repository: CRAN
-Date/Publication: 2019-09-29 12:40:05 UTC
+Date/Publication: 2019-10-23 23:50:13 UTC

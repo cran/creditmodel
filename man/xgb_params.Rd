@@ -5,17 +5,17 @@
 \alias{xgb_params_search}
 \title{XGboost Parameters}
 \usage{
-xgb_params(nrounds = 1000, params = list(max.depth = 6, eta = 0.1,
+xgb_params(nrounds = 1000, params = list(max_depth = 6, eta = 0.01,
   gamma = 0, min_child_weight = 1, subsample = 1, colsample_bytree = 1,
-  max_delta_step = 0), early_stopping_rounds = 100,
+  scale_pos_weight = 1), early_stopping_rounds = 100,
   method = "random_search", iters = 10, f_eval = "auc", nfold = 1,
   nthread = 2, ...)
 
 xgb_params_search(dat_train, target, dat_test = NULL, x_list = NULL,
   prop = 0.7, occur_time = NULL, method = "random_search",
   iters = 10, nrounds = 100, early_stopping_rounds = 10,
-  params = list(max.depth = 6, eta = 0, gamma = 0, min_child_weight = 1,
-  subsample = 1, colsample_bytree = 1, max_delta_step = 0),
+  params = list(max_depth = 6, eta = 0.01, gamma = 0, min_child_weight =
+  1, subsample = 1, colsample_bytree = 1, scale_pos_weight = 1),
   f_eval = "auc", nfold = 1, nthread = 2, ...)
 }
 \arguments{

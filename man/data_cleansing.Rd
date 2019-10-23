@@ -8,7 +8,7 @@ data_cleansing(dat, target = NULL, obs_id = NULL, occur_time = NULL,
   x_list = NULL, pos_flag = NULL, miss_values = NULL,
   ex_cols = NULL, low_var = TRUE, outlier_proc = TRUE,
   missing_proc = TRUE, merge_cat = TRUE, trans_log = FALSE,
-  one_hot = FALSE, p = 0.001, m = 20, lvp = 0.99, nr = 0.97,
+  one_hot = FALSE, p = 0.001, m = 20, lvp = 0.999, nr = 0.999,
   cor_dif = 0.01, parallel = FALSE, note = FALSE,
   save_data = FALSE, file_name = NULL, dir_path = tempdir())
 }

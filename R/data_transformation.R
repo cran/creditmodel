@@ -64,7 +64,7 @@ woe_trans_all <- function(dat, x_list = NULL, ex_cols = NULL, bins_table = NULL,
     }
     ex_vars = get_names(dat = dat, types = c('factor', 'character', 'numeric', 'integer', 'double'),
                         ex_cols = x_list, get_ex = FALSE)
-	if(sum(is.na(dat))> 0){stop("Input data contains NAs, please process missing value first.")	}			
+	if(sum(is.na(dat))> 0){stop("Input data contains NAs, please process missing value first.")	}
     dat_woe = loop_function(func = woe_trans, x_list = x_list,
                             args = list(dat = dat, bins_table = bins_table,
                                         target = target, breaks_list = breaks_list,
@@ -76,10 +76,11 @@ woe_trans_all <- function(dat, x_list = NULL, ex_cols = NULL, bins_table = NULL,
                       tempdir(), dir_path)
         if (!dir.exists(dir_path)) dir.create(dir_path)
         if (!is.character(file_name)) file_name = NULL
-        save_dt(dat, file_name = ifelse(is.null(file_name), "dat.woe", paste(file_name, "dat.woe", sep = ".")), dir_path = dir_path, note = note)
+        save_data(dat, file_name = ifelse(is.null(file_name), "dat.woe", paste(file_name, "dat.woe", sep = ".")), dir_path = dir_path, note = note)
     }
-    options(opt) # reset
+
     return(dat)
+	options(opt) # reset
 }
 
 #' @rdname woe_trans_all
@@ -134,7 +135,7 @@ woe_trans <- function(dat, x, bins_table = NULL, target = NULL, breaks_list = NU
 #' @importFrom cli cat_rule cat_line cat_bullet
 #' @export
 
-one_hot_encoding = function(dat, cat_vars = NULL, ex_cols = NULL,
+one_hot_encoding <- function(dat, cat_vars = NULL, ex_cols = NULL,
                             merge_cat = TRUE, na_act = TRUE, note = FALSE) {
   if (note)cat_line("-- One-hot encoding for charactor or factor", col = love_color("deep_green"))
   if (class(dat)[1] != "data.frame") {
@@ -168,7 +169,7 @@ one_hot_encoding = function(dat, cat_vars = NULL, ex_cols = NULL,
   return(dat)
 }
 
- 
+
 
 #' Recovery One-Hot Encoding
 #'
@@ -190,8 +191,8 @@ one_hot_encoding = function(dat, cat_vars = NULL, ex_cols = NULL,
 #' na_act = FALSE)
 #' @importFrom cli cat_rule cat_line cat_bullet
 #' @export
-de_one_hot_encoding = function(dat_one_hot, cat_vars = NULL, na_act = TRUE,note = FALSE) {
-  
+de_one_hot_encoding <- function(dat_one_hot, cat_vars = NULL, na_act = TRUE,note = FALSE) {
+
   if(note)cat_line("-- Recoverying one-hot encoding for charactor or factor.\n", col = love_color("deep_green"))
   if (class(dat_one_hot)[1] != "data.frame") {
     dat_one_hot <- as.data.frame(dat_one_hot)
@@ -286,7 +287,7 @@ time_transfer <- function(dat, date_cols = NULL,ex_cols = NULL, note = FALSE){
                        }, FUN.VALUE = numeric(1))
         t_sample[[x]] = min(unlist(t_sam), na.rm = TRUE)
         t_len[[x]] = as.character(names(t_sam)[which(nchar(names(t_sam)) == t_sample[[x]])][1])
-        
+
       }
     }, error = function(e) { cat("ERROR :", conditionMessage(e), "\n") },
     warning = function(w) { "" })
@@ -332,43 +333,59 @@ time_transfer <- function(dat, date_cols = NULL,ex_cols = NULL, note = FALSE){
 #'
 #' This function is used for derivating behavioral variables and is not intended to be used by end user.
 #'
-#' @param dat  A data.frame contained only predict variables.
-#' @param grx  Regular expressions used to match variable names.
-#' @param grx_x  Regular expression used to match a group of variable names.
-#' @param td  Number of variables to derivate.
-#' @param der  Variables to derivate
+#' @param dat A data.frame contained only predict variables.
+#' @param grx Regular expressions used to match variable names.
+#' @param grx_x Regular expression used to match a group of variable names.
+#' @param td Number of variables to derivate.
+#' @param ID The name of ID of observations or key variable of data. Default is NULL.
+#' @param ex_cols A list of excluded variables. Regular expressions can also be used to match variable names. Default is NULL.
+#' @param x_list Names of independent variables.
+#' @param der Variables to derivate
 #' @param parallel Logical, parallel computing. Default is FALSE.
 #' @param note Logical, outputs info. Default is TRUE.
-#' @details  The key to creating a good model is not the power of a specific modelling technique, but the breadth and depth of derived variables that represent a higher level of knowledge about the phenomena under examination.
+#' @details The key to creating a good model is not the power of a specific modelling technique, but the breadth and depth of derived variables that represent a higher level of knowledge about the phenomena under examination.
 #' @importFrom data.table setDT :=  rbindlist
 #' @export
 
-derived_ts_vars <- function(dat, grx, td = 12,
+
+derived_ts_vars <- function(dat, grx = NULL, td = NULL, ID = NULL, ex_cols = NULL, x_list =NULL,
                             der = c("cvs", "sums", "means", "maxs", "max_mins",
                                     "time_intervals", "cnt_intervals", "total_pcts",
                                     "cum_pcts", "partial_acfs"),
-                            parallel = TRUE,note = TRUE) {
-    if(note)cat_line(paste("--","Derived variables of", paste(der), " .\n"), col = love_color("dark_green"))
+                            parallel = TRUE, note = TRUE) {
+    if (note) cat_line(paste("--", "Derived variables of", paste(der), " .\n"), col = love_color("dark_green"))
 
+	
     if (parallel) {
         parallel <- start_parallel_computing(parallel)
         stopCluster <- TRUE
     } else {
         parallel <- stopCluster <- FALSE
     }
+    if (is.null(ID)) {
+        dat$ID = as.character(rownames(dat))
+        ID = 'ID'
+    }else{
+	    dat[,ID] = as.character(dat[,ID])
+	}
+	is_not_numeric = which(sapply(dat, function(x) is.element("integer64", class(x))))
+    dat[is_not_numeric] = sapply(dat[is_not_numeric], as.numeric)
     on.exit(if (parallel & stopCluster) stop_parallel_computing(attr(parallel, "cluster")))
-    i. = NULL
+    i. = j.= NULL
     if (!parallel) {
-        df_cv_list <- lapply(unlist(grx), function(grx) derived_ts(dat, grx, td = td, der = der))
+        df_cv_list <- lapply(unlist(grx), function(grx_x) derived_ts(dat, grx_x = grx_x, td = td,
+                                   ID = ID, ex_cols = ex_cols, x_list = x_list, der = der))
         df_cv_list <- as.data.frame(Reduce("cbind", df_cv_list))
     } else {
         df_cv_list <- foreach(i. = unlist(grx),
-                              .combine = "c",
                               .errorhandling = c('pass')) %dopar% {
-                                  try(do.call(derived_ts, args = list(dat = dat, grx_x = i., td = td,
-                                                                    der = der)), silent = TRUE)
+                                  try(do.call(derived_ts, args = list(dat = dat, grx_x = i., td = td, ID = ID, ex_cols = ex_cols,x_list = x_list, der = der)), silent = TRUE)
                               }
-        df_cv_list <- as.data.frame(df_cv_list)
+        if (length(df_cv_list) > 1) {
+            df_cv_list = multi_left_join(df_list = df_cv_list, by = ID)
+        } else {
+            df_cv_list <- as.data.frame(df_cv_list)
+        }
     }
     return(df_cv_list)
 }
@@ -376,69 +393,133 @@ derived_ts_vars <- function(dat, grx, td = 12,
 #' @rdname derived_ts_vars
 #' @export
 
-
-derived_ts <- function(dat = dat, grx_x = NULL, td = 12,
+derived_ts <- function(dat, grx_x = NULL, x_list = NULL, td = NULL, ID = NULL, ex_cols = NULL,
                        der = c("cvs", "sums", "means", "maxs", "max_mins",
                                "time_intervals", "cnt_intervals", "total_pcts",
                                "cum_pcts", "partial_acfs")) {
-    setDT(dat)
-    cv_cols <- grep(grx_x, paste(colnames(dat)))[1:td]
-    cv_cols <- cv_cols[!is.na(cv_cols)]
-    #cv_folds
+    if (is.null(ID)) {
+        dat$ID = rownames(dat)
+        ID = 'ID'
+    }
+    if (is.null(x_list)) {
+        num_x_list = get_names(dat = dat,
+                         types = c('numeric', 'integer', 'double'),
+                         ex_cols = c(ID, ex_cols), get_ex = FALSE)
+    } else {
+        num_x_list = x_list
+    }
+
+    if (!is.null(grx_x)) {
+        if (is.null(td)) {
+            cv_cols = num_x_list[grep(grx_x, paste(num_x_list))]
+        } else {
+            cv_cols = num_x_list[grep(grx_x, paste(num_x_list))[1:td]]
+        }
+    } else {
+        if (is.null(td) || td > length(num_x_list)) {
+            cv_cols = num_x_list
+        } else {
+            cv_cols = num_x_list[1:td]
+
+        }
+    }
+    cv_cols = cv_cols[!is.na(cv_cols)]
+    dat = dat[c(ID, cv_cols)]
     if (length(cv_cols) > 0) {
+        setDT(dat)
         name_n = orignal_nam = sim_nam = str_num = c()
         orignal_nam <- names(dat[, cv_cols, with = FALSE])
-        str_num = as.numeric(str_match(str_r = orignal_nam,pattern= "\\d+"))
-        if (!any(is.na(str_num)) && length(str_num) == td) {
+        str_num = as.numeric(str_match(str_r = orignal_nam, pattern = "\\d+"))
+        if (!any(is.na(str_num)) && !is.null(td) && length(str_num) == td) {
             name_n = paste(min(str_num), max(str_num), sep = "to")
         }
+        if (is.null(name_n)) {
+            name_n = "ts"
+        }
         sim_nam = paste(unique(lapply(1:(length(orignal_nam) - 1),
-        function(x) sim_str(orignal_nam[x], orignal_nam[x + 1])))[[1]], collapse = "_")
+                                  function(x) sim_str(orignal_nam[x], orignal_nam[x + 1], sep = "_|[0-9]|[.]")))[[1]], collapse = "_")
         if (any(der == "cvs")) {
-            dat = dat[, paste(sim_nam, name_n, "_cvs", sep = "") := ifelse(rowAllnas(dat[, cv_cols, with = FALSE]), NA,
-            rowCVs(dat[, cv_cols, with = FALSE], na.rm = TRUE))]
+                  dat = dat[, paste(sim_nam, name_n, "cvs", sep = "_") := ifelse(rowAllnas(dat[, cv_cols, with = FALSE]), NA, 
+				  rowCVs(dat[, cv_cols, with = FALSE], na.rm = TRUE))]
         }
         if (any(der == "sums")) {
             dat = dat[, paste(sim_nam, name_n, "sums", sep = "_") := ifelse(rowAllnas(dat[, cv_cols, with = FALSE]), NA,
-            rowSums(dat[, cv_cols, with = FALSE], na.rm = TRUE))]
+                                                                      rowSums(dat[, cv_cols, with = FALSE], na.rm = TRUE))]
         }
         if (any(der == "means")) {
             dat = dat[, paste(sim_nam, name_n, "means", sep = "_") := ifelse(rowAllnas(dat[, cv_cols, with = FALSE]), NA,
-            rowMeans(dat[, cv_cols, with = FALSE], na.rm = TRUE))]
+                                                                       rowMeans(dat[, cv_cols, with = FALSE], na.rm = TRUE))]
         }
         if (any(der == "maxs")) {
             dat = dat[, paste(sim_nam, name_n, "maxs", sep = "_") := ifelse(rowAllnas(dat[, cv_cols, with = FALSE]), NA,
-            rowMaxs(dat[, cv_cols, with = FALSE]))]
+                                                                      rowMaxs(dat[, cv_cols, with = FALSE]))]
         }
 
         if (any(der == "max_mins")) {
             dat = dat[, paste(sim_nam, name_n, "max_mins", sep = "_") := ifelse(rowAllnas(dat[, cv_cols, with = FALSE]), NA,
-            rowMaxMins(dat[, cv_cols, with = FALSE], na.rm = TRUE))]
+                                                                          rowMaxMins(dat[, cv_cols, with = FALSE], na.rm = TRUE))]
         }
         if (any(der == "partial_acfs")) {
             dat = dat[, paste(sim_nam, name_n, "partial_acfs", sep = "_") := derived_partial_acf(dat[, cv_cols, with = FALSE])]
         }
         if (any(der == "time_intervals")) {
             dat = dat[, paste(orignal_nam, "time_intervals", sep = "_") := derived_interval(dat[, cv_cols, with = FALSE],
-            interval_type = "time_interval")]
+                                                                                      interval_type = "time_interval")]
         }
         if (any(der == "cnt_intervals")) {
             dat = dat[, paste(orignal_nam, "cnt_intervals", sep = "_") := derived_interval(dat[, cv_cols, with = FALSE],
-            interval_type = "cnt_interval")]
+                                                                                     interval_type = "cnt_interval")]
         }
         if (any(der == "total_pcts")) {
             dat = dat[, paste(orignal_nam, "total_pcts", sep = "_") := derived_pct(dat[, cv_cols, with = FALSE],
-            pct_type = "total_pct")]
+                                                                             pct_type = "total_pct")]
         }
         if (any(der == "cum_pcts")) {
             dat = dat[, paste(orignal_nam, "cum_pcts", sep = "_") := derived_pct(dat[, cv_cols, with = FALSE],
-            pct_type = "cum_pct")]
+                                                                           pct_type = "cum_pct")]
         }
     }
+    dat = quick_as_df(dat)
     return(dat)
 }
 
 
+
+#' Process time series data
+#'
+#' This function is used for time series data processing.
+#'
+#' @param dat  A data.frame contained only predict variables.
+#' @param group The group of behavioral or status variables.
+#' @param ID  The name of ID of observations or key variable of data. Default is NULL.
+#' @param time The name of variable which is time when behavior was happened.
+#' @details  The key to creating a good model is not the power of a specific modelling technique, but the breadth and depth of derived variables that represent a higher level of knowledge about the phenomena under examination.
+#' @importFrom data.table setDT :=  rbindlist dcast
+#' @importFrom dplyr %>% arrange mutate group_by lead ungroup
+#' @export
+
+time_series_proc <- function(dat, ID = NULL, group = NULL, time = NULL) {
+    if (is.null(time)) stop("time variable is missing.\n")
+    dat$time = as.numeric(dat[[time]])
+    if (!is.null(ID)) {
+        dat$ID = as.character(dat[[ID]])
+    } else {
+        dat$ID = as.character(rownames(dat))
+        ID = "ID"
+    }
+    if (!is.null(group)) {
+        dat$group = as.character(dat[[group]])
+    } else {
+        dat$group = "1"
+    }
+    dat = dat %>% dplyr::group_by(ID) %>% dplyr::arrange(time) %>%
+    dplyr::mutate(time_interval = as.numeric(dplyr::lead(time, default = max(time, na.rm = TRUE)) - time)) %>% dplyr::ungroup()
+
+    dat = data.table::dcast(setDT(dat), ID ~ group,
+                             fun.aggregate = list(cnt_x, sum_x, max_x, min_x, avg_x), value.var = c('time_interval'))
+    colnames(dat)[1] = ID
+    quick_as_df(dat)
+}
 
 #' Processing of Time or Date Variables
 #'
@@ -848,9 +929,9 @@ de_percent <- function(x, digits = 2) {
 #' @export
 
 merge_category <- function(dat, ex_cols = "date$|id$|time$|DATA$|ID$|TIME$", p = 0.01, m = 10, note = TRUE) {
-    opt = options(scipen = 200, stringsAsFactors = FALSE, "warn" = -1) 
+    opt = options(scipen = 200, stringsAsFactors = FALSE, "warn" = -1)
     if (note)cat_line(paste("-- Merging categories which percent is less than", p ,"or obs number is less than", m), col = love_color("dark_green"))
-	
+
 
     char_list = get_names(dat = dat,
                           types = c('factor', 'character'),
@@ -870,8 +951,9 @@ merge_category <- function(dat, ex_cols = "date$|id$|time$|DATA$|ID$|TIME$", p =
             dat[which(dat[, x] %in% names(dt_x[max_class])), x] = "other"
         }
     }
-    options(opt) # reset warnings
+ 
     return(dat)
+	options(opt) # reset
 }
 
 #' character to number
@@ -891,7 +973,7 @@ merge_category <- function(dat, ex_cols = "date$|id$|time$|DATA$|ID$|TIME$", p =
 
 char_to_num <- function(dat, note = TRUE, ex_cols = "date$|id$|time$|DATA$|ID$|TIME$") {
     opt = options(scipen = 200, "warn" = -1, stringsAsFactors = FALSE) # suppress warnings
-    if (note)cat_line(paste("-- Transfering character variables which are actually numerical to numeric"), col = love_color("dark_green")) 
+    if (note)cat_line(paste("-- Transfering character variables which are actually numerical to numeric"), col = love_color("dark_green"))
 
     char_list = get_names(dat = dat,
                           types = c('factor', 'character'),
@@ -911,8 +993,8 @@ char_to_num <- function(dat, note = TRUE, ex_cols = "date$|id$|time$|DATA$|ID$|T
             dat[, x] = as.numeric(as.character(dat[, x]))
         }
     }
-    options(opt) # reset warnings
     return(dat)
+	options(opt) # reset warnings
 }
 
 
@@ -933,11 +1015,16 @@ char_to_num <- function(dat, note = TRUE, ex_cols = "date$|id$|time$|DATA$|ID$|T
 #' @export
 
 
-log_trans = function(dat, target, x_list = NULL,cor_dif = 0.01,ex_cols = NULL, note = TRUE){
+log_trans <- function(dat, target, x_list = NULL,cor_dif = 0.01,ex_cols = NULL, note = TRUE){
   log_x = log_vars(dat = dat, target = target, x_list = x_list, cor_dif = cor_dif,ex_cols = ex_cols )
   if(!is.null(log_x)){
     if(note)cat_line("-- Logarithmic transformation", col = love_color("deep_green"))
-    dat[,log_x] = lapply(dat[,log_x],function(x)ifelse(is.na(x),x,ifelse(as.numeric(x)== 0, 0, log(as.numeric(x)))) )
+    dat[,log_x] = lapply(dat[,log_x],function(x){
+	x = as.numeric(unlist(x))
+	x[which(!is.na(x) & x > 0)] = log(x[which(!is.na(x) & x > 0)])
+	x
+	 }
+	)
     dat = re_name(dat, oldname = log_x, newname =  paste(log_x,"log",sep = "_"))
     if(note){
       cat_line("-- Following variables are log transformed:", col = love_color("dark_green"))
@@ -947,22 +1034,203 @@ log_trans = function(dat, target, x_list = NULL,cor_dif = 0.01,ex_cols = NULL, n
   return(dat)
 }
 
-log_vars  <- function(dat, x_list = NULL, target = NULL,cor_dif = 0.01,ex_cols = NULL){
+#' @rdname log_trans
+#' @export
+
+log_vars <- function(dat, x_list = NULL, target = NULL,cor_dif = 0.01,ex_cols = NULL){
   log_x_list = list()
   dat = checking_data(dat = dat,target = target)
   if(is.null(x_list)){
-    x_list = get_names(dat = dat,types = c("numeric","double","integer"),ex_cols = c(ex_cols,target))   
+    x_list = get_names(dat = dat,types = c("numeric","double","integer"),ex_cols = c(ex_cols,target))
   }
   if(length(x_list) > 0){
-    log_x_list = lapply(dat[,x_list],function(x){
+    log_x_list = lapply(dat[x_list],function(x){
       flag = as.numeric(as.factor(dat[[target]]))
-      x = as.numeric(x)
-      log_x = ifelse(is.na(x),x,ifelse(as.numeric(x)== 0, 0, log(as.numeric(x))))
-      cor_log_x = cor(log_x,flag,method = "pearson",use = "complete.obs")
-      cor_x = cor(x,flag,method = "pearson",use = "complete.obs")
-      abs(cor_log_x) - abs(cor_x)
+      x = as.numeric(unlist(x))
+      if(length(which(!is.na(x) & x > 0))> 30 ){
+        log_x = log(x[!is.na(x) & x > 0])
+        cor_log_x = cor(log_x,flag[!is.na(x) & x > 0],method = "pearson",use = "complete.obs")
+        cor_x = cor(x[!is.na(x) & x > 0],flag[!is.na(x) & x > 0],method = "pearson",use = "complete.obs")
+        abs(cor_log_x) - abs(cor_x)
+      }else{
+        0
+      }
     })
   }
   logvars = names(log_x_list[which(log_x_list >= cor_dif)])
   return(logvars)
 }
+
+
+#' Ranking Percent Process
+#'
+#' \code{ranking_percent_proc} is for processing ranking percent variables.
+#' \code{ranking_percent_dict} is for generating ranking percent dictionary.
+#' @param dat A data.frame.
+#' @param x_list A list of x variables.
+#' @param x The name of an independent variable.
+#' @param rank_dict The dictionary of rank_percent generated by \code{ranking_percent_dict} .
+#' @param ex_cols Names of excluded variables. Regular expressions can also be used to match variable names. Default is NULL.
+#' @param note Logical, outputs info. Default is TRUE.
+#' @param parallel Logical, parallel computing. Default is FALSE.
+#' @param save_data Logical, save results in locally specified folder. Default is FALSE
+#' @param file_name The name for periodically saved rank_percent data file. Default is "dat_rank_percent".
+#' @param dir_path The path for periodically saved rank_percent data file Default is "tempdir()"
+#' @param ...  Additional parameters.
+#' @return Data.frame with new processed variables.
+#' @examples
+#' rank_dict = ranking_percent_dict(dat = UCICreditCard[1:1000,], 
+#' x_list = c("LIMIT_BAL","BILL_AMT2","PAY_AMT3"), ex_cols = NULL )
+#' UCICreditCard_new = ranking_percent_proc(dat = UCICreditCard[1:1000,], 
+#' x_list = c("LIMIT_BAL", "BILL_AMT2", "PAY_AMT3"), rank_dict = rank_dict, parallel = FALSE)
+#' @importFrom data.table is.data.table
+#' @export
+
+ranking_percent_proc <- function(dat, ex_cols = NULL, x_list = NULL, rank_dict = NULL,
+                             parallel = FALSE, note = FALSE, save_data = FALSE,file_name = NULL,dir_path= tempdir(), ... ){
+    if (note) cat_line("-- Processing ranking percent variables.\n", col = love_color("dark_green"))
+    x_list = get_x_list(x_list = x_list, dat_train = dat, dat_test = NULL, ex_cols = ex_cols)
+    if (length(x_list) > 0) {
+        num_x_list = get_names(dat = dat[x_list], types = c('numeric', 'integer', 'double'),
+                           ex_cols = c(ex_cols), get_ex = FALSE)
+    } else {
+        stop("No variable in the x_list or ex_col excludes all variables.\n ")
+    }
+    if (is.null(rank_dict)) {
+        rank_dict = ranking_percent_dict(dat = dat, x_list = num_x_list, ex_cols = ex_cols,
+		save_data = save_data, file_name = file_name,dir_path = dir_path )
+    }
+    if (any(is.element(sapply(rank_dict, class), c("character", "factor")))) {
+        rank_dict[, which(is.element(sapply(rank_dict, class), c("character", "factor")))] = 
+		as.numeric(as.character(rank_dict[, which(is.element(sapply(rank_dict, class), c("character", "factor")))]))
+    }
+    new_x = paste(num_x_list,"rank_pct",sep = "_")
+    if (length(num_x_list) > 0) {
+        dat[, new_x] = loop_function(func = ranking_percent_proc_x, x_list = num_x_list,
+                                          args = list(dat = dat, rank_dict = rank_dict),
+                                          bind = "cbind", as_list = FALSE, parallel = parallel)
+    }
+	if (save_data) {
+        dir_path = ifelse(!is.character(dir_path),
+                      tempdir(), dir_path)
+        if (!dir.exists(dir_path)) dir.create(dir_path)
+        if (!is.character(file_name)) file_name = NULL
+        save_data(dat, file_name = ifelse(is.null(file_name), "dat_rank_percent", 
+		paste(file_name, "dat_rank_percent", sep = ".")), dir_path = dir_path, note = note)
+    }
+    return(dat)
+}
+
+
+
+#' @rdname ranking_percent_proc
+#' @export
+
+ranking_percent_proc_x <- function(dat, x,rank_dict = NULL) {
+    if ((!is.null(x) && is.character(x)) & !is.null(dat)) {
+        dat_x = abs(dat[, x][complete.cases(dat[, x])])
+    } else {
+        if (!is.null(dat) && is.vector(dat)) {
+            dat_x = abs(dat[complete.cases(dat)])
+            x = "rank_x"
+        } else {
+            if (!is.null(dat) && (is.data.frame(dat) | is.data.table(dat)) && length(dat) == 1 && unlist(dat) > 2) {
+                x = colnames(dat)[1]
+                dat = unlist(dat)
+                dat_x = abs(dat[complete.cases(dat)])
+            } else {
+                stop("dat is null & x is null")
+            }
+        }
+    }
+    if (is.null(rank_dict)) {
+        QL <- quantile(dat_x, 0.25)
+        QU <- quantile(dat_x, 0.75)
+        QU_QL <- QU - QL
+        outliers <- QU + 4 * QU_QL
+        dat_x[dat_x > QU + 4 * QU_QL] <- outliers
+        rank_dict_x = NULL
+        rank_x = quantile(ecdf(unique(dat_x)), seq(0, 1, by = 0.001))
+        rank_percent = as.double(sub("%", "", names(rank_x))) / 100
+        rank_dict_x = data.frame(rank_percent, rank_x)
+        colnames(rank_dict_x)[2] = x
+    }
+    if (any(is.element(sapply(rank_dict, class), c("character", "factor")))) {
+        rank_dict[, which(is.element(sapply(rank_dict, class), c("character", "factor")))] = 
+		as.numeric(as.character(rank_dict[, which(is.element(sapply(rank_dict, class), c("character", "factor")))]))
+    }
+
+    x_new = paste(x,"rank_pct",sep = "_")
+    dat[which(!is.na(dat[, x])), x_new] = vapply(dat_x, function(i) { 
+	round(rank_dict[, "rank_percent"][which.min(i > rank_dict[, x])], 3) 
+	}, FUN.VALUE = numeric(1))
+    return(dat[x_new])
+}
+
+
+
+
+#' @rdname ranking_percent_proc
+#' @export
+ranking_percent_dict <- function(dat, x_list = NULL, ex_cols = NULL, parallel = FALSE,
+               save_data = FALSE,file_name = NULL,dir_path= tempdir(), ...) {
+    x_list = get_x_list(x_list = x_list, dat_train = dat, dat_test = NULL, ex_cols = ex_cols)
+    if (length(x_list) > 0) {
+        num_x_list = get_names(dat = dat[x_list], types = c('numeric', 'integer', 'double'),
+                           ex_cols = c(ex_cols), get_ex = FALSE)
+    } else {
+        stop("No variable in the x_list or ex_col excludes all variables.\n ")
+    }
+    rank_dict = NULL
+    if (length(num_x_list) > 0) {
+        rank_dict = loop_function(func = ranking_percent_dict_x, x_list = num_x_list,
+                                          args = list(dat = dat),
+                                          bind = "cbind", as_list = TRUE, parallel = parallel)
+        rank_dict = multi_left_join(df_list = rank_dict, by = "rank_percent")
+        rank_dict[, "rank_percent"] = as.numeric(as.character(rank_dict[, "rank_percent"]))
+    }
+	if (save_data) {
+        dir_path = ifelse(!is.character(dir_path),
+                      tempdir(), dir_path)
+        if (!dir.exists(dir_path)) dir.create(dir_path)
+        if (!is.character(file_name)) file_name = NULL
+        save_data(rank_dict, file_name = ifelse(is.null(file_name), "rank_percent_dict", 
+		paste(file_name, "rank_percent_dict", sep = ".")), dir_path = dir_path, note = TRUE)
+    }
+    return(rank_dict)
+}
+
+
+#' @rdname ranking_percent_proc
+#' @export
+ranking_percent_dict_x <- function(dat, x = NULL) {
+    if ((!is.null(x) && is.character(x)) & !is.null(dat)) {
+        dat_x = abs(dat[, x][complete.cases(dat[, x])])
+    } else {
+        if (!is.null(dat)&& is.vector(dat)) {
+            dat_x = abs(dat[complete.cases(dat)])
+            x = "rank_x"
+        } else {
+            if (!is.null(dat) && (is.data.frame(dat) | is.data.table(dat)) && length(dat) == 1 && unlist(dat) > 2) {
+                x = colnames(dat)[1]
+                dat = unlist(dat)
+                dat_x = abs(dat[complete.cases(dat)])
+            } else {
+                stop("dat is null & x is null")
+            }
+        }
+    }
+    QL = quantile(dat_x, 0.25)
+    QU = quantile(dat_x, 0.75)
+    QU_QL = QU - QL
+    outliers = QU + 4 * QU_QL
+    dat_x[dat_x > QU + 4 * QU_QL] = outliers
+    rank_dict_x = NULL
+    rank_x = quantile(ecdf(unique(dat_x)), seq(0, 1, by = 0.001))
+    rank_percent = as.double(sub("%", "", names(rank_x))) / 100
+    rank_dict_x = data.frame(rank_percent, rank_x)
+    colnames(rank_dict_x)[2] = x
+    
+    return(rank_dict_x)
+}
+

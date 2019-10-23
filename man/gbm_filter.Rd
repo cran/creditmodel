@@ -30,7 +30,7 @@ gbm_filter(dat, target = NULL, x_list = NULL, ex_cols = NULL,
 
 \item{save_data}{Logical, save results results in locally specified folder. Default is FALSE.}
 
-\item{file_name}{The name for periodically saved results files.  Default is "Featrue_importance_GBDT".}
+\item{file_name}{The name for periodically saved results files.  Default is "Feature_importance_GBDT".}
 
 \item{dir_path}{The path for periodically saved results files.  Default is "./variable".}
 
@@ -58,5 +58,5 @@ GBM.params = gbm_params(n.trees = 2, interaction.depth = 2, shrinkage = 0.1,
 }
 }
 \seealso{
-\code{\link{psi_iv_filter}}, \code{\link{xgb_filter}}, \code{\link{feature_select_wrapper}}
+\code{\link{psi_iv_filter}}, \code{\link{xgb_filter}}, \code{\link{feature_selector}}
 }

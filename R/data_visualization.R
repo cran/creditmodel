@@ -117,12 +117,12 @@ get_plots <- function(dat_train, dat_test = NULL, x_list = NULL,
                                            plot_show = plot_show,
                                            g_width = g_width, dir_path = dir_path, save_data = save_data),
                                bind = "rbind", parallel = parallel, as_list = FALSE)
-    options(opt) # reset
-    if (save_data) {
-        save_dt(df_ae_list, dir_path = dir_path, file_name = ifelse(is.null(file_name), "plot_table", paste(file_name, "plot_table", sep = ".")), append = FALSE, note = FALSE)
-    }
 
+    if (save_data) {
+        save_data(df_ae_list, dir_path = dir_path, file_name = ifelse(is.null(file_name), "plot_table", paste(file_name, "plot_table", sep = ".")), append = FALSE, note = FALSE)
+    }
     return(df_ae_list)
+	options(opt) # reset
 }
 
 
@@ -158,24 +158,26 @@ plot_vars <- function(dat_train, x, target,dat_test = NULL,
     cum_sum <- cumsum(tbl_x)
     cuts_sum <- approx(cum_sum, x_unique_value, xout = (1:100) * none_na_num / 100,
                        method = "constant", rule = 2, f = 1)$y
-    if (length(unique(cuts_sum) )> 10) {
-      x_cuts <- cuts_sum[length(cuts_sum) - 1]
-      dat_train <- subset(dat_train, dat_train[, x] < x_cuts)
-    }
-    #desity plot
-    plot_1 <- ggplot(dat_train, aes(x = dat_train[, x])) +
-      geom_density(aes(fill = dat_train$target), alpha = 0.3) +
-      stat_density(geom = "line", position = "identity", size = 0.6,
-                   aes(color = dat_train$target)) +
-      scale_fill_manual(values = c('1' = love_color("shallow_red"),
+					   
+        dat_train_sub = dat_train
+        if (length(unique(cuts_sum)) > 10) {
+            x_cuts <- cuts_sum[length(cuts_sum) - 1]
+            dat_train_sub <- subset(dat_train, dat_train[, x] <= x_cuts)
+        }
+        #desity plot
+        plot_1 <- ggplot(dat_train_sub, aes(x = dat_train_sub[, x])) +
+        geom_density(aes(fill = dat_train_sub$target), alpha = 0.3) +
+        stat_density(geom = "line", position = "identity", size = 0.6,
+                   aes(color = dat_train_sub$target)) +
+        scale_fill_manual(values = c('1' = love_color("shallow_red"),
                                    '0' = love_color("sky_blue"))) +
-      scale_color_manual(values = c('1' = love_color("shallow_red"),
+        scale_color_manual(values = c('1' = love_color("shallow_red"),
                                     '0' = love_color("sky_blue"))) +
-      geom_vline(data = med,linetype = "dashed", size = 0.7,
+        geom_vline(data = med, linetype = "dashed", size = 0.7,
                  aes(xintercept = med$grp.mean, color = med$target)) +
-      xlab(x) +
-      ggtitle(paste("Density of", x)) +
-      plot_theme(legend.position = c(.9, .9), title_size = 9,
+        xlab(x) +
+        ggtitle(paste("Density of", x)) +
+        plot_theme(legend.position = c(.9, .9), title_size = 9,
                  axis_title_size = 8)
 
   } else {
@@ -433,12 +435,13 @@ get_psi_plots <- function(dat_train, dat_test = NULL, x_list = NULL,
                                            plot_show = plot_show,
                                            g_width = g_width, dir_path = dir_path, save_data = save_data),
                                bind = "rbind", parallel = parallel, as_list = FALSE)
-    options(opt) # reset
+
     if (save_data) {
-        save_dt(df_ae_list, dir_path = dir_path, file_name = ifelse(is.null(file_name), "PSI_table", paste(file_name, "PSI_table", sep = ".")), append = FALSE, note = FALSE)
+        save_data(df_ae_list, dir_path = dir_path, file_name = ifelse(is.null(file_name), "PSI_table", paste(file_name, "PSI_table", sep = ".")), append = FALSE, note = FALSE)
     }
 
     return(df_ae_list)
+	options(opt) # reset
 }
 
 
@@ -557,7 +560,7 @@ psi_plot <- function(dat_train, x, dat_test = NULL,occur_time = NULL,
 #' @export
 
 
-partial_dependence_plot = function(model, x, x_train, n.trees = NULL) {
+partial_dependence_plot <- function(model, x, x_train, n.trees = NULL) {
     opt = options('warn' = -1,scipen = 200, stringsAsFactors = FALSE, digits = 6) #
     pd = partial(model,
             pred.var = c(x),
@@ -590,7 +593,8 @@ partial_dependence_plot = function(model, x, x_train, n.trees = NULL) {
 
 
 
-get_partial_dependence_plots = function(model, x_train, x_list, n.trees = NULL, dir_path = getwd(),save_data =TRUE, plot_show = FALSE, parallel = FALSE) {
+get_partial_dependence_plots <- function(model, x_train, x_list, n.trees = NULL, 
+           dir_path = getwd(),save_data =TRUE, plot_show = FALSE, parallel = FALSE) {
     pd_list = loop_function(func = partial_dependence_plot,
                         args = list(model = model, x_train = x_train, n.trees = n.trees),
                         x_list = x_list, parallel = parallel, as_list = TRUE)
@@ -771,8 +775,9 @@ ks_table <- function(train_pred, test_pred = NULL, target = NULL, score = NULL,
                      "%train_cumG", "%train_cumB",
                      "train_K-S")]
     }
-    options(opt) # reset
+
     return(dt_ks)
+    options(opt) # reset	
 }
 
 #' ks_table_plot
@@ -831,7 +836,7 @@ ks_table_plot <- function(train_pred, test_pred, target = "target", score = "sco
         tb_ks = plot_table(dt_pred)
         ggsave(paste0(dir_path, "/", paste(paste(gtitle, "_ks_psi_table"), "png", sep = '.')),
             plot = tb_ks, dpi = "retina", width = g_width)
-        save_dt(dt_pred, file_name = paste(gtitle, "_ks_psi_table"), dir_path = dir_path)
+        save_data(dt_pred, file_name = paste(gtitle, "_ks_psi_table"), dir_path = dir_path)
         }
     return(dt_pred)
     options(opt) # reset
@@ -986,7 +991,7 @@ ks_psi_plot <- function(train_pred, test_pred, target = "target", score = "score
 #' @import ggplot2
 #' @export
 
-cor_plot = function(dat, dir_path = tempdir(), x_list = NULL,
+cor_plot <- function(dat, dir_path = tempdir(), x_list = NULL,
                     gtitle = NULL, save_data = FALSE, plot_show = FALSE) {
     if (!is.null(x_list)) {
         dat = dat[, c(x_list)]
@@ -997,7 +1002,7 @@ cor_plot = function(dat, dir_path = tempdir(), x_list = NULL,
                            get_ex = FALSE)
     cor_mat = cor(dat[, num_x_list],use = "complete.obs")
     if (save_data) {
-        save_dt(cor_mat, file_name = paste(gtitle, "correlation_matrix"),
+        save_data(cor_mat, file_name = paste(gtitle, "correlation_matrix"),
                 dir_path = dir_path, note = FALSE, row_names = TRUE)
     }
 	if ( !is.character(gtitle)) { gtitle = paste0("Correlation Matrix") }else{gtitle = paste(gtitle, 'Correlation Matrix')}
@@ -1032,7 +1037,7 @@ cor_plot = function(dat, dir_path = tempdir(), x_list = NULL,
 #' @importFrom dplyr %>%
 #' @export
 
-cor_heat_plot = function(cor_mat, low_color = love_color('deep_red'),
+cor_heat_plot <- function(cor_mat, low_color = love_color('deep_red'),
                       high_color = love_color('light_cyan'), title = 'Correlation Matrix') {
 
     if (!isTRUE(all.equal(cor_mat, t(cor_mat)))) stop("correlation matrix is not symmetric")
@@ -1257,7 +1262,7 @@ plot_theme <- function(legend.position = "top", angle = 30,
 #' @export
 
 
-model_result_plot = function(train_pred , score, target ,test_pred= NULL, gtitle = NULL,perf_dir_path = NULL,
+model_result_plot <- function(train_pred , score, target ,test_pred= NULL, gtitle = NULL,perf_dir_path = NULL,
                              save_data = FALSE,plot_show = TRUE,total = TRUE,g = 10 ){
 
   opt = options('warn' = -1,scipen = 200, stringsAsFactors = FALSE, digits = 6) #
@@ -1271,7 +1276,7 @@ model_result_plot = function(train_pred , score, target ,test_pred= NULL, gtitle
   perf_tb = perf_table(train_pred = train_pred, test_pred = test_pred, target = target, score = score, total = total,
                        g = g)
 
-  tb_ks =  plot_table(grid_table = perf_tb, theme = c("green"),
+  tb_ks =  plot_table(grid_table = perf_tb, theme = c("cyan"),
                      title= paste0(gtitle, ".performance_table"),title.size = 12,title.color = 'black',
                      title.face = "bold", title.position='middle',
                      subtitle= NULL,subtitle.size = 8,subtitle.color = 'black',subtitle.face = "plain",
@@ -1300,16 +1305,16 @@ model_result_plot = function(train_pred , score, target ,test_pred= NULL, gtitle
            plot = dis_pl, dpi = "retina", width = 5, height = 4.5)
     ggsave(paste0(perf_dir_path, "/", paste(paste0(gtitle, ".performance_table"), "png", sep = '.')),
            plot = tb_ks, dpi = "retina", width = 12)
-    save_dt(perf_tb, file_name = paste0(gtitle, ".performance_table"), dir_path = perf_dir_path,note = TRUE)
+    save_data(perf_tb, file_name = paste0(gtitle, ".performance_table"), dir_path = perf_dir_path,note = TRUE)
     ggsave(filename = paste0(perf_dir_path, "/", paste(paste0(gtitle, ".lift"), "png", sep = '.')), device = "png",
            plot = lift_pl, dpi = "retina", width = 5, height = 4.5)
 
   }
-  options(opt)
   if (plot_show) {
     plot(multi_grid(grobs = list(ks_pl,lift_pl,roc_pl, dis_pl), ncol = 2, nrow = 2))
   }
   return(perf_tb)
+  options(opt)
 }
 
 #' performance table
@@ -1488,9 +1493,8 @@ perf_table <- function(train_pred, test_pred = NULL, target = NULL, score = NULL
             dt_ks = dt_ks[order(dt_ks$bins, decreasing = FALSE),]
         }
     }
-
-    options(opt) # reset
     return(dt_ks)
+	options(opt) # reset
 }
 
 #' ks_plot
@@ -1498,7 +1502,7 @@ perf_table <- function(train_pred, test_pred = NULL, target = NULL, score = NULL
 #' @rdname model_result_plot
 #' @export
 
-ks_plot = function(train_pred, test_pred = NULL, target = NULL, score =  NULL,
+ks_plot <- function(train_pred, test_pred = NULL, target = NULL, score =  NULL,
                         gtitle = NULL, breaks = NULL, g = 10) {
     opt = options('warn' = -1,scipen = 200, stringsAsFactors = FALSE, digits = 6) #
     `value` = `train_test` = `bins` = `%train_cumG` = `%train_cumB` = `%test_cumG` = `%test_cumB`= `%Cumsum_0`= `%Cumsum_1` = NULL
@@ -1594,8 +1598,8 @@ ks_plot = function(train_pred, test_pred = NULL, target = NULL, score =  NULL,
 		   theme(legend.title = element_blank(), legend.position = "top",
 		   plot.title = element_text(face = "bold", size = 11, vjust = 0, hjust = 0))
     }
-    options(opt) # reset
     return(ks_pl)
+    options(opt) # reset
 }
 
 
@@ -1605,7 +1609,7 @@ ks_plot = function(train_pred, test_pred = NULL, target = NULL, score =  NULL,
 #' @rdname model_result_plot
 #' @export
 
-lift_plot = function(train_pred, test_pred = NULL, target = NULL, score = NULL,
+lift_plot <- function(train_pred, test_pred = NULL, target = NULL, score = NULL,
                         gtitle = NULL,  breaks = NULL, g = 10) {
     opt = options('warn' = -1,scipen = 200, stringsAsFactors = FALSE, digits = 6) #
     `value` = `train_test` = `bins` = `%train_cumG` = `%train_cumB` = `%test_cumG` = `%test_cumB` = Lift = test_Lift = train_Lift= NULL
@@ -1650,6 +1654,7 @@ lift_plot = function(train_pred, test_pred = NULL, target = NULL, score = NULL,
 		   plot.title = element_text(face = "bold", size = 11, vjust = 0, hjust = 0))
     }
     return(lift_pl)
+	options(opt) # reset
 }
 
 
@@ -1657,7 +1662,7 @@ lift_plot = function(train_pred, test_pred = NULL, target = NULL, score = NULL,
 #'
 #' @rdname model_result_plot
 #' @export
-roc_plot = function(train_pred, test_pred = NULL, target = NULL, score = NULL, gtitle = NULL) {
+roc_plot <- function(train_pred, test_pred = NULL, target = NULL, score = NULL, gtitle = NULL) {
     opt = options('warn' = -1,scipen = 200, stringsAsFactors = FALSE, digits = 6) #
     if (is.null(target)) {stop("target is missing!\n") }
     if (is.null(score)) { stop("score is missing!\n") }
@@ -1720,6 +1725,7 @@ roc_plot = function(train_pred, test_pred = NULL, target = NULL, score = NULL, g
 		   plot.title = element_text(face = "bold", size = 11, vjust = 0, hjust = 0))
     }
     return(roc_pl)
+	options(opt) # reset
 }
 
 
@@ -1729,7 +1735,7 @@ roc_plot = function(train_pred, test_pred = NULL, target = NULL, score = NULL, g
 #' @export
 
 
-score_distribution_plot = function(train_pred, test_pred, target, score,
+score_distribution_plot <- function(train_pred, test_pred, target, score,
                              gtitle = NULL, breaks = NULL, g = 10) {
    opt = options('warn' = -1,scipen = 200, stringsAsFactors = FALSE, digits = 6) #
   `value` = `train_test` = `bins` = `%train_cumG` = `%train_cumB` = `%test_cumG` = `%test_cumB` =
@@ -1817,6 +1823,7 @@ score_distribution_plot = function(train_pred, test_pred, target, score,
                                 ifelse(nrow(tb_ks) > 5, 30, 0)))
   }
   return(dis_pl)
+  options(opt) # reset
 
 }
 
@@ -1833,7 +1840,7 @@ score_distribution_plot = function(train_pred, test_pred, target, score,
 #' @importFrom data.table melt dcast
 #' @export
 
-cohort_table_plot = function(cohort_dat){
+cohort_table_plot <- function(cohort_dat){
     opt = options('warn' = -1,scipen = 200, stringsAsFactors = FALSE, digits = 6) #
    cohort_dat[is.na(cohort_dat)] = 0
    Cohort_Group= Cohort_Period =Events= Events_rate= Opening_Total= Retention_Total =cohor_dat= final_Events =m_a= max_age=NULL
@@ -1860,7 +1867,7 @@ cohort_table_plot = function(cohort_dat){
 #' @rdname cohort_table_plot
 #' @export
 
-cohort_plot = function(cohort_dat){
+cohort_plot <- function(cohort_dat){
     cohort_dat[is.na(cohort_dat)] = 0
 	   Cohort_Group= Cohort_Period =Events= Events_rate= Opening_Total= Retention_Total =cohor_dat= final_Events =m_a= max_age=NULL
     ggplot(cohort_dat,aes(Cohort_Period,Events_rate )) +
@@ -1900,29 +1907,16 @@ cohort_plot = function(cohort_dat){
 #' @param text.fill.color The fill color of text, default is c('white',love_color("pale_grey").
 #' @import ggplot2
 #' @examples
-#' sub = cv_split(UCICreditCard, k = 30)[[1]]
-#' dat = UCICreditCard[sub,]
-#' dat = re_name(dat, "default.payment.next.month", "target")
-#' dat = data_cleansing(dat, target = "target", obs_id = "ID",
-#' occur_time = "apply_date", miss_values = list("", -1))
-#' dat = process_nas(dat,default_miss = TRUE)
-#' train_test <- train_test_split(dat, split_type = "OOT", prop = 0.7,
-#'                                 occur_time = "apply_date")
-#' dat_train = train_test$train
-#' dat_test = train_test$test
-#' x_list = c("PAY_0", "LIMIT_BAL", "PAY_AMT5", "PAY_3", "PAY_2")
-#' Formula = as.formula(paste("target", paste(x_list, collapse = ' + '), sep = ' ~ '))
-#' set.seed(46)
-#' lr_model = glm(Formula, data = dat_train[, c("target", x_list)], family = binomial(logit))
-#'
-#' dat_train$pred_LR = round(predict(lr_model, dat_train[, x_list], type = "response"), 5)
-#' dat_test$pred_LR = round(predict(lr_model, dat_test[, x_list], type = "response"), 5)
-#' # model evaluation
-#' t1 = perf_table(train_pred = dat_train, test_pred = dat_test, target = "target", score = "pred_LR")
-#' plot_table(t1)
+#' iv_list = get_psi_iv_all(dat = UCICreditCard[1:1000, ],
+#'                          x_list = names(UCICreditCard)[3:5], equal_bins = TRUE,
+#'                          target = "default.payment.next.month", ex_cols = "ID|apply_date")
+#' iv_dt =get_psi_iv(UCICreditCard, x = "PAY_3",
+#'                   target = "default.payment.next.month", bins_total = TRUE)
+#' 
+#' plot_table(iv_dt)
 #' @export
 
-plot_table = function(grid_table,theme = c("cyan","grey","green","red","blue","purple"),
+plot_table <- function(grid_table,theme = c("cyan","grey","green","red","blue","purple"),
                       title= NULL,title.size = 12,title.color = 'black',title.face = "bold", title.position='middle',
                       subtitle= NULL,subtitle.size = 8,subtitle.color = 'black',subtitle.face = "plain",
                       subtitle.position='middle',
@@ -1979,7 +1973,7 @@ plot_table = function(grid_table,theme = c("cyan","grey","green","red","blue","p
 
 }
 
-rearrange_table = function(table_1,grid_table,colname.face, colname.size , text.size){
+rearrange_table <- function(table_1,grid_table,colname.face, colname.size , text.size){
   variable = n_char =n_width = rows = NULL
   table_1$value =  sapply(table_1$value,function(x){
     if(!is.na(x) && !x %in% colnames(grid_table[1,-1])){
@@ -2088,7 +2082,7 @@ rearrange_table = function(table_1,grid_table,colname.face, colname.size , text.
  return(table_2)
 }
 
-check_table_theme = function(theme = NULL){
+check_table_theme <- function(theme = NULL){
   colname.fill.color = text.fill.color = NULL
   if(length(theme) >0 &&
      any(sapply(theme,function(x)is.element(x,c("cyan","grey","green","red","blue","purple"))))){
@@ -2145,7 +2139,7 @@ check_table_theme = function(theme = NULL){
   return(list(colname.fill.color = colname.fill.color,text.fill.color = text.fill.color))
 }
 
-get_plot_elements = function(table_1,grid_table,colname.fill.color,text.fill.color,
+get_plot_elements <- function(table_1,grid_table,colname.fill.color,text.fill.color,
        colname.color,text.color,colname.face,text.face,colname.size,text.size){
   fill_colors =  c()
   m = 0
@@ -2344,7 +2338,7 @@ to_gtable = function (widths = list(), heights = list(),
 }
 
 
-add_grobs = function (x, grobs, t, l, b = t, r = l, z = Inf, clip = "off",
+add_grobs <- function (x, grobs, t, l, b = t, r = l, z = Inf, clip = "off",
                             name = x$name){
 
   n_grobs <- length(grobs)

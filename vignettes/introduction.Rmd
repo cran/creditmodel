@@ -1,7 +1,7 @@
 ---
 title: "Introduction to creditmodel"
 date: "`r Sys.Date()`"
-
+Author: "Dongping Fan"
 output: rmarkdown::html_vignette
 
 vignette: >
@@ -39,7 +39,7 @@ When I first wrote the creditmodel package, its primary purpose was to provide a
 Importantly, the creditmodel package now provides a set of complementary tools with different missions.
 Now, Let's start with quick modeling.
 
-```{r 
+```{r echo= TRUE, warning=FALSE, message= TRUE,fig.height= 6.5,fig.width= 7.2}
 
 library(creditmodel)
 
@@ -54,7 +54,7 @@ B_model = training_model(dat = UCICreditCard,
                          miss_values = c(-1, -2),
                          missing_proc = TRUE,
                          outlier_proc = TRUE,
-                         trans_log = FALSE,
+                         trans_log = TRUE,
                          feature_filter = list(filter = c("IV", "PSI", "COR", "XGB"),
                                                cv_folds = 1,
                                                iv_cp = 0.02,
@@ -88,13 +88,13 @@ B_model = training_model(dat = UCICreditCard,
                            iter = 3,
                            method = 'random_search',
                            params = list(
-                             max.depth = c(3:6),
+                             max_depth = c(3:6),
                              eta = c(0.01, 0.05, 0.1, 0.2),
                              gamma = c(0.01, 0.05, 0.1),
                              min_child_weight = c(1, 5, 10, 20, 30, 40, 50),
                              subsample = c(0.8, 0.7, 0.6, 0.5),
                              colsample_bytree = c(0.8, 0.7, 0.6, 0.5),
-                             max_delta_step = c(0, 1, 2, 5, 10)),
+                             scale_pos_weight = c(1, 2, 3)),
                            f_eval = 'auc'),
                          parallel = FALSE,
                          cores_num = NULL,

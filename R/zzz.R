@@ -2,12 +2,12 @@
 StartupMessage <- function()
 {
   # Startup message obtained as
-  msg <- c(paste0("
-  ____  __    __
- /___|  | \\  / |  Credit
- ||     |  \\/  |  Model
- ||___  |  ||  |
-  \\___| |__||__|  version ", packageVersion("creditmodel")))
+  msg <- c(paste0("Credit Model version ", packageVersion("creditmodel"),"
+  ____ __  __ 
+ / ___|  \\/  |
+| |   | |\\/| |
+| |___| |  | |
+ \\____|_|  |_| \n","E-mail: fdp@pku.edu.cn\nWeChatPlatform: hansenmode"))
   return(msg)
 }
 

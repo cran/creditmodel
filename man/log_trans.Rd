@@ -2,10 +2,14 @@
 % Please edit documentation in R/data_transformation.R
 \name{log_trans}
 \alias{log_trans}
+\alias{log_vars}
 \title{Logarithmic transformation}
 \usage{
 log_trans(dat, target, x_list = NULL, cor_dif = 0.01, ex_cols = NULL,
   note = TRUE)
+
+log_vars(dat, x_list = NULL, target = NULL, cor_dif = 0.01,
+  ex_cols = NULL)
 }
 \arguments{
 \item{dat}{A data.frame.}

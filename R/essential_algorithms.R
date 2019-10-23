@@ -159,21 +159,31 @@ euclid_dist <- function(x, y, cos_margin = 1) {
 #' @param cos_margin  rows or cols
 #' @export
 
-cos_sim <- function(x, y, cos_margin = 1) {
+
+cos_sim = function(x, y, cos_margin = 1) {
+    opt = options(digits = 6)
+    max_x = max(unlist(x), na.rm = TRUE)
+    min_x = min(unlist(x), na.rm = TRUE)
+    max_y = max(unlist(y), na.rm = TRUE)
+    min_y = min(unlist(y), na.rm = TRUE)
+    x = ifelse(x - min_x > 0, x - min_x, 0.0001) / ifelse((max_x - min_x) > 0, max_x - min_x, 1)
+    y = ifelse(y - min_y > 0, y - min_y, 0.0001) / ifelse((max_y - min_y) > 0, max_y - min_y, 1)
     x = as.matrix(x)
     y = as.matrix(y)
-	dist = NULL
+    dist = NULL
     if (cos_margin == 1) {
         nr = nrow(y)
-        dist = sapply(1:nr, function(j) colSums(t(x) * y[j,]) / sqrt(rowSums(x ^ 2) * sum(y[j,] ^ 2)))
+        dist = sapply(1:nr, function(j) colSums(t(x) * y[j,], na.rm = TRUE) / sqrt(rowSums(x ^ 2, na.rm = TRUE) * sum(y[j,] ^ 2, na.rm = TRUE)))
         colnames(dist) = rownames(y)
     } else {
         nc = ncol(y)
-        dist = sapply(1:nc, function(j) colSums(x * y[, j]) / sqrt(colSums(x ^ 2) * sum(y[, j] ^ 2)))
+        dist = sapply(1:nc, function(j) colSums(x * y[, j], na.rm = TRUE) / sqrt(colSums(x ^ 2, na.rm = TRUE) * sum(y[, j] ^ 2, na.rm = TRUE)))
         colnames(dist) = colnames(y)
     }
     return(dist)
+    options(opt)
 }
+
 
 #' Cramer's V matrix between categorical variables.
 #'
@@ -193,6 +203,7 @@ cos_sim <- function(x, y, cos_margin = 1) {
 #' ex_cols = "ID$|date$|default.payment.next.month$", get_ex = FALSE)
 #'  char_cor(dat = UCICreditCard[char_x_list])
 #' }
+#' @importFrom dplyr  %>% mutate_if
 #' @export
 char_cor_vars <- function(dat, x) {
     dat = as.data.frame(dat) %>% merge_category() %>% mutate_if(is.factor, as.character)
@@ -292,8 +303,8 @@ tnr_value <- function(prob, target){
    if(!is.numeric(target)){
      target =  as.numeric(as.character(target))
    }
-   tnr = ifelse(length(prob >= quantile(prob, 0.9,na.rm = TRUE)) > 0, 
-                mean(target[prob >= quantile(prob, 0.9,na.rm = TRUE)],na.rm = TRUE),0)
+   tnr = ifelse(length(prob > quantile(prob, 0.9,na.rm = TRUE)) > 0, 
+                mean(target[prob > quantile(prob, 0.9,na.rm = TRUE)],na.rm = TRUE),0)
    if(is.na(tnr)){tnr = 0}			
    return(tnr)
 }

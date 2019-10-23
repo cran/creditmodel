@@ -1,3 +1,11 @@
+# creditmodel-1.1.5
+* Add the function `time_series_proc` for time series data processing.
+* Add functions `ranking_percent_proc`,`ranking_percent_dict` are for processing ranking percent variables and
+generating ranking percent dictionary.
+* Change the function name `read_dt` to `read_data` and add and parameter **pattern** for matching files.
+* Change the parameter max.depth to max_depth of the function `traing_xgb`,'xgb_params'
+* Change the function name `save_dt` to `save_data` and `save_data` also supports multiple data frames.
+
 # creditmodel-1.1.4
 * New function log_trans() is for logarithmic transformation
 * New function plot_table() make it possible to generate table graph.
@@ -11,13 +19,13 @@
 * Provide new functions `get_psi_plots`, `psi_plot` to plot PSI of your data..
 * Provide a function `p_to_score` for transforming probability to score.
 * Provide a function `multi_left_jion`  for left jion a list of datasets fast.
-* Provide a function `read_dt`  for loading csv or txt data fast.
+* Provide a function `read_data`  for loading csv or txt data fast.
 
 # creditmodel1.1.2
 **In this version I have:**
 
 * Fixed additional issues for the *last* version released on CRAN.
-* Fixed some potential bugs in `xgb_filter`, `feature_select_wrapper`, `split_bins`, `ks_table_plot`, `ks_psi_plot`, `ks_value`.
+* Fixed some potential bugs in `xgb_filter`, `feature_selector`, `split_bins`, `ks_table_plot`, `ks_psi_plot`, `ks_value`.
 * Add a new function `pred_score` for predicting new data using scorecard.
 * Provide new functions `lr_params_search`, `xgb_params_search` for searching the optimal parameters. "random_search","grid_search","local_search" are available.
 * Provide new functions `partial_dependence_plot`, `get_partial_dependence_plots`  for generating partial dependence plot.

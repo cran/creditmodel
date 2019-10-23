@@ -55,7 +55,7 @@ training_model(model_name = "mymodel", dat, dat_test = NULL,
 
 \item{miss_values}{Other extreme value might be used to represent missing values, e.g: -9999, -9998. These miss_values will be encoded to -1 or "Missing".}
 
-\item{feature_filter}{Parameters for selecting important and stable features.See details at: \code{\link{feature_select_wrapper}}}
+\item{feature_filter}{Parameters for selecting important and stable features.See details at: \code{\link{feature_selector}}}
 
 \item{algorithm}{Algorithms for training a model. list("LR", "XGB", "GBDT", "RF") are available.}
 
@@ -92,16 +92,16 @@ A list containing Model Objects.
 \code{training_model} Model builder
 }
 \examples{
-sub = cv_split(UCICreditCard, k = 60)[[1]]
+sub = cv_split(UCICreditCard, k = 30)[[1]]
 dat = UCICreditCard[sub,]
-x_list = c("LIMIT_BAL","PAY_0")
+x_list = c("LIMIT_BAL")
 B_model = training_model(dat = dat,
-                         model_name = "UCICreditCard", 
-                         target = "default.payment.next.month", 
-						x_list = x_list,
-                         occur_time = "apply_date", 
-                         obs_id = "ID", 
-						dat_test = NULL,
+                         model_name = "UCICreditCard",
+                         target = "default.payment.next.month",
+							x_list = x_list,
+                         occur_time =NULL,
+                         obs_id =NULL,
+							dat_test = NULL,
                          preproc = FALSE,
                          outlier_proc = FALSE,
                          missing_proc = FALSE,
@@ -111,14 +111,15 @@ B_model = training_model(dat = dat,
                                                step_wise = FALSE,
                                                  score_card = FALSE),
                          breaks_list = NULL,
-                         parallel = FALSE, 
+                         parallel = FALSE,
                          cores_num = NULL,
-                         save_pmml = FALSE, 
+                         save_pmml = FALSE,
                          plot_show = FALSE,
                          vars_plot = FALSE,
                          model_path = tempdir(),
                          seed = 46)
+
 }
 \seealso{
-\code{\link{train_test_split}},\code{\link{data_cleansing}}, \code{\link{feature_select_wrapper}},   \code{\link{lr_params}}, \code{\link{xgb_params}}, \code{\link{gbm_params}}, \code{\link{rf_params}},\code{\link{fast_high_cor_filter}},\code{\link{get_breaks_all}},\code{\link{lasso_filter}}, \code{\link{woe_trans_all}}, \code{\link{get_logistic_coef}}, \code{\link{score_transfer}},\code{\link{get_score_card}}, \code{\link{model_key_index}},\code{\link{ks_psi_plot}},\code{\link{get_plots}},\code{\link{ks_table_plot}}
+\code{\link{train_test_split}},\code{\link{data_cleansing}}, \code{\link{feature_selector}},   \code{\link{lr_params}}, \code{\link{xgb_params}}, \code{\link{gbm_params}}, \code{\link{rf_params}},\code{\link{fast_high_cor_filter}},\code{\link{get_breaks_all}},\code{\link{lasso_filter}}, \code{\link{woe_trans_all}}, \code{\link{get_logistic_coef}}, \code{\link{score_transfer}},\code{\link{get_score_card}}, \code{\link{model_key_index}},\code{\link{ks_psi_plot}},\code{\link{get_plots}},\code{\link{ks_table_plot}}
 }

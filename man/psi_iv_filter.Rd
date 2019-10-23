@@ -6,8 +6,12 @@
 \usage{
 psi_iv_filter(dat, dat_test = NULL, target, x_list = NULL,
   breaks_list = NULL, pos_flag = NULL, ex_cols = NULL,
-  occur_time = NULL, oot_pct = 0.7, psi_i = 0.1, iv_i = 0.01,
-  cos_i = 0.9, vars_name = FALSE, note = TRUE, parallel = FALSE,
+  occur_time = NULL, best = FALSE, equal_bins = TRUE, g = 10,
+  sp_values = NULL, tree_control = list(p = 0.05, cp = 1e-06, xval = 5,
+  maxdepth = 10), bins_control = list(bins_num = 10, bins_pct = 0.05,
+  b_chi = 0.05, b_odds = 0.1, b_psi = 0.05, b_or = 0.15, mono = 0.3,
+  odds_psi = 0.2, kc = 1), oot_pct = 0.7, psi_i = 0.1, iv_i = 0.01,
+  cos_i = 0.7, vars_name = FALSE, note = TRUE, parallel = FALSE,
   save_data = FALSE, file_name = NULL, dir_path = tempdir(), ...)
 }
 \arguments{
@@ -27,6 +31,18 @@ psi_iv_filter(dat, dat_test = NULL, target, x_list = NULL,
 
 \item{occur_time}{The name of the variable that represents the time at which each observation takes place.}
 
+\item{best}{Logical, if TRUE, merge initial breaks to get optimal breaks for binning.}
+
+\item{equal_bins}{Logical, if TRUE, equal sample size initial breaks generates.If FALSE , tree breaks generates using desison tree.}
+
+\item{g}{Integer, number of initial bins for equal_bins.}
+
+\item{sp_values}{A list of missing values.}
+
+\item{tree_control}{the list of tree parameters.}
+
+\item{bins_control}{the list of parameters.}
+
 \item{oot_pct}{Percentage of observations retained for overtime test (especially to calculate PSI). Defualt is 0.7}
 
 \item{psi_i}{The maximum threshold of PSI.  0 <= psi_i <=1; 0.05 to 0.2 usually work. Default: 0.1}
@@ -43,7 +59,7 @@ psi_iv_filter(dat, dat_test = NULL, target, x_list = NULL,
 
 \item{save_data}{Logical, save results in locally specified folder. Default is FALSE.}
 
-\item{file_name}{The name for periodically saved results files.  Default is "Featrue_importance_IV_PSI".}
+\item{file_name}{The name for periodically saved results files.  Default is "Feature_importance_IV_PSI".}
 
 \item{dir_path}{The path for periodically saved results files.  Default is tempdir().}
 
@@ -68,5 +84,5 @@ psi_iv_filter(dat= UCICreditCard[1:1000,c(2,4,8:9,26)],
              parallel = FALSE)
 }
 \seealso{
-\code{\link{xgb_filter}}, \code{\link{gbm_filter}}, \code{\link{feature_select_wrapper}}
+\code{\link{xgb_filter}}, \code{\link{gbm_filter}}, \code{\link{feature_selector}}
 }

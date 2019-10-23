@@ -68,7 +68,7 @@ process_nas <- function(dat, x_list = NULL, default_miss = TRUE, class_var = FAL
                                                     file_name = file_name, dir_path = dir_path),
                                         bind = "cbind", as_list = FALSE, parallel = parallel)
 	if(save_data){
-	save_dt(dat, dir_path = dir_path, file_name = ifelse(is.null(file_name), "data_missing_proc", paste(file_name, "data_missing_proc", sep = ".")), 
+	save_data(dat, dir_path = dir_path, file_name = ifelse(is.null(file_name), "data_missing_proc", paste(file_name, "data_missing_proc", sep = ".")), 
 	append = FALSE, note = note)
 	}									
     }
@@ -222,7 +222,7 @@ process_nas_var <- function(dat = dat, x, default_miss = TRUE, nas_rate = NULL,
         nas_analysis = data.frame(Feature = x, miss_rate = as_percent(nas_rate_x, digits = 6),
                                   miss_type = missing_type_x)
         if (save_data) {
-            save_dt(nas_analysis, dir_path = dir_path,
+            save_data(nas_analysis, dir_path = dir_path,
                   file_name = ifelse(is.null(file_name), "missing.analysis", paste(file_name, "missing.analysis", sep = ".")),
                   append = TRUE, note = FALSE)
         }
@@ -445,11 +445,10 @@ process_outliers <- function(dat, target, ex_cols = NULL, kc = 3, kn = 5, x_list
                                                       dir_path = dir_path),
                                           bind = "cbind", as_list = FALSE, parallel = parallel)
 	if(save_data){
-	save_dt(dat, dir_path = dir_path, file_name = ifelse(is.null(file_name), "data_outlier_proc", paste(file_name, "data_outlier_proc", sep = ".")), 
+	save_data(dat, dir_path = dir_path, file_name = ifelse(is.null(file_name), "data_outlier_proc", paste(file_name, "data_outlier_proc", sep = ".")), 
 	append = FALSE, note = note)
 	}									  
     }
-
     return(dat)
 }
 
@@ -472,7 +471,7 @@ outliers_kmeans_lof <- function(dat, x, target = NULL, kc = 3, kn = 5,
                               out_type = outlier_type)
 
     if(save_data){
-      save_dt(out_analysis, dir_path = dir_path,
+      save_data(out_analysis, dir_path = dir_path,
               file_name = ifelse(is.null(file_name), "outliers.analysis", paste(file_name, "outliers.analysis", sep = ".")),
               append = TRUE, note = FALSE)
     }
@@ -619,7 +618,7 @@ outliers_detection <- function(dat, x, kc = 3, kn = 5) {
     len = length(unique(dm_x))
     lof = NULL
     if (len > 50 & any(c('Date', 'numeric', 'integer', 'double') == class(dm_x)[1])) {
-        dm_s = scale(dm_x)
+        dm_s = min_max_norm(dm_x)
         dm_s[is.na(dm_s)] <- get_median(as.numeric(dm_s))
         #  packages("mclust")
         set.seed(46)
@@ -639,7 +638,7 @@ outliers_detection <- function(dat, x, kc = 3, kn = 5) {
         lof_sub = which(min_dist > quantile(min_dist, 0.999, na.rm = TRUE, type = 3))
         max_out = c()
         for (i in 1:length(km$centers)) { max_out[i] = length(which(km$cluster == i)) }
-        lof = base :: intersect(which(km$cluster %in% km$cluster[lof_sub]),
+        lof = base::intersect(which(km$cluster %in% km$cluster[lof_sub]),
                                 which(km$cluster %in% which(max_out / sum(max_out) < 0.03)))
         rm(lof_sub, dm_s, km, center, distance_matrix, min_dist, max_out)
         if (length(lof) / length(dm_x) > 0.05) {

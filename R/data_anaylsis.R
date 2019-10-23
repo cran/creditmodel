@@ -74,7 +74,7 @@ customer_segmentation <- function(dat, x_list = NULL, ex_cols = NULL,
 
     #The result of cluster analysis
     dt_cluster_res = data.frame(dat, cluster_id = cluster_res$cluster)
-    if(save_data)save_dt(dt_cluster_res, file_name = file_name, dir_path = dir_path)
+    if(save_data)save_data(dt_cluster_res, file_name = file_name, dir_path = dir_path)
     dt_cluster_res$cluster_id = as.factor(as.character(dt_cluster_res$cluster_id))
     #fund the best Clustering variable by desision tree.
     tree_formula <- as.formula(paste("cluster_id",
@@ -118,7 +118,7 @@ customer_segmentation <- function(dat, x_list = NULL, ex_cols = NULL,
 #' @importFrom data.table dcast melt fread fwrite
 #' @export
 
-cohort_analysis = function(dat, obs_id = NULL, occur_time = NULL, MOB = NULL,
+cohort_analysis <- function(dat, obs_id = NULL, occur_time = NULL, MOB = NULL,
          period = "monthly", status = NULL, amount = NULL, by_out = "cnt",
          start_date = NULL, end_date = NULL, dead_status = 30) {
   dat = checking_data(dat = dat, occur_time = occur_time)
@@ -282,7 +282,7 @@ cohort_analysis = function(dat, obs_id = NULL, occur_time = NULL, MOB = NULL,
 #' @rdname cohort_analysis
 #' @export
 
-cohort_table = function(dat, obs_id = NULL, occur_time = NULL, MOB = NULL,
+cohort_table <- function(dat, obs_id = NULL, occur_time = NULL, MOB = NULL,
                         period = "monthly", status = NULL, amount = NULL, by_out = "cnt",
                         start_date = NULL, end_date = NULL, dead_status = 30){
   Cohort_Group= Cohort_Period =Events= Events_rate= Opening_Total= Retention_Total =cohor_dat= final_Events =m_a= max_age=NULL					
@@ -333,7 +333,7 @@ cohort_table = function(dat, obs_id = NULL, occur_time = NULL, MOB = NULL,
 #' @importFrom rpart rpart rpart.control
 #' @export
 
-get_ctree_rules = function(tree_fit = NULL, train_dat = NULL, target = NULL, test_dat = NULL,
+get_ctree_rules <- function(tree_fit = NULL, train_dat = NULL, target = NULL, test_dat = NULL,
                            tree_control = list(p = 0.05, cp = 0.0001,
                                                xval = 1, maxdepth = 10), seed = 46) {
   opt = options(scipen = 200, stringsAsFactors = FALSE, digits = 6) #
@@ -528,7 +528,7 @@ get_ctree_rules = function(tree_fit = NULL, train_dat = NULL, target = NULL, tes
 #' @export
 
 
-check_rules = function(rules_list,test_dat, target){
+check_rules <- function(rules_list,test_dat, target){
   filter_s = sub_dat = test_rules_dt = test_pct = test_sum = test_ks = B = G = X.test_1= X.test_total= rules_no = rules = NULL 
   final_rules = data.frame(rules_no = 1:length(rules_list),rules = unlist(rules_list) ,stringsAsFactors = FALSE) 
   test_dat = checking_data(dat = test_dat)
@@ -674,10 +674,10 @@ get_bins_table_all <- function(dat, x_list = NULL, target = NULL, pos_flag = NUL
                       tempdir(), dir_path)
         if (!dir.exists(dir_path)) dir.create(dir_path)
         if (!is.character(file_name)) file_name = NULL
-        save_dt(bins_list, file_name = ifelse(is.null(file_name), "bins_table", paste(file_name, "bins_table", sep = ".")), dir_path = dir_path, note = FALSE)
+        save_data(bins_list, file_name = ifelse(is.null(file_name), "bins_table", paste(file_name, "bins_table", sep = ".")), dir_path = dir_path, note = FALSE)
     }
-    options(opt) # reset
     return(bins_list)
+	options(opt) # reset
 }
 
 #' @param x  The name of an independent variable.
@@ -848,8 +848,8 @@ bins_total = FALSE, best = TRUE, g = 10, as_table = TRUE, note = FALSE, parallel
     breaks_list = breaks_list, target = target, pos_flag = pos_flag, best = best, equal_bins = equal_bins, tree_control = tree_control,
     oot_pct = oot_pct, occur_time = occur_time, bins_control = bins_control, g = g, note = note, bins_total = bins_total,
     as_table = as_table, bins_no = bins_no), bind = "rbind", parallel = parallel)
-    options(opt) # reset
     return(psi_iv_list)
+	options(opt) # reset
 }
 
 #' @rdname get_psi_iv_all
@@ -1042,8 +1042,9 @@ get_iv_all <- function(dat, x_list = NULL, ex_cols = NULL, breaks_list = NULL,
     breaks_list = breaks_list, target = target, pos_flag = pos_flag, best = best,
     equal_bins = equal_bins, tree_control = tree_control, bins_control = bins_control,
     g = g, note = note), bind = "rbind", parallel = parallel)
-    options(opt) # reset
+
     return(iv_list)
+	options(opt) # reset
 }
 
 
@@ -1215,8 +1216,8 @@ get_psi_all <- function(dat, x_list = NULL,target = NULL, dat_test = NULL, break
                                        as_table = as_table, g = g, note = note,
                                        bins_no = bins_no), bind = "rbind", 
                            parallel = parallel)
-  options(opt) # reset
   return(psi_list)
+  options(opt) # reset
 }
 
 
@@ -1224,7 +1225,7 @@ get_psi_all <- function(dat, x_list = NULL,target = NULL, dat_test = NULL, break
 #' @export
 
 
-get_psi = function(dat, x, target = NULL, dat_test = NULL, occur_time = NULL, start_date = NULL, cut_date = NULL,
+get_psi <- function(dat, x, target = NULL, dat_test = NULL, occur_time = NULL, start_date = NULL, cut_date = NULL,
          pos_flag = NULL, breaks = NULL, breaks_list = NULL, oot_pct = 0.7, g = 10,
          as_table = TRUE, note = FALSE, bins_no = TRUE) {
   bins = PSI = actual = expected = actual_1= actual_0= expected_1= expected_0 = NULL

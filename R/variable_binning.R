@@ -167,7 +167,7 @@ get_breaks_all <- function(dat, target = NULL, x_list = NULL, ex_cols = NULL,
                       tempdir(), dir_path)
         if (!dir.exists(dir_path)) dir.create(dir_path)
         if (!is.character(file_name)) file_name = NULL
-        save_dt(breaks_list2, file_name = ifelse(is.null(file_name), "breaks_list", paste(file_name, "breaks_list", sep = ".")),
+        save_data(breaks_list2, file_name = ifelse(is.null(file_name), "breaks_list", paste(file_name, "breaks_list", sep = ".")),
                 dir_path = dir_path, note = note, as_list = FALSE)
     }
     options(opt) # reset
@@ -243,7 +243,8 @@ get_tree_breaks <- function(dat, x, target, pos_flag = NULL,
                             sp_values = NULL) {
 
     dat = checking_data(dat = dat, target = target, pos_flag = pos_flag)
-    opt = options(scipen = 200, stringsAsFactors = FALSE, digits = 10) #
+	digits_x = ifelse(is.numeric(dat[, x]), digits_num(dat[, x]), 4)
+    opt = options(scipen = 200, stringsAsFactors = FALSE, digits = digits_x + 1) #
     sp_value_char = sp_value_num = tree_breaks = NULL
     x_miss = any(dat[, x] %in% sp_values)
     if (!is.null(sp_values) && x_miss) {
@@ -254,7 +255,6 @@ get_tree_breaks <- function(dat, x, target, pos_flag = NULL,
         dat1 = dat
     }
     if (length(unique(dat1[, x])) > 1) {
-        digits_x = digits_num(dat[, x])
         cp = ifelse(!is.null(tree_control[["cp"]]), tree_control[["cp"]], 0.00001)
         xval = ifelse(!is.null(tree_control[["xval"]]), tree_control[["xval"]], 5)
         maxdepth = ifelse(!is.null(tree_control[["maxdepth"]]), tree_control[["maxdepth"]], 10)
@@ -301,9 +301,9 @@ get_tree_breaks <- function(dat, x, target, pos_flag = NULL,
     } else {
         tree_breaks = as.list(unique(dat[, x]))
     }
-    options(opt) # reset
     rm(dat1)
     return(unique(c(tree_breaks)))
+	options(opt) # reset
 }
 
 #' Generating Initial Equal Size Sample Bins

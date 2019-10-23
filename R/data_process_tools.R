@@ -28,9 +28,9 @@
 #' @importFrom cli cat_rule cat_line cat_bullet
 #' @export
 train_test_split <- function( dat, prop = 0.7, split_type = "Random",occur_time = NULL,
-                              cut_date = NULL, start_date = NULL, save_data = FALSE, 
+                              cut_date = NULL, start_date = NULL, save_data = FALSE,
                               dir_path = tempdir(), file_name = NULL, note = FALSE, seed = 43) {
-  
+
   if (prop > 1 || !is.numeric(prop)) {
     warning("-- prop is not a numeric or more than 1,  reset to 0.7.\n")
     prop = 0.7
@@ -57,63 +57,63 @@ train_test_split <- function( dat, prop = 0.7, split_type = "Random",occur_time 
       dat[, occur_time] = as.Date(dat[, occur_time])
       test = dat[which(dat[, occur_time] >= cut_date),]
       train = dat[which(dat[, occur_time] >= start_date & dat[, occur_time] < cut_date),]
-      if (note){				
+      if (note){
         cat_line("-- train_test_split:", col = love_color("dark_green"))
         split_out = list(Total = nrow(dat), Train = nrow(train), Test = nrow(test))
         cat_bullet(paste0(format(names(split_out)), ": ", unname(split_out),
-                          " (", sapply(split_out,function(x)as_percent(x/nrow(dat),2)),")"), col = "darkgrey") 
+                          " (", sapply(split_out,function(x)as_percent(x/nrow(dat),2)),")"), col = "darkgrey")
       }
     } else {
       if (!is.null(seed)) set.seed(seed) else set.seed(46)
       sub = sample(1:nrow(dat), round(nrow(dat) * prop))
       train = dat[sub,]
       test = dat[-sub,]
-      if (note){				
+      if (note){
         cat_line("-- train_test_split:", col = love_color("dark_green"))
         split_out = list(Total = nrow(dat), Train = nrow(train), Test = nrow(test))
         cat_bullet(paste0(format(names(split_out)), ": ", unname(split_out),
-                          " (", sapply(split_out,function(x)as_percent(x/nrow(dat),2)),")"), col = "darkgrey")       
+                          " (", sapply(split_out,function(x)as_percent(x/nrow(dat),2)),")"), col = "darkgrey")
       }
       warning(paste(occur_time, "is  not date or time, unable to use OOT , split random.\n"))
     }
-    
+
   }else{
     if (split_type[1] == "byRow") {
         sub = 1:round(nrow(dat) * prop)
         train = dat[sub,]
         test = dat[-sub,]
-        if (note){				
+        if (note){
           cat_line("-- train_test_split:", col = love_color("dark_green"))
           split_out = list(Total = nrow(dat), Train = nrow(train), Test = nrow(test))
           cat_bullet(paste0(format(names(split_out)), ": ", unname(split_out),
-                            " (", sapply(split_out,function(x)as_percent(x/nrow(dat),2)),")"), col = "darkgrey")     
+                            " (", sapply(split_out,function(x)as_percent(x/nrow(dat),2)),")"), col = "darkgrey")
         }
 	 }else{
-	
+
       if (!is.null(seed)) set.seed(seed) else set.seed(46)
       sub = sample(1:nrow(dat), round(nrow(dat) * prop))
       train = dat[sub,]
       test = dat[-sub,]
-      if (note){				
+      if (note){
         cat_line("-- train_test_split:", col = love_color("dark_green"))
         split_out = list(Total = nrow(dat), Train = nrow(train), Test = nrow(test))
         cat_bullet(paste0(format(names(split_out)), ": ", unname(split_out),
-                          " (", sapply(split_out,function(x)as_percent(x/nrow(dat),2)),")"), col = "darkgrey")     
+                          " (", sapply(split_out,function(x)as_percent(x/nrow(dat),2)),")"), col = "darkgrey")
       }
     }
   }
-  
+
   if (save_data) {
     dir_path = ifelse(!is.character(dir_path),
                       tempdir(), dir_path)
     if (!dir.exists(dir_path)) dir.create(dir_path)
     if (!is.character(file_name)) file_name = NULL
-    save_dt(train, file_name = ifelse(is.null(file_name), "train", paste0(file_name, "_train")), dir_path = dir_path)
-    save_dt(test, file_name = ifelse(is.null(file_name), "test", paste0(file_name, "_test")), dir_path = dir_path)
+    save_data(train, file_name = ifelse(is.null(file_name), "train", paste0(file_name, "_train")), dir_path = dir_path)
+    save_data(test, file_name = ifelse(is.null(file_name), "test", paste0(file_name, "_test")), dir_path = dir_path)
   }
   return(list(test = test, train = train))
 }
- 
+
 
 
 #' Stratified Folds
@@ -192,17 +192,17 @@ cv_split <- function(dat, k = 5, occur_time = NULL, seed = 46) {
 #' }
 #' @importFrom cli cat_rule cat_line cat_bullet
 #' @export
-require_packages <- function(..., pkg = as.character(substitute(list(...)))){
-    opt = options("warn" = -1) 
+require_packages <- function(..., pkg = as.character(substitute(list(...)))) {
+    opt = options("warn" = -1)
     new_pkg <- pkg[!(pkg %in% installed.packages()[, "Package"])]
     if (length(new_pkg) > 0) {
         cat_rule("Installing missing packages if needed", col = love_color("light_cyan"))
-        install.packages(new_pkg, dependencies = TRUE)     
+        install.packages(new_pkg, dependencies = TRUE)
         cat_line("-- Following packages  are installed:", col = love_color("dark_green"))
         cat_bullet(paste0(format(new_pkg)), col = "darkgrey")
     }
     cat_line("-- Following packages  are loaded:", col = love_color("dark_green"))
-    cat_bullet(paste0(format(pkg)), col = "darkgrey")
+    cat_bullet(paste0(format(pkg)[-1]), col = "darkgrey")
     sapply(pkg, require, ch = TRUE)
     options(opt)
 }
@@ -228,93 +228,159 @@ quick_as_df <- function(df_list){
 
 #' Save data
 #'
-#' \code{save_dt} is for saving a data.frame or a list fast.
-#' @param dt A data frame or list.
-#' @param file_name A string. The file name to save breaks_list.
+#' \code{save_data} is for saving a data.frame or a list fast.
+#' @param ... datasets
+#' @param files A dataset or a list of datasets.
+#' @param file_name The file name of data.
 #' @param dir_path  A string. The dir path to save breaks_list.
 #' @param note  Logical. Outputs info.Default is TRUE.
 #' @param as_list  Logical. List format or data.frame format to save. Default is FALSE.
 #' @param row_names  Logical,retain rownames.
 #' @param append Logical, append newdata to old.
 #' @examples
-#' save_dt(UCICreditCard,"UCICreditCard", tempdir())
-#' @importFrom data.table fwrite fread dcast melt
+#' save_data(UCICreditCard,"UCICreditCard", tempdir())
+#' @importFrom data.table fwrite fread dcast melt as.data.table
 #' @export
-save_dt <- function(dt, file_name = "dat", dir_path = getwd(),
-                     note = FALSE, as_list = FALSE, row_names = FALSE, append = FALSE){
 
-   if (!dir.exists(dir_path)) dir.create(dir_path)
-   if (dir.exists(paste0(dir_path, '/', file_name, ".csv")))file.remove(list.files(paste0(dir_path, '/', file_name, ".csv"), recursive = TRUE, full.names = TRUE))
-   if (note) {
-     cat_line(paste("-- Saving",file_name, "to:"), col = love_color("dark_green"))
-     cat_bullet(paste0(format(paste0(dir_path, '/', file_name, ".csv"))), col = "darkgrey")
 
-   }
-   if (as_list) {
-     fwrite(list(dt), paste0(dir_path, '/', file_name, ".csv"),
-            append = append,col.names = FALSE)
-   } else {
-     fwrite(as.data.frame(dt), paste0(dir_path, '/', file_name, ".csv"),
-            append = append, row.names = row_names)
-   }
+save_data <- function(..., files = list(...), file_name = as.character(substitute(list(...))), dir_path = getwd(),
+                     note = FALSE, as_list = FALSE, row_names = FALSE, append = FALSE) {
+
+  ind_n = sapply(files, function(x) {
+    ifelse( length(x)==1,  length(unlist(x))== 1 & is.character(x[1]) & !grepl(":|\\/|\\\\|\\//", x[1]),FALSE )
+
+  })
+
+  ind_p = sapply(files, function(x) {
+    ifelse(length(x)==1, length(unlist(x))== 1 & is.character(x[1]) & grepl(":|\\/|\\\\|\\//", x[1]),FALSE )
+  })
+  if (any(ind_n)) {
+    file_name = unlist(files[ind_n])
+  }
+
+  if (any(ind_p)) {
+    dir_path = unlist(files[ind_p])[1]
+  }
+  if (!dir.exists(dir_path)) dir.create(dir_path)
+
+  ind_f = sapply(files, function(x) {
+    ifelse(length(x)==1, length(unlist(x))== 1 & is.character(x[1]),FALSE )
+  })
+  if(all(ind_f)){
+    files = files[[1]]
+    as_list = TRUE
+  }else{
+    files = files[!ind_f]
+  }
+  if (length(file_name) < length(files)) {
+    file_name = as.character(substitute(list(...)))[2:length(files) + length(file_name)]
+    warning("The number of files is greater than the number of filenames,
+            using the environment variable name of the file as the filename.\n")
+  } else {
+    if (is.element("list", file_name[1])) {
+      file_name = file_name[-1]
+    }
+
+  }
+
+  for (file_n in file_name) {
+    if (dir.exists(paste0(dir_path, '/', file_n, ".csv"))) file.remove(list.files(paste0(dir_path, '/', file_n, ".csv"),
+                                                                                  recursive = TRUE, full.names = TRUE))
+  }
+  if (note) {
+    cat_line(paste("-- Saving", paste(file_name, collapse = " "), "to:"), col = love_color("dark_green"))
+    cat_bullet(paste0(format(paste0(dir_path, '/', file_name, ".csv"))), col = "darkgrey")
+
+  }
+
+  if (as_list) {
+    for (i in seq_along(files)) {
+      if (dir.exists(paste0(dir_path, '/', file_name[i], ".csv"))) file.remove(list.files(paste0(dir_path, '/', file_name[i], ".csv"),
+                                                                                          recursive = TRUE, full.names = TRUE))
+      data.table::fwrite(list(files[[i]]), paste0(dir_path, '/', file_name[i], ".csv"), append = append,
+                         col.names = FALSE)
+    }
+
+  } else {
+    for (i in seq_along(files)) {
+      if (dir.exists(paste0(dir_path, '/', file_name[i], ".csv"))) file.remove(list.files(paste0(dir_path, '/', file_name[i], ".csv"),
+                                                                                          recursive = TRUE, full.names = TRUE))
+      data.table::fwrite(as.data.table(files[[i]]), paste0(dir_path, '/', file_name[i], ".csv"), append = append,
+                         col.names = TRUE)
+    }
+  }
 }
-
 
 #' Read data
 #'
-#' \code{read_dt} is for loading data.
+#' \code{read_data} is for loading data.
 #' @param path Path to file or file name in working directory & path to file.
-#' @param encoding Default is "unknown". Other possible options are "UTF-8" and "Latin-1". 
-#' @param header  Does the first data line contain column names? 
-#' @param sep  The separator between columns.
+#' @param encoding Default is "unknown". Other possible options are "UTF-8" and "Latin-1".
+#' @param header Does the first data line contain column names?
+#' @param pattern An optional regular expression. Only file names which match the regular expression will be returned.
+#' @param sep The separator between columns.
 #' @param stringsAsFactors  Logical. Convert all character columns to factors?
-#' @importFrom data.table fwrite fread dcast melt
+#' @importFrom data.table fwrite fread dcast melt 
 #' @importFrom dplyr distinct
 #' @importFrom cli cat_rule cat_line cat_bullet
+#' @importFrom parallel detectCores
 #' @export
 
 
-read_dt = function(path, encoding = "unknown", header = 'auto', sep = "auto", stringsAsFactors = FALSE){
-  file_names = sort(list.files(path))
+read_data <- function(path,pattern = NULL,encoding = "unknown", header = TRUE, sep = "auto", stringsAsFactors = FALSE){
+  file_names = sort(list.files(path, pattern = pattern))
+  numCores = parallel::detectCores()-1
   if (length(file_names) > 0) {
     file_names = file_names[grepl("[.]", file_names)]
-    
+
     file_format = c()
     for (i in file_names) {
       path_file = paste(path, i, sep = "/")
       file_format[i] = check_data_format(path_file)
     }
-    
+
     file_format_tx = file_format[!is.na(file_format) && !grepl('xl\\S{1,2}$',file_format)]
     
     dt_list = list()
-    if(length(file_format_tx)>0){
+    if(length(file_format_tx)>0){   
       for (file_name in names(file_format_tx)) {
         file_n = gsub('.csv$|.txt$|.CSV$', "",file_name)
-        dt_list[[file_n]] = dplyr::distinct(quick_as_df(data.table::fread(paste(path, file_name, sep = "/"),
-                                                                          encoding = encoding, header = header,
-                                                                          sep = sep, stringsAsFactors = stringsAsFactors)))
+        dt_list[[file_n]] = dplyr::distinct(data.table::fread(paste(path, file_name, sep = "/"),
+                                                                          encoding = encoding,
+                                                                          header = header,
+                                                                          sep = sep,
+																		  data.table=getOption("datatable.fread.datatable", FALSE),
+																		  integer64=getOption("datatable.integer64", "character" ),
+																		  nThread = numCores,
+																		  fill = TRUE,
+                                                                          stringsAsFactors = stringsAsFactors))
       }
     }
     cat_line("-- Input files:", col = love_color("dark_green"))
     cat_bullet(paste0(format(names(file_format_tx))), col = "darkgrey")
-	return(dt_list)
+    return(dt_list)
   } else {
-    
+
     file_format = check_data_format(path)
     file_format_tx = file_format[!is.na(file_format) && !grepl('xl\\S{1,2}$',file_format)]
     #file_format_tc = file_format[!is.na(file_format)& file_format %alike% 'csv$|txt$|CSV$']
     if (length(file_format_tx) > 0) {
-      quick_as_df(data.table::fread(paste(path, sep = "/"),
-                                    encoding = encoding, header = header,
-                                    sep = sep, stringsAsFactors = stringsAsFactors))
+      data.table::fread(paste(path, sep = "/"),
+                                    encoding = encoding,
+                                    header = header,
+                                    sep = sep,
+									data.table=getOption("datatable.fread.datatable", FALSE),
+									integer64=getOption("datatable.integer64", "character"),
+									nThread = numCores,
+									fill = TRUE,
+                                    stringsAsFactors = stringsAsFactors)
     } else {
       stop(paste0("Cannot open file '", path, "'"))
     }
   }
 }
 
-#' @rdname read_dt
+#' @rdname read_data
 check_data_format <- function(path) {
   if (file.exists(path)) {
     sig = readBin(path, n = 10, what = "raw")
@@ -341,52 +407,53 @@ check_data_format <- function(path) {
   data_format
 }
 
-#' multi_left_jion
+#' multi_left_join
 #'
-#' \code{multi_left_jion} is for left jion a list of datasets fast.
+#' \code{multi_left_join} is for left jion a list of datasets fast.
+#' @param ... Datasets need join
 #' @param df_list A list of datasets.
 #' @param key_dt Name or index of Key table to left join.
 #' @param by  Name of Key columns to join.
 #' @examples
-#' save_dt(UCICreditCard,"UCICreditCard", tempdir())
+#' multi_left_join(UCICreditCard[1:10, 1:10], UCICreditCard[1:10, c(1,8:14)],
+#' UCICreditCard[1:10, c(1,20:25)], by = "ID")
 #' @export
 
 
-multi_left_jion = function(df_list,key_dt = NULL, by = NULL){
-  
-  if(is.null(by)){
-    stop("Key columns 'by' is missing.\n ")
-  }
-  if(!is.null(key_dt)){
-    key_id =df_list[key_dt]
-    df_list[key_dt] = NULL
-    df_list = append(key_id,df_list)
-  }
-  for(i in 1:length(df_list)){
-    by_id = c(df_list[[i]][[by]])
-    if(length(by_id)>0){
-      
-      df_list[[i]] = quick_as_df(df_list[[i]])
-      df_list[[i]][['id']] = as.character(by_id)
-      df_list[[i]][[by]] = NULL
-    }else{
-      warning(paste(paste0("No column called '",by,"'in"),names(df_list[i]),". Drop it...\n"))
-      df_list[i] = NULL
-    }
-  }
+multi_left_join = function(..., df_list = list(...), key_dt = NULL, by = NULL) {
 
-  merge_func = function(x,y){
-    intersect_name = intersect(colnames(x),colnames(y))
-    intersect_name = intersect_name[-which(intersect_name == 'id')]
-    if(length(intersect_name)>0){
-      y = subset(y, select = -which(colnames(y) %in% intersect_name))
+    if (is.null(by)) {
+        stop("Key columns 'by' is missing.\n ")
     }
-    merge(x, y, by = 'id', all.x = TRUE)
-  }
-  dat_merge =  Reduce("merge_func",df_list) %>% re_name("id", by)
-  return(dat_merge)
+    if (!is.null(key_dt)) {
+        key_id = df_list[key_dt]
+        df_list[key_dt] = NULL
+        df_list = append(key_id, df_list)
+    }
+    for (i in 1:length(df_list)) {
+        by_id = c(df_list[[i]][[by]])
+        if (length(by_id) > 0) {
+
+            df_list[[i]] = quick_as_df(df_list[[i]])
+            df_list[[i]][['id']] = as.character(by_id)
+            df_list[[i]][[by]] = NULL
+        } else {
+            warning(paste(paste0("No column called '", by, "'in"), names(df_list[i]), ". Drop it...\n"))
+            df_list[i] = NULL
+        }
+    }
+
+    merge_func = function(x, y) {
+        intersect_name = intersect(colnames(x), colnames(y))
+        intersect_name = intersect_name[-which(intersect_name == 'id')]
+        if (length(intersect_name) > 0) {
+            y = subset(y, select = -which(colnames(y) %in% intersect_name))
+        }
+        merge(x, y, by = 'id', all.x = TRUE)
+    }
+    dat_merge = Reduce("merge_func", df_list) %>% re_name("id", by)
+    return(dat_merge)
 }
-
 #' Number of digits
 #'
 #' \code{digits_num} is for caculating optimal digits number for numeric variables.
@@ -404,7 +471,7 @@ digits_num =function(dat_x){
     digits1 = digits2 = 16
     dat_x = unique(unlist(dat_x[!is.na(dat_x)]))
     if (length(dat_x) > 0 && any(is.element(class(dat_x), c("integer", "numeric",
-        "double")))) {
+        "double")))&& max(dat_x,na.rm = TRUE) > 1e-16) {
         digits1 = vapply(dat_x, function(num) {
             char_num = as.character(gsub("-", "",
                 num))
@@ -441,7 +508,7 @@ digits_num =function(dat_x){
 #' @examples
 #' is_date(lendingclub$issue_d)
 #' @export
-is_date = function(x){
+is_date <- function(x){
     any(class(x) %in% c("Date", "POSIXlt", "POSIXct", "POSIXt"))
 }
 
@@ -457,7 +524,7 @@ is_date = function(x){
 #' @importFrom stats quantile ecdf
 #' @export
 
-date_cut = function(dat_time, pct = 0.7){
+date_cut <- function(dat_time, pct = 0.7){
     dat_time = as.Date(dat_time)
     if (is_date(dat_time)) {
         date_n = quantile(ecdf(dat_time), seq(0, 1, by = 0.01))
@@ -675,7 +742,39 @@ colMaxMins <- function(x, na.rm = FALSE) {
     as.numeric(max_mins)
 }
 
-
+#' @rdname rowAny
+#' @export
+cnt_x <- function(x) {
+  length(x)
+}
+#' @rdname rowAny
+#' @export
+sum_x <- function(x) {
+  sum_x = sum(x, na.rm = TRUE)
+  sum_x[which(sum_x == -Inf || sum_x == Inf || is.na(sum_x))] = NA
+  sum_x
+}
+#' @rdname rowAny
+#' @export
+max_x <- function(x) {
+  max_x <- max(x, na.rm = TRUE)
+  max_x[which(max_x == -Inf || max_x == Inf || is.na(max_x))] = NA
+  max_x
+}
+#' @rdname rowAny
+#' @export
+min_x <- function(x) {
+  min_x = min(x, na.rm = TRUE)
+  min_x[which(min_x == -Inf || min_x == Inf || is.na(min_x))] = NA
+  min_x
+}
+#' @rdname rowAny
+#' @export
+avg_x <- function(x) {
+  mean_x = mean(x, na.rm = TRUE)
+  mean_x[which(mean_x == -Inf || mean_x == Inf || is.na(mean_x))] = NA
+  mean_x
+}
 #'  Get Variable Names
 #'
 #' \code{get_names} is  for getting names of particular classes of variables
@@ -721,8 +820,8 @@ get_names <- function(dat, types = c('logical', 'factor', 'character', 'numeric'
    var_names <- names(dat)
    return(var_names)
 }
- 
- 
+
+
 
 
 #' Get X List.
@@ -781,7 +880,7 @@ get_x_list <- function(dat_train = NULL, dat_test = NULL,x_list = NULL, ex_cols 
             if (!all(x_input)) {
                 x_retain = x_list[which(x_input)]
                 x_excluded = x_list[which(!x_input)]
-				
+
 			if(note){
 			cat_line("-- Following variables are excluded:", col = love_color("dark_green"))
             cat_bullet(paste0(format(x_excluded)), col = "darkgrey")
@@ -889,7 +988,7 @@ start_parallel_computing <- function(parallel = TRUE) {
     parallelType <- if (.Platform$OS.type == "windows")
         "snow" else "multicore"
 
-    numCores = parallel::detectCores()
+    numCores = parallel::detectCores()-1
     attr(parallel, "type") <- parallelType
     attr(parallel, "cores") <- numCores
 
@@ -902,8 +1001,6 @@ start_parallel_computing <- function(parallel = TRUE) {
             varlist = ls(envir = parent.frame(), all.names = TRUE)
             varlist = varlist[varlist != "..."]
             parallel::clusterExport(cl, varlist = varlist, envir = parent.frame())
-            parallel::clusterExport(cl, varlist = ls(envir = globalenv(), all.names = TRUE), envir = globalenv())
-
             pkgs = .packages()
             lapply(pkgs, function(pkg)
                 parallel::clusterCall(cl, library, package = pkg,
@@ -1020,10 +1117,11 @@ loop_function <- function(func = NULL, args = list(data = NULL), x_list = NULL,
 #' str_match(str_r = orignal_nam,pattern= "\\d+")
 #' @export
 
-str_match = function(pattern,str_r){
-  ind = regexpr(pattern,str_r )
-  substr(str_r, ind,attr(ind,"match.length"))
+str_match <- function(pattern, str_r) {
+    ind = regexpr(pattern, str_r)
+    substr(str_r, ind, ind + attr(ind, "match.length"))
 }
+
 
 #' re_code
 #' #' \code{re_code} search for matches to argument pattern within each element of a character vector:
@@ -1034,7 +1132,7 @@ str_match = function(pattern,str_r){
 #' codes= data.frame(ori_value = c('F','M'), code = c(0,1) )
 #' SEX_re = re_code(SEX,codes)
 #' @export
-re_code = function(x,codes){
+re_code <- function(x,codes){
     for (i in 1:nrow(codes)) {
     x[which(x == codes[i, 1])] = codes[i, 2]
     }

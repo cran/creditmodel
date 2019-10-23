@@ -64,24 +64,11 @@ plot_table(grid_table, theme = c("cyan", "grey", "green", "red", "blue",
 \code{plot_table} is for table visualizaiton.
 }
 \examples{
-sub = cv_split(UCICreditCard, k = 30)[[1]]
-dat = UCICreditCard[sub,]
-dat = re_name(dat, "default.payment.next.month", "target")
-dat = data_cleansing(dat, target = "target", obs_id = "ID",
-occur_time = "apply_date", miss_values = list("", -1))
-dat = process_nas(dat,default_miss = TRUE)
-train_test <- train_test_split(dat, split_type = "OOT", prop = 0.7,
-                                occur_time = "apply_date")
-dat_train = train_test$train
-dat_test = train_test$test
-x_list = c("PAY_0", "LIMIT_BAL", "PAY_AMT5", "PAY_3", "PAY_2")
-Formula = as.formula(paste("target", paste(x_list, collapse = ' + '), sep = ' ~ '))
-set.seed(46)
-lr_model = glm(Formula, data = dat_train[, c("target", x_list)], family = binomial(logit))
+iv_list = get_psi_iv_all(dat = UCICreditCard[1:1000, ],
+                         x_list = names(UCICreditCard)[3:5], equal_bins = TRUE,
+                         target = "default.payment.next.month", ex_cols = "ID|apply_date")
+iv_dt =get_psi_iv(UCICreditCard, x = "PAY_3",
+                  target = "default.payment.next.month", bins_total = TRUE)
 
-dat_train$pred_LR = round(predict(lr_model, dat_train[, x_list], type = "response"), 5)
-dat_test$pred_LR = round(predict(lr_model, dat_test[, x_list], type = "response"), 5)
-# model evaluation
-t1 = perf_table(train_pred = dat_train, test_pred = dat_test, target = "target", score = "pred_LR")
-plot_table(t1)
+plot_table(iv_dt)
 }
