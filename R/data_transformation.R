@@ -106,8 +106,12 @@ woe_trans <- function(dat, x, bins_table = NULL, target = NULL, breaks_list = NU
     }
     if (length(bins_tbl) > 0 && all(as.character(bins_tbl[, "Feature"]) != "Total")) {
         bins = split_bins(dat = dat, x = x, breaks = bins_tbl[, c("cuts")], bins_no = TRUE)
-        for (i in 1:length(unique(bins))) {
-            dat[as.character(bins) == as.character(bins_tbl[i, "bins"]), woe_names] = bins_tbl[i, "woe"]
+        for (i in 1:nrow(bins_tbl)) {
+           woe_ind =  which(as.character(bins) == as.character(bins_tbl[i, "bins"]))
+           if(length(woe_ind) > 0){
+               dat[woe_ind, woe_names] = bins_tbl[i, "woe"]
+           }
+         
         }
         dat[, woe_names] = as.numeric(dat[, woe_names])
     }
@@ -260,74 +264,104 @@ de_one_hot_encoding <- function(dat_one_hot, cat_vars = NULL, na_act = TRUE,note
 #' dat = time_transfer(dat = lendingclub,date_cols = NULL)
 #' class(dat[,"issue_d"])
 #' @export
+time_transfer <- function(dat, date_cols = NULL, ex_cols = NULL, note = FALSE) {
+	dat = checking_data(dat,note = FALSE)
+	if (note) cat_line("-- Formating time variables", col = love_color("dark_green"))
+	x_list = get_x_list(x_list = NULL, dat_train = dat, dat_test = NULL, ex_cols = ex_cols)
+	date_cols1 = NULL
+	if (!is.null(date_cols)) {
+		date_cols1 <- names(dat[x_list])[colnames(dat[x_list]) %islike% date_cols]
+	} else {
+		date_cols1 = names(dat[x_list])
+	}
+	df_date = dat[date_cols1]
+	df_date <- df_date[!colAllnas(df_date)]
+	df_date = df_date[!sapply(df_date, is_date)]
+	if (dim(df_date)[2] != 0) {
+		df_date_cols <- names(df_date)
+		t_sample <- list()
+		t_len <- list()
+		t_sam = NULL
+		tryCatch({
+			for (x in 1:ncol(df_date)) {
+				t_sam = vapply(as.character(sample(na.omit(df_date[[x]]), 100, replace = TRUE)),
+					   function(i) {
+						if (nchar(i) >= 6) { nchar(i) } else { 0 }
+ 					   }, FUN.VALUE = numeric(1))
+				t_sample[[x]] = min(unlist(t_sam), na.rm = TRUE)
+				t_len[[x]] = as.character(names(t_sam)[which(nchar(names(t_sam)) == t_sample[[x]])][1])
 
-time_transfer <- function(dat, date_cols = NULL,ex_cols = NULL, note = FALSE){
-  dat <- checking_data(dat)
-  if (note)cat_line("-- Formating time variables", col = love_color("dark_green"))
-  x_list = get_x_list(x_list = NULL, dat_train = dat, dat_test = NULL, ex_cols = ex_cols)
-  date_cols1 = NULL
-  if (!is.null(date_cols)) {
-    date_cols1 <- names(dat[x_list])[colnames(dat[x_list]) %islike% date_cols]
-  } else {
-    date_cols1 = names(dat[x_list])
-  }
-  df_date = dat[date_cols1]
-  df_date <- df_date[!colAllnas(df_date)]
-  df_date = df_date[!sapply(df_date, is_date)]
-  if (dim(df_date)[2] != 0) {
-    df_date_cols <- names(df_date)
-    t_sample <- list()
-    t_len <- list()
-    t_sam= NULL
-    tryCatch({
-      for (x in 1:ncol(df_date)) {
-        t_sam = vapply(as.character(sample(na.omit(df_date[[x]]),100,replace = TRUE)),
-                       function(i) {
-                         if (nchar(i) >= 6) { nchar(i) } else { 0 }
-                       }, FUN.VALUE = numeric(1))
-        t_sample[[x]] = min(unlist(t_sam), na.rm = TRUE)
-        t_len[[x]] = as.character(names(t_sam)[which(nchar(names(t_sam)) == t_sample[[x]])][1])
+			}
+		}, error = function(e) { cat("ERROR :", conditionMessage(e), "\n") },
+	warning = function(w) { "" })
+		date_cols2 = which(t_sample != 0)
 
-      }
-    }, error = function(e) { cat("ERROR :", conditionMessage(e), "\n") },
-    warning = function(w) { "" })
-    date_cols2 = which(t_sample != 0)
-    for (x in date_cols2) {
-      if (t_sample[[x]] >= 8 & t_sample[[x]] <= 10 &
-          grepl(pattern = "^[2]{1}[0]{1}[0-3]{1}[0-9]{1}-[0-9]{1}-[0-9]{1,2}$|^[2]{1}[0]{1}[0-3]{1}[0-9]{1}-[0-9]{1,2}-[0-3]{1}[0-9]{1}$|^[1]{1}[9]{1}[0-9]{2}-[0-9]{1,2}-[0-3]{1}[0-9]{1}$", x = gsub(" ", "", substr(t_len[[x]], 1, 10)))) {
-        df_date[[x]] = as.Date(as.character(df_date[[x]]), "%Y-%m-%d")
-      }
-      if (t_sample[[x]] > 10 & grepl(pattern = "^[2]{1}[0]{1}[0-3]{1}[0-9]{1}-[0-9]{1}-[0-3]{1}[0-9]{1,2}$|^[2]{1}[0]{1}[0-3]{1}[0-9]{1}-[0-9]{1,2}-[0-3]{1}[0-9]{1}$|^[1]{1}[9]{1}[0-9]{2}-[0-9]{1,2}-[0-3]{1}[0-9]{1}$", x = gsub(" ", "", substr(t_len[[x]], 1, 10))) & grepl(pattern = "^[0-1]{1}[0-9]{1}:[0-9]{2}", gsub(" ", "", substr(t_len[[x]], 12, nchar(t_len[[x]]))))) {
-        df_date[[x]] = as.Date(as.character(df_date[[x]]))
-      }
-      if (t_sample[[x]] >= 7 & t_sample[[x]] <= 9 &
-          grepl(pattern = "^[2]{1}[0]{1}[0-5]{1}[0-9]{1}[0-9]{1}[0-3]{1}[0-9]{1,2}$|^[2]{1}[0]{1}[0-5]{1}[0-9]{1}[0-9]{1,2}[0-3]{1}[0-9]{1}$|^[1]{1}[9]{1}[0-9]{2}[0-9]{1,2}[0-3]{1}[0-9]{1}$", x = t_len[[x]])) {
-        df_date[[x]] = as.Date(as.character(df_date[[x]]), "%Y%m%d")
-      }
-      if (t_sample[[x]] > 10 & grepl(pattern = "^[2]{1}[0]{1}[0-5]{1}[0-9]{1}[0-9]{1}[0-3]{1}[0-9]{1,2}$|^[2]{1}[0]{1}[0-5]{1}[0-9]{1}[0-9]{1,2}[0-3]{1}[0-9]{1}$|^[1]{1}[9]{1}[0-9]{2}[0-9]{1,2}[0-3]{1}[0-9]{1}$", x = gsub(" ", "", substr(t_len[[x]], 1, 10))) & grepl(pattern = "^[0-9]{1,2}:[0-9]{2}", gsub(" ", "", substr(t_len[[x]], 10, nchar(t_len[[x]]))))) {
-        df_date[[x]] = as.Date(as.character(df_date[[x]]))
-      }
-      if (t_sample[[x]] >= 8 & t_sample[[x]] <= 10 &
-          grepl(pattern = "^[2]{1}[0]{1}[0-3]{1}[0-9]{1}/[0-9]{1,2}/[0-9]{1,2}$|^[1]{1}[9]{1}[0-9]{2}/[0-9]{1,2}/[0-9]{1,2}$", x = gsub(" ", "", substr(t_len[[x]], 1, 10)))) {
-        df_date[[x]] = as.Date(as.character(df_date[[x]]), "%Y/%m/%d")
-      }
-      if (t_sample[[x]] > 10 & grepl(pattern = "^[2]{1}[0]{1}[0-3]{1}[0-9]{1}/[0-9]{1,2}/[0-9]{1,2}$|^[2]{1}[0]{1}[0-3]{1}[0-9]{1}/[0-9]{1}/[0-9]{1}$|^[2]{1}[0]{1}[0-3]{1}[0-9]{1}/[0-9]{1,2}/[0-3]{1}[0-9]{1}$|^[2]{1}[0]{1}[0-3]{1}[0-9]{1}/[0-9]{1}/[0-3]{1}[0-9]{1}$|^[1]{1}[9]{1}[0-9]{2}/[0-9]{1,2}/[0-3]{1}[0-9]{1}$", x = gsub(" ", "", substr(t_len[[x]], 1, 10))) & grepl(pattern = "^[0-9]{1,2}:[0-9]{2}", gsub(" ", "", substr(t_len[[x]], 11, nchar(t_len[[x]]))))) {
-        df_date[[x]] = as.POSIXct(as.character(df_date[[x]]))
-      }
-      if (t_sample[[x]] == 10 & grepl(pattern = "^[1]{1}[0-9]{9}", x = t_len[[x]])) {
-        df_date[[x]] = as.POSIXct(as.numeric(df_date[[x]]), origin = "1970-01-01")
-      }
-      if (t_sample[[x]] == 13 & grepl(pattern = "^[1]{1}[0-9]{12}", x = t_len[[x]])) {
-        df_date[[x]] = as.POSIXct(as.numeric(df_date[[x]]) / 1000, origin = "1970-01-01")
-      }
-    }
-    dat[df_date_cols] <- df_date
-    rm(df_date)
-  } else {
-    dat = dat
-  }
-  dat
+		for (x in date_cols2) {
+			t_len[[x]] = gsub(" ", "", t_len[[x]])
+			if (t_sample[[x]] >= 5& t_sample[[x]] <= 6 &
+				grepl(pattern = "^[2]{1}[0]{1}[0-3]{1}[0-9]{1}-[0-9]{1}$|^[2]{1}[0]{1}[0-3]{1}[0-9]{1}-[0-9]{1,2}$|^[1]{1}[9]{1}[0-9]{2}-[0-9]{1,2}$", x = substr(t_len[[x]], 1, 10))) {
+				df_date[[x]] = paste(df_date[[x]],"-01")
+				df_date[[x]] = as.Date(as.character(df_date[[x]]), "%Y-%m-%d")
+			}
+			if (t_sample[[x]] >= 5 & t_sample[[x]] <= 6 &
+				grepl(pattern = "^[2]{1}[0]{1}[0-3]{1}[0-9]{1}/[0-9]{1}$|^[2]{1}[0]{1}[0-3]{1}[0-9]{1}/[0-9]{1,2}$|^[1]{1}[9]{1}[0-9]{2}/[0-9]{1,2}$", x = substr(t_len[[x]], 1, 10))) {
+				df_date[[x]] = paste(df_date[[x]], "/01")
+				df_date[[x]] = as.Date(as.character(df_date[[x]]), "%Y/%m/%d")
+			}
+
+			if (t_sample[[x]] >= 8 & t_sample[[x]] <= 10 &
+	  		  grepl(pattern = "^[2]{1}[0]{1}[0-3]{1}[0-9]{1}-[0-9]{1}-[0-9]{1,2}$|^[2]{1}[0]{1}[0-3]{1}[0-9]{1}-[0-9]{1,2}-[0-3]{1}[0-9]{1}$|^[1]{1}[9]{1}[0-9]{2}-[0-9]{1,2}-[0-3]{1}[0-9]{1}$", x = substr(t_len[[x]], 1, 10))) {
+				df_date[[x]] = as.Date(as.character(df_date[[x]]), "%Y-%m-%d")
+			}
+			if (t_sample[[x]] > 10 & grepl(pattern = "^[2]{1}[0]{1}[0-3]{1}[0-9]{1}-[0-9]{1}-[0-3]{1}[0-9]{1,2}$|^[2]{1}[0]{1}[0-3]{1}[0-9]{1}-[0-9]{1,2}-[0-3]{1}[0-9]{1}$|^[1]{1}[9]{1}[0-9]{2}-[0-9]{1,2}-[0-3]{1}[0-9]{1}$", x =  substr(t_len[[x]], 1, 10)) & grepl(pattern = "^[0-1]{1}[0-9]{1}:[0-9]{2}$", substr(t_len[[x]], 11, nchar(t_len[[x]])))) {
+				df_date[[x]] = paste0(df_date[[x]],":00") 
+				df_date[[x]] = as.POSIXct(as.character(df_date[[x]]), format = "%Y-%m-%d %H:%M:%S")
+			}
+			if (t_sample[[x]] > 10 & grepl(pattern = "^[2]{1}[0]{1}[0-3]{1}[0-9]{1}-[0-9]{1}-[0-3]{1}[0-9]{1,2}$|^[2]{1}[0]{1}[0-3]{1}[0-9]{1}-[0-9]{1,2}-[0-3]{1}[0-9]{1}$|^[1]{1}[9]{1}[0-9]{2}-[0-9]{1,2}-[0-3]{1}[0-9]{1}$", x = substr(t_len[[x]], 1, 10)) & grepl(pattern = "^[0-1]{1}[0-9]{1}:[0-9]{2}:[0-9]{2}",  substr(t_len[[x]], 11, nchar(t_len[[x]])))) {
+				df_date[[x]] = as.POSIXct(as.character(df_date[[x]]), format = "%Y-%m-%d %H:%M:%S")
+			}
+
+			if (t_sample[[x]] >= 7 & t_sample[[x]] <= 9 &
+	  		  grepl(pattern = "^[2]{1}[0]{1}[0-5]{1}[0-9]{1}[0-9]{1}[0-3]{1}[0-9]{1,2}$|^[2]{1}[0]{1}[0-5]{1}[0-9]{1}[0-9]{1,2}[0-3]{1}[0-9]{1}$|^[1]{1}[9]{1}[0-9]{2}[0-9]{1,2}[0-3]{1}[0-9]{1}$", x = t_len[[x]])) {
+				df_date[[x]] = as.Date(as.character(df_date[[x]]), "%Y%m%d")
+			}
+			if (t_sample[[x]] > 10 & grepl(pattern = "^[2]{1}[0]{1}[0-5]{1}[0-9]{1}[0-9]{1}[0-3]{1}[0-9]{1,2}$|^[2]{1}[0]{1}[0-5]{1}[0-9]{1}[0-9]{1,2}[0-3]{1}[0-9]{1}$|^[1]{1}[9]{1}[0-9]{2}[0-9]{1,2}[0-3]{1}[0-9]{1}$", x =substr(t_len[[x]], 1, 8)) & grepl(pattern = "^[0-9]{1,2}:[0-9]{2}:[0-9]{2}$", substr(t_len[[x]], 9, nchar(t_len[[x]])))) {
+				df_date[[x]] = gsub(" ", "", df_date[[x]])
+				df_date[[x]] = paste(substr(df_date[[x]], 1, 8), substr(df_date[[x]], 9, nchar(df_date[[x]])))
+				df_date[[x]] = as.POSIXct(as.character(df_date[[x]]), format = "%Y%m%d %H:%M:%S")
+			}
+			if (t_sample[[x]] > 10 & grepl(pattern = "^[2]{1}[0]{1}[0-5]{1}[0-9]{1}[0-9]{1}[0-3]{1}[0-9]{1,2}$|^[2]{1}[0]{1}[0-5]{1}[0-9]{1}[0-9]{1,2}[0-3]{1}[0-9]{1}$|^[1]{1}[9]{1}[0-9]{2}[0-9]{1,2}[0-3]{1}[0-9]{1}$", x = substr(t_len[[x]], 1, 8)) & grepl(pattern = "^[0-9]{1,2}:[0-9]{2}$", substr(t_len[[x]], 9, nchar(t_len[[x]])))) {
+				df_date[[x]] = gsub(" ", "", df_date[[x]])
+				df_date[[x]] = paste(substr(df_date[[x]], 1, 8), substr(df_date[[x]], 9, nchar(df_date[[x]])),":00")
+				df_date[[x]] = as.POSIXct(as.character(df_date[[x]]), format = "%Y%m%d %H:%M:%S")
+			}
+			if (t_sample[[x]] >= 8 & t_sample[[x]] <= 10 &
+	  		  grepl(pattern = "^[2]{1}[0]{1}[0-3]{1}[0-9]{1}/[0-9]{1,2}/[0-9]{1,2}$|^[1]{1}[9]{1}[0-9]{2}/[0-9]{1,2}/[0-9]{1,2}$", x = substr(t_len[[x]], 1, 10))) {
+				df_date[[x]] = as.Date(as.character(df_date[[x]]), "%Y/%m/%d")
+			}
+			if (t_sample[[x]] > 10 & grepl(pattern = "^[2]{1}[0]{1}[0-3]{1}[0-9]{1}/[0-9]{1,2}/[0-9]{1,2}$|^[2]{1}[0]{1}[0-3]{1}[0-9]{1}/[0-9]{1}/[0-9]{1}$|^[2]{1}[0]{1}[0-3]{1}[0-9]{1}/[0-9]{1,2}/[0-3]{1}[0-9]{1}$|^[2]{1}[0]{1}[0-3]{1}[0-9]{1}/[0-9]{1}/[0-3]{1}[0-9]{1}$|^[1]{1}[9]{1}[0-9]{2}/[0-9]{1,2}/[0-3]{1}[0-9]{1}$", x = substr(t_len[[x]], 1, 10)) & grepl(pattern = "^[0-9]{1,2}:[0-9]{2}$", substr(t_len[[x]], 11, nchar(t_len[[x]])))) {
+				df_date[[x]] = paste0(df_date[[x]], ":00")
+				df_date[[x]] = as.POSIXct(as.character(df_date[[x]]), format = "%Y/%m/%d %H:%M:%S")
+			}
+			if (t_sample[[x]] > 10 & grepl(pattern = "^[2]{1}[0]{1}[0-3]{1}[0-9]{1}/[0-9]{1,2}/[0-9]{1,2}$|^[2]{1}[0]{1}[0-3]{1}[0-9]{1}/[0-9]{1}/[0-9]{1}$|^[2]{1}[0]{1}[0-3]{1}[0-9]{1}/[0-9]{1,2}/[0-3]{1}[0-9]{1}$|^[2]{1}[0]{1}[0-3]{1}[0-9]{1}/[0-9]{1}/[0-3]{1}[0-9]{1}$|^[1]{1}[9]{1}[0-9]{2}/[0-9]{1,2}/[0-3]{1}[0-9]{1}$", x = substr(t_len[[x]], 1, 10)) & grepl(pattern = "^[0-9]{1,2}:[0-9]{2}:[0-9]{2}$", substr(t_len[[x]], 11, nchar(t_len[[x]])))) {
+				df_date[[x]] = as.POSIXct(as.character(df_date[[x]]), format = "%Y/%m/%d %H:%M:%S")
+			}
+			if (t_sample[[x]] == 10 & grepl(pattern = "^[1]{1}[0-9]{9}", x = t_len[[x]])) {
+				df_date[[x]] = as.POSIXct(as.numeric(df_date[[x]]), origin = "1970-01-01 00:00:00")
+			}
+			if (t_sample[[x]] == 13 & grepl(pattern = "^[1]{1}[0-9]{12}", x = t_len[[x]])) {
+				df_date[[x]] = as.POSIXct(as.numeric(df_date[[x]]) / 1000, origin = "1970-01-01 00:00:00")
+			}
+		}
+		dat[df_date_cols] <- df_date
+		rm(df_date)
+	} else {
+		dat = dat
+	}
+	dat
 }
+
+
 
 #' Derivation of Behavioral Variables
 #'
@@ -355,7 +389,7 @@ derived_ts_vars <- function(dat, grx = NULL, td = NULL, ID = NULL, ex_cols = NUL
                             parallel = TRUE, note = TRUE) {
     if (note) cat_line(paste("--", "Derived variables of", paste(der), " .\n"), col = love_color("dark_green"))
 
-	
+	dat = checking_data(dat,note = FALSE)
     if (parallel) {
         parallel <- start_parallel_computing(parallel)
         stopCluster <- TRUE
@@ -397,7 +431,8 @@ derived_ts <- function(dat, grx_x = NULL, x_list = NULL, td = NULL, ID = NULL, e
                        der = c("cvs", "sums", "means", "maxs", "max_mins",
                                "time_intervals", "cnt_intervals", "total_pcts",
                                "cum_pcts", "partial_acfs")) {
-    if (is.null(ID)) {
+    dat = checking_data(dat,note = FALSE)
+	if (is.null(ID)) {
         dat$ID = rownames(dat)
         ID = 'ID'
     }
@@ -428,7 +463,7 @@ derived_ts <- function(dat, grx_x = NULL, x_list = NULL, td = NULL, ID = NULL, e
     if (length(cv_cols) > 0) {
         setDT(dat)
         name_n = orignal_nam = sim_nam = str_num = c()
-        orignal_nam <- names(dat[, cv_cols, with = FALSE])
+        orignal_nam = names(dat[, cv_cols, with = FALSE])
         str_num = as.numeric(str_match(str_r = orignal_nam, pattern = "\\d+"))
         if (!any(is.na(str_num)) && !is.null(td) && length(str_num) == td) {
             name_n = paste(min(str_num), max(str_num), sep = "to")
@@ -437,7 +472,7 @@ derived_ts <- function(dat, grx_x = NULL, x_list = NULL, td = NULL, ID = NULL, e
             name_n = "ts"
         }
         sim_nam = paste(unique(lapply(1:(length(orignal_nam) - 1),
-                                  function(x) sim_str(orignal_nam[x], orignal_nam[x + 1], sep = "_|[0-9]|[.]")))[[1]], collapse = "_")
+                                  function(x) sim_str(orignal_nam[x], orignal_nam[x + 1], sep = "_|[0-9]")))[[1]], collapse = "_")
         if (any(der == "cvs")) {
                   dat = dat[, paste(sim_nam, name_n, "cvs", sep = "_") := ifelse(rowAllnas(dat[, cv_cols, with = FALSE]), NA, 
 				  rowCVs(dat[, cv_cols, with = FALSE], na.rm = TRUE))]
@@ -514,7 +549,6 @@ time_series_proc <- function(dat, ID = NULL, group = NULL, time = NULL) {
     }
     dat = dat %>% dplyr::group_by(ID) %>% dplyr::arrange(time) %>%
     dplyr::mutate(time_interval = as.numeric(dplyr::lead(time, default = max(time, na.rm = TRUE)) - time)) %>% dplyr::ungroup()
-
     dat = data.table::dcast(setDT(dat), ID ~ group,
                              fun.aggregate = list(cnt_x, sum_x, max_x, min_x, avg_x), value.var = c('time_interval'))
     colnames(dat)[1] = ID
@@ -533,8 +567,8 @@ time_series_proc <- function(dat, ID = NULL, group = NULL, time = NULL) {
 time_vars_process <- function(df_tm = df_tm, x, enddate = "occur_time") {
     if ((class(df_tm[[x]])[1] == 'POSIXct' | class(df_tm[[x]])[1] == 'Date') & x != enddate) {
         mydata <- within(df_tm, {
-            new = as.numeric(df_tm[[enddate]] - as.Date(df_tm[[x]]))
-            new2 = ifelse(is.na(df_tm[[x]]) == TRUE, 0, 1)
+            new = as.numeric(as.Date(df_tm[[enddate]]) - as.Date(df_tm[[x]]))
+            new2 = ifelse(is.na(df_tm[[x]]), 0, 1)
             new3 = hour(round(as.POSIXct(df_tm[[x]])))
         })
         new_name <- c(paste(x, "_", enddate, "_duration", sep = ""),

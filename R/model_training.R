@@ -66,19 +66,14 @@
 #'
 #' @import ggplot2
 #' @importFrom foreach foreach
-#' @importFrom pdp partial
 #' @importFrom grid gTree
-#' @importFrom gbm gbm gbm.perf
 #' @importFrom xgboost xgb.importance xgb.train xgb.DMatrix xgb.dump xgb.save xgb.cv getinfo xgb.load
-#' @importFrom dplyr group_by mutate summarize  summarise n  count %>% filter  left_join distinct
-#' @importFrom data.table fwrite fread dcast melt
-#' @importFrom randomForest randomForest tuneRF combine
+#' @importFrom dplyr group_by mutate summarize  summarise n  count %>% filter left_join distinct
+#' @importFrom data.table fwrite fread dcast melt fifelse
 #' @importFrom glmnet cv.glmnet glmnet
 #' @importFrom grDevices dev.print png rgb
 #' @importFrom graphics par plot text
 #' @importFrom stats  ar as.formula binomial chisq.test coef complete.cases cor cov glm  kmeans median  na.omit  na.pass predict reorder runif sd ts
-#' @importFrom utils  capture.output  data  install.packages  installed.packages
-
 #' @importFrom cli cat_rule cat_line cat_bullet
 #' @export
 
@@ -310,6 +305,7 @@ training_model <- function(model_name = "mymodel",
     model_new = lr_model_new = xgb_model_new = gbdt_model_new = rf_model_new = NULL
     # Train Models
     if (length(unique(dat_train[, target])) == 2) {
+	    pmml = NULL
         if (any(algorithm == "LR")) {
             cat_rule("Training logistic regression model/scorecard", col = "cyan")
 
@@ -327,7 +323,7 @@ training_model <- function(model_name = "mymodel",
             if (is.null(LR.params)) {
                 LR.params = lr_params()
             }
-            obsweight = ifelse(!is.null(LR.params[["obsweight"]]), LR.params[["obsweight"]], 1)
+            obsweight = if(!is.null(LR.params[["obsweight"]])) LR.params[["obsweight"]] else 1
             step_wise = ifelse(!is.null(LR.params[["step_wise"]]), LR.params[["step_wise"]], TRUE)
             lasso = ifelse(!is.null(LR.params[["lasso"]]), LR.params[["lasso"]], TRUE)
             score_card = ifelse(!is.null(LR.params[["score_card"]]), LR.params[["score_card"]], TRUE)
@@ -335,14 +331,22 @@ training_model <- function(model_name = "mymodel",
             forced_in = LR.params[["forced_in"]]
             iters = ifelse(!is.null(LR.params[["iters"]]), LR.params[["iters"]], 10)
             thresholds = LR.params[["thresholds"]]
-            cor_p = thresholds$cor_p
+
+            f_eval = ifelse(!is.null(LR.params[["f_eval"]]), LR.params[["f_eval"]], "ks")
+            method = ifelse(!is.null(LR.params[["method"]]), LR.params[["method"]], "random_search")
+            best_lambda = ifelse(!is.null(LR.params[["best_lambda"]]), LR.params[["best_lambda"]], "lambda.ks")
+            
+			thresholds = if (!is.null(LR.params["thresholds"])) {
+                LR.params[["thresholds"]]
+            } else {
+                list(cor_p = 0.7, iv_i = 0.01, psi_i = 0.2, cos_i = 0.5)
+            }			
+			cor_p = thresholds$cor_p
             iv_i = thresholds$iv_i
             psi_i = thresholds$psi_i
             cos_i = thresholds$cos_i
-            f_eval = ifelse(!is.null(LR.params[["f_eval"]]), LR.params[["f_eval"]], "ks")
-            method = ifelse(!is.null(LR.params[["method"]]), LR.params[["method"]], "grid_search")
-            best_lambda = ifelse(!is.null(LR.params[["best_lambda"]]), LR.params[["best_lambda"]], "lambda.ks")
-            tree_control = if (!is.null(LR.params["tree_control"])) {
+
+			tree_control = if (!is.null(LR.params["tree_control"])) {
                 LR.params[["tree_control"]]
             } else {
                 list(p = 0.02, cp = 0.00000001, xval = 5, maxdepth = 10)
@@ -356,7 +360,7 @@ training_model <- function(model_name = "mymodel",
              b_or = 0.15, mono = 0.2, odds_psi = 0.15, kc = 1)
             }
             if (length(obsweight) > 1 && is.vector(obsweight, mode = "numeric")) {
-                obsweighted <- ifelse(dat_train[, target] == 0, obsweight[1], obsweight[2])
+                obsweighted = ifelse(dat_train[, target] == 0, obsweight[1], obsweight[2])
             } else {
                 obsweighted = NULL
             }
@@ -604,9 +608,10 @@ training_model <- function(model_name = "mymodel",
 
             #transfer to pmml
             if (save_pmml) {
+			    
                 cat_rule("Converting LR model to pmml", col = love_color("light_cyan"))
                 if (!requireNamespace("pmml", quietly = TRUE) & !requireNamespace("XML", quietly = TRUE)) {
-                    cat_rule("Package `pmml`,`XML` needed for PMML transfering to work. Please install it.", col = love_color("deep_red"))
+                    cat_rule("Package `pmml`,`XML` needed for PMML transfering to work. Use 'require_packages(pmml,XML)' to install and load it.\n", col = love_color("deep_red"))
                 } else {
                     model_pmml <- pmml::pmml(lr_model_new,
                            model.name = "Logistic_Regression_Model",
@@ -754,7 +759,7 @@ training_model <- function(model_name = "mymodel",
             if (save_pmml) {
                 cat_rule("Converting  XGboost model to pmml", col = love_color("light_cyan"))
                 if (!requireNamespace("pmml", quietly = TRUE) & !requireNamespace("XML", quietly = TRUE)) {
-                    cat_rule("Package `pmml`,`XML` needed for PMML transfering to work. Please install it.", col = love_color("deep_red"))
+                    cat_rule("Package `pmml`,`XML` needed for PMML transfering to work. Use 'require_packages(pmml,XML)' to install and load it.\n", col = love_color("deep_red"))
                 } else {
                     # save the tree information file
                     xgb.dump(xgb_model_new, paste0(XGB_model_dir_path, "/xgb_model.dumped.trees"))
@@ -783,7 +788,9 @@ training_model <- function(model_name = "mymodel",
 
         if (any(algorithm == "GBM")) {
             cat_rule("Training GBM model", col = "cyan")
-
+        if (!requireNamespace("gbm", quietly = TRUE)) {
+        cat_rule("Package `gbm` needed for training gbm. Use 'require_packages(gbm)' to install and load it.\n", col = love_color("deep_red"))
+        } else {
             GBM_model_dir_path = paste(model_dir_path, "GBM", sep = "/")
             GBM_var_dir_path = paste(var_dir_path, "GBM", sep = "/")
             GBM_perf_dir_path = paste(perf_dir_path, "GBM", sep = "/")
@@ -831,7 +838,7 @@ training_model <- function(model_name = "mymodel",
             save_data(dat_test, file_name = "GBM.test", dir_path = GBM_data_dir_path, note = TRUE)
             Formula = as.formula(paste(target, paste(x_list, collapse = ' + '), sep = ' ~ '))
             if (!is.null(seed)) set.seed(seed) else set.seed(46)
-            gbm_model_new = gbm(
+            gbm_model_new = gbm::gbm(
         Formula,
         data = dat_train,
         distribution = "bernoulli",
@@ -848,7 +855,7 @@ training_model <- function(model_name = "mymodel",
         n.cores = cores_num
       )
             # check performance using cross-validation.
-            best.iter = gbm.perf(gbm_model_new, method = "cv", plot.it = FALSE, oobag.curve = FALSE)
+            best.iter = gbm::gbm.perf(gbm_model_new, method = "cv", plot.it = FALSE, oobag.curve = FALSE)
             imp_gbm = as.data.frame(summary(gbm_model_new, best.iter, plot = FALSE))
             dt_imp_GBM = data.frame(Feature = imp_gbm[, "var"],
                               Importance = round(imp_gbm[, 'rel.inf'], 5),
@@ -883,10 +890,9 @@ training_model <- function(model_name = "mymodel",
             save_data(params_key_index, file_name = "GBM.params",
               dir_path = GBM_perf_dir_path, append = TRUE, note = TRUE)
             if (save_pmml) {
-
                 cat_rule("Converting  GBM model to pmml", col = love_color("light_cyan"))
                 if (!requireNamespace("pmml", quietly = TRUE) & !requireNamespace("XML", quietly = TRUE)) {
-                    cat_rule("Package `pmml`,`XML` needed for PMML transfering to work. Please install it.", col = love_color("deep_red"))
+                    cat_rule("Package `pmml`,`XML` needed for PMML transfering to work. Use 'require_packages(pmml,XML)' to install and load it.\n", col = love_color("deep_red"))
                 } else {
                     gbm_model_pmml = pmml::pmml(gbm_model_new,
                               model.name = "GBM_Model",
@@ -897,7 +903,7 @@ training_model <- function(model_name = "mymodel",
                               unknownValue = NULL,
                               parentInvalidValueTreatment = "returnInvalid",
                               childInvalidValueTreatment = "asIs"
-        )
+                     )
                     XML::saveXML(gbm_model_pmml, file = paste0(GBM_model_dir_path, "/gbm_model.pmml"))
                 }
             }
@@ -906,11 +912,14 @@ training_model <- function(model_name = "mymodel",
             model_new = append(model_new, list(gbm_model = gbm_model_new), 1)
             rm(gbm_model_new)
         }
-
+		
+        }
         if (any(algorithm == "RF")) {
             cat_rule("Training RandomForest Model", col = "cyan")
 
-
+            if (!requireNamespace("randomForest", quietly = TRUE)) {
+            cat_rule("Package `randomForest` needed for training randomForest. Use 'require_packages(randomForest)' to install and load it, .\n", col = love_color("deep_red"))
+            } else {
             RF_model_dir_path = paste(model_dir_path, "RF", sep = "/")
             RF_var_dir_path = paste(var_dir_path, "RF", sep = "/")
             RF_perf_dir_path = paste(perf_dir_path, "RF", sep = "/")
@@ -963,7 +972,7 @@ training_model <- function(model_name = "mymodel",
                 tRF = foreach(n_tree = rep(round(10 / cores_num), cores_num),
                       .combine = randomForest::combine,
                       .packages = "randomForest") %DO% {
-                          tuneRF(x = as.matrix(dat_train[, x_list]),
+                          randomForest::tuneRF(x = as.matrix(dat_train[, x_list]),
                                y = dat_train[, target],
                                stepFactor = 0.5,
                                plot = FALSE,
@@ -993,7 +1002,7 @@ training_model <- function(model_name = "mymodel",
             rf_model_new <- foreach(n_tree = rep(round(ntree / cores_num), cores_num),
                               .combine = randomForest::combine,
                               .packages = "randomForest") %DO% {
-                                  randomForest(Formula,
+                                  randomForest::randomForest(Formula,
                                              data = dat_train,
                                              sampsize = vector_for_sampsize,
                                              ntree = n_tree,
@@ -1043,7 +1052,7 @@ training_model <- function(model_name = "mymodel",
 
                 cat_rule("Converting  RandomForest model to pmml", col = love_color("light_cyan"))
                 if (!requireNamespace("pmml", quietly = TRUE) & !requireNamespace("XML", quietly = TRUE)) {
-                    cat_rule("Package `pmml`,`XML` needed for PMML transfering to work. Please install it.", col = love_color("deep_red"))
+                    cat_rule("Package `pmml`,`XML` needed for PMML transfering to work. Use 'require_packages(pmml,XML)' to install and load it.\n", col = love_color("deep_red"))
                 } else {
                     rf_model_pmml = pmml::pmml(tRF,
                              model.name = "randomForest_Model",
@@ -1061,6 +1070,7 @@ training_model <- function(model_name = "mymodel",
             model_new = append(model_new, list(rf_model = rf_model_new), 1)
             rm(rf_model_new)
         }
+		}
     } else {
         stop(paste("target must be binomial.\n"))
     }
@@ -1162,41 +1172,23 @@ lr_params_search <- function( method = "random_search",dat_train, target,
   }else{
     best_lambda ='lambda.auc'
   }
-  p = ifelse(!is.null(tree_control[["p"]]),
-             tree_control[["p"]], 0.05)
-  p = tree_control$p
-  cp = ifelse(!is.null(tree_control[["cp"]]),
-              tree_control[["cp"]], 0.0000001)
-  xval = ifelse(!is.null(tree_control[["xval"]]),
-                tree_control[["xval"]], 5)
-  maxdepth =ifelse(!is.null(tree_control[["maxdepth"]]),
-                   tree_control[["maxdepth"]], 10)
-  bins_num = ifelse(!is.null(bins_control[["bins_num"]]),
-                    bins_control[["bins_num"]],10)
-  bins_pct =ifelse(!is.null(bins_control[["bins_pct"]]),
-                   bins_control[["bins_pct"]],0.02)
-  b_chi = ifelse(!is.null(bins_control[["b_chi"]]),
-                 bins_control[["b_chi"]],0.02)
-  b_odds = ifelse(!is.null(bins_control[["b_odds"]]),
-                  bins_control[["b_odds"]],0.05)
-  b_psi = ifelse(!is.null(bins_control[["b_psi"]]),
-                 bins_control[["b_psi"]],0.05)
-  b_or = ifelse(!is.null(bins_control[["b_or"]]),
-                bins_control[["b_or"]],0.15)
-  mono = ifelse(!is.null(bins_control[["mono"]]),
-                bins_control[["mono"]],0.3)
-  odds_psi = ifelse(!is.null(bins_control[["odds_psi"]]),
-                    bins_control[["odds_psi"]],0.2)
-  kc =ifelse(!is.null(bins_control[["kc"]]),
-             bins_control[["kc"]],1)
-  cor_p = ifelse(!is.null(thresholds[["cor_p"]]),
-                 thresholds[["cor_p"]],0.7)
-  iv_i=   ifelse(!is.null(thresholds[["iv_i"]]),
-                 thresholds[["iv_i"]],0.01)
-  psi_i =   ifelse(!is.null(thresholds[["psi_i"]]),
-                   thresholds[["psi_i"]],0.1)
-  cos_i = ifelse(!is.null(thresholds[["cos_i"]]),
-                 thresholds[["cos_i"]],0.5)
+  p = if(!is.null(tree_control[["p"]]))tree_control[["p"]] else 0.05
+  cp = if(!is.null(tree_control[["cp"]]))tree_control[["cp"]] else 0.0000001
+  xval = if(!is.null(tree_control[["xval"]]))tree_control[["xval"]] else 5
+  maxdepth =if(!is.null(tree_control[["maxdepth"]]))tree_control[["maxdepth"]] else 10
+  bins_num = if(!is.null(bins_control[["bins_num"]]))bins_control[["bins_num"]] else 10
+  bins_pct = if(!is.null(bins_control[["bins_pct"]]))bins_control[["bins_pct"]] else 0.02
+  b_chi = if(!is.null(bins_control[["b_chi"]]))bins_control[["b_chi"]] else 0.02
+  b_odds = if(!is.null(bins_control[["b_odds"]]))bins_control[["b_odds"]] else 0.05
+  b_psi = if(!is.null(bins_control[["b_psi"]]))bins_control[["b_psi"]] else 0.05
+  b_or = if(!is.null(bins_control[["b_or"]]))bins_control[["b_or"]] else 0.15
+  mono = if(!is.null(bins_control[["mono"]]))bins_control[["mono"]] else 0.3
+  odds_psi = if(!is.null(bins_control[["odds_psi"]]))bins_control[["odds_psi"]] else 0.2
+  kc = if(!is.null(bins_control[["kc"]]))bins_control[["kc"]] else 1
+  cor_p = if(!is.null(thresholds[["cor_p"]]))thresholds[["cor_p"]] else 0.7
+  iv_i= if(!is.null(thresholds[["iv_i"]]))thresholds[["iv_i"]] else 0.01
+  psi_i = if(!is.null(thresholds[["psi_i"]]))thresholds[["psi_i"]] else 0.1
+  cos_i = if(!is.null(thresholds[["cos_i"]]))thresholds[["cos_i"]] else 0.5
   best_x_list=c()
   best_tree_control = list()
   best_bins_control = list()
@@ -1210,27 +1202,27 @@ lr_params_search <- function( method = "random_search",dat_train, target,
     if (method == "random_search"){
       for (iter in 1:iters) {
         tree_control= list(
-          p = ifelse(length(p) > 1, sample(p, 1,replace = TRUE), p),
-          cp =  ifelse(length(cp) > 1, sample(cp,  1,replace = TRUE), cp),
-          xval =  ifelse(length(xval) > 1, sample(xval, 1,replace = TRUE), xval),
-          maxdepth = ifelse(length(maxdepth) > 1, sample(maxdepth,  1,replace = TRUE), maxdepth)
+          p = ifelse(length(p) > 1, sample(p, 1), p),
+          cp =  ifelse(length(cp) > 1, sample(cp,  1), cp),
+          xval =  ifelse(length(xval) > 1, sample(xval, 1), xval),
+          maxdepth = ifelse(length(maxdepth) > 1, sample(maxdepth,  1), maxdepth)
 
         )
 
-        bins_control = list(bins_num = ifelse(length(bins_num) > 1, sample(bins_num, 1,replace = TRUE), bins_num),
-                            bins_pct = ifelse(length(bins_pct) > 1, sample(bins_pct,  1,replace = TRUE), bins_pct),
-                            b_chi = ifelse(length(b_chi) > 1, sample(b_chi,1,replace = TRUE), b_chi),
-                            b_odds = ifelse(length(b_odds) > 1, sample(b_odds,1,replace = TRUE), b_odds),
-                            b_psi = ifelse(length(b_psi) > 1, sample(b_psi, 1,replace = TRUE), b_psi),
-                            b_or =ifelse(length(b_or) > 1, sample(b_or, 1,replace = TRUE), b_or),
-                            mono = ifelse(length(mono) > 1, sample(mono, 1,replace = TRUE), mono),
-                            odds_psi = ifelse(length(odds_psi) > 1, sample(odds_psi, 1,replace = TRUE), odds_psi),
-                            kc = ifelse(length(kc) > 1, sample(kc,  1,replace = TRUE), kc))
+        bins_control = list(bins_num = ifelse(length(bins_num) > 1, sample(bins_num, 1), bins_num),
+                            bins_pct = ifelse(length(bins_pct) > 1, sample(bins_pct,  1), bins_pct),
+                            b_chi = ifelse(length(b_chi) > 1, sample(b_chi,1), b_chi),
+                            b_odds = ifelse(length(b_odds) > 1, sample(b_odds,1), b_odds),
+                            b_psi = ifelse(length(b_psi) > 1, sample(b_psi, 1), b_psi),
+                            b_or =ifelse(length(b_or) > 1, sample(b_or, 1), b_or),
+                            mono = ifelse(length(mono) > 1, sample(mono, 1), mono),
+                            odds_psi = ifelse(length(odds_psi) > 1, sample(odds_psi, 1), odds_psi),
+                            kc = ifelse(length(kc) > 1, sample(kc,  1), kc))
 
-        thresholds = list(cor_p = ifelse(length(cor_p) > 1, sample(cor_p, 1,replace = TRUE), cor_p),
-                          iv_i =ifelse(length(iv_i) > 1, sample(iv_i,  1,replace = TRUE), iv_i),
-                          psi_i = ifelse(length(psi_i) > 1, sample(psi_i, 1,replace = TRUE), psi_i),
-                          cos_i = ifelse(length(cos_i) > 1, sample(cos_i, 1,replace = TRUE), cos_i))
+        thresholds = list(cor_p = ifelse(length(cor_p) > 1, sample(cor_p, 1), cor_p),
+                          iv_i =ifelse(length(iv_i) > 1, sample(iv_i,  1), iv_i),
+                          psi_i = ifelse(length(psi_i) > 1, sample(psi_i, 1), psi_i),
+                          cos_i = ifelse(length(cos_i) > 1, sample(cos_i, 1), cos_i))
         seed_number = sample.int(10000, 1)[[1]]
         train_iter = train_lr(dat_train = dat_train,dat_test = dat_test, target = target,
                               x_list= x_list, occur_time = occur_time,prop = prop,
@@ -1698,7 +1690,7 @@ train_lr <- function(dat_train,dat_test = NULL, target,x_list= NULL, occur_time 
 
   cor_p = ifelse(!is.null(thresholds$cor_p),thresholds$cor_p,0.7)
   iv_i= ifelse(!is.null(thresholds$iv_i),thresholds$iv_i,0.01)
-  psi_i = ifelse(!is.null(thresholds$psi_i),thresholds$psi_i,0.1)
+  psi_i = ifelse(!is.null(thresholds$psi_i),thresholds$psi_i,0.2)
   cos_i = ifelse(!is.null(thresholds$cos_i),thresholds$cos_i,0.5)
   x_list = get_x_list(dat_train = dat_train, dat_test = dat_test,
                       x_list = x_list,ex_cols = c(target,occur_time))
@@ -1706,7 +1698,7 @@ train_lr <- function(dat_train,dat_test = NULL, target,x_list= NULL, occur_time 
 
     tree_control = list(
       p = 0.01, cp = 0,
-      xval = 1, maxdepth = 20
+      xval = 1, maxdepth = 15
     )
   }
 
@@ -1886,13 +1878,13 @@ xgb_params_search <- function(dat_train, target,dat_test = NULL, x_list = NULL, 
   dtrain = xgb_list$dtrain
   dtest = xgb_list$dtest
   watchlist = xgb_list$watchlist
-  max_depth = ifelse(!is.null(params$max_depth),params$max_depth,6)
-  eta = ifelse(!is.null(params$eta),params$eta,0.01)
-  gamma = ifelse(!is.null(params$gamma),params$gamma,0)
-  min_child_weight = ifelse(!is.null(params$min_child_weight),params$min_child_weight,1)
-  subsample =  ifelse(!is.null(params$subsample),params$subsample,1)
-  colsample_bytree =  ifelse(!is.null(params$colsample_bytree),params$colsample_bytree,1)
-  scale_pos_weight = ifelse(!is.null(params$scale_pos_weight),params$scale_pos_weight,1)
+	max_depth = if(!is.null(params$max_depth))params$max_depth else 6
+	eta = if (!is.null(params$eta)) params$eta else 0.01
+	gamma = if (!is.null(params$gamma)) params$gamma else 0
+	min_child_weight = if (!is.null(params$min_child_weight)) params$min_child_weight else 1
+	subsample = if (!is.null(params$subsample))params$subsample else 1
+	colsample_bytree = if (!is.null(params$colsample_bytree))params$colsample_bytree else 1
+	scale_pos_weight = if (!is.null(params$scale_pos_weight)) params$scale_pos_weight else 1
   best_x_list=c()
   verbose = 0
   best_param = list()
@@ -1908,13 +1900,13 @@ xgb_params_search <- function(dat_train, target,dat_test = NULL, x_list = NULL, 
     if (method == "random_search") {
       for (iter in 1:iters) {
         params = list(
-          max_depth = ifelse(length(max_depth) > 1, sample(max_depth, 1,replace = TRUE), max_depth),
-          eta = ifelse(length(eta) > 1, sample(eta, 1,replace = TRUE), eta),
-          gamma = ifelse(length(gamma) > 1, sample(gamma, 1,replace = TRUE), gamma),
-          min_child_weight = ifelse(length(min_child_weight) > 1, sample(min_child_weight, 1,replace = TRUE), min_child_weight),
-          subsample = ifelse(length(subsample) > 1, sample(subsample,1,replace = TRUE), subsample),
-          colsample_bytree = ifelse(length(colsample_bytree) > 1, sample(colsample_bytree, 1,replace = TRUE), colsample_bytree),
-          scale_pos_weight = ifelse(length(scale_pos_weight) > 1, sample(scale_pos_weight, 1,replace = TRUE), scale_pos_weight)
+          max_depth = ifelse(length(max_depth) > 1, sample(max_depth, 1), max_depth),
+          eta = ifelse(length(eta) > 1, sample(eta, 1), eta),
+          gamma = ifelse(length(gamma) > 1, sample(gamma, 1), gamma),
+          min_child_weight = ifelse(length(min_child_weight) > 1, sample(min_child_weight, 1), min_child_weight),
+          subsample = ifelse(length(subsample) > 1, sample(subsample,1), subsample),
+          colsample_bytree = ifelse(length(colsample_bytree) > 1, sample(colsample_bytree, 1), colsample_bytree),
+          scale_pos_weight = ifelse(length(scale_pos_weight) > 1, sample(scale_pos_weight, 1), scale_pos_weight)
         )
 
         seed_number = sample.int(10000, 1)[[1]]

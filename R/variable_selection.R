@@ -369,7 +369,7 @@ xgb_filter <- function(dat_train, dat_test = NULL, target = NULL, pos_flag = NUL
 #' @param x_list Names of independent variables.
 #' @param ex_cols A list of excluded variables. Regular expressions can also be used to match variable names. Default is NULL.
 #' @param pos_flag The value of positive class of target variable, default: "1".
-#' @param GBM.params Parameters of GBM.The complete list of parameters is available at: \code{\link{gbm}}.
+#' @param GBM.params Parameters of GBM.
 #' @param cores_num The number of CPU cores to use.
 #' @param seed  Random number seed. Default is 46.
 #' @param vars_name Logical, output a list of filtered variables or table with detailed IV and PSI value of each variable. Default is TRUE.
@@ -392,7 +392,6 @@ xgb_filter <- function(dat_train, dat_test = NULL, target = NULL, pos_flag = NUL
 #'      GBM.params = GBM.params
 #'        , vars_name = FALSE)
 #'}
-#' @importFrom gbm gbm gbm.perf
 #' @export
 
 
@@ -402,9 +401,11 @@ gbm_filter <- function(dat, target = NULL, x_list = NULL, ex_cols = NULL, pos_fl
                        file_name = NULL,
                        dir_path = tempdir(), seed = 46, ...) {
   dat = checking_data(dat = dat, target = target, pos_flag = pos_flag)
-  if (note)cat_line(paste("-- Selecting variables by GBM"), col = love_color("deep_purple")) 
+    if (note)cat_line(paste("-- Selecting variables by GBM"), col = love_color("deep_purple")) 
   
-
+    if (!requireNamespace("gbm", quietly = TRUE)) {
+        cat_rule("Package `gbm` needed for gbm_filter to work. Use 'require_packages(gbm)' install and load it, .\n", col = love_color("deep_red"))
+    } else {
   #get parameters
   n.trees = ifelse(!is.null(GBM.params[["n.trees"]]), GBM.params[["n.trees"]], 100)
   interaction.depth = ifelse(!is.null(GBM.params[["interaction.depth"]]), GBM.params[["interaction.depth"]], 6)
@@ -424,7 +425,7 @@ gbm_filter <- function(dat, target = NULL, x_list = NULL, ex_cols = NULL, pos_fl
                        ex_cols = c(target, ex_cols), get_ex = FALSE)
   Formula = as.formula(paste(target, paste(gbm_list, collapse = ' + '), sep = ' ~ '))
   if (!is.null(seed)) set.seed(seed) else set.seed(46)
-  gbdt_model_new = gbm(
+  gbdt_model_new = gbm::gbm(
     Formula,
     data = dat, 
     distribution = "bernoulli", 
@@ -441,7 +442,7 @@ gbm_filter <- function(dat, target = NULL, x_list = NULL, ex_cols = NULL, pos_fl
     n.cores = cores_num
   )
 
-  best.iter = gbm.perf(gbdt_model_new, method = "cv", plot.it = FALSE, oobag.curve = FALSE)
+  best.iter = gbm::gbm.perf(gbdt_model_new, method = "cv", plot.it = FALSE, oobag.curve = FALSE)
   dt_gbm = as.data.frame(summary(gbdt_model_new, best.iter, plotit = FALSE ))
   dt_imp_gbm = data.frame(Feature = dt_gbm[, "var"],
                           Imp_GBM = round(dt_gbm[, 'rel.inf'], 5),
@@ -467,6 +468,7 @@ gbm_filter <- function(dat, target = NULL, x_list = NULL, ex_cols = NULL, pos_fl
     return(c(imp_vars))
   } else {
     return(imp_gbm)
+  }
   }
 }
 

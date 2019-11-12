@@ -34,7 +34,7 @@ process_nas <- function(dat, x_list = NULL, default_miss = TRUE, class_var = FAL
                         parallel = FALSE, ex_cols = NULL, method = "median", note = FALSE,
                         save_data = FALSE, file_name = NULL, dir_path = tempdir(), ...) {
     if (note)cat_line("-- Processing NAs", col = love_color("dark_green"))
-      
+    dat = checking_data(dat = dat) 
     if (save_data) {
         dir_path = ifelse(!is.character(dir_path), tempdir(), dir_path)
         if (!dir.exists(dir_path)) dir.create(dir_path)
@@ -411,9 +411,10 @@ get_nas_random <- function(dat) {
 #' @return A data frame with outliers process to all the variables.
 #'
 #' @examples
-#' dat_out = process_outliers(UCICreditCard[1:10000,5:10],
-#'                           target = "default.payment.next.month",
-#'                           ex_cols = "date$", kc = 3, kn = 10, parallel = FALSE)
+#' dat_out = process_outliers(UCICreditCard[1:10000,c(18:21,26)],
+#'                         target = "default.payment.next.month",
+#'                        ex_cols = "date$", kc = 3, kn = 10, 
+#'                        parallel = FALSE,note = TRUE)
 #' @export
 
 
@@ -423,7 +424,7 @@ process_outliers <- function(dat, target, ex_cols = NULL, kc = 3, kn = 5, x_list
                              parallel = FALSE,note = FALSE, process = TRUE,
                              save_data = FALSE, file_name = NULL, dir_path = tempdir()) {
     if (note)cat_line("-- Processing outliers using Kmeans and LOF", col = love_color("dark_green"))
-
+    dat = checking_data(dat = dat,target = target)
     if (save_data) {
         dir_path = ifelse(!is.character(dir_path), tempdir(), dir_path)
         if (!dir.exists(dir_path)) dir.create(dir_path)

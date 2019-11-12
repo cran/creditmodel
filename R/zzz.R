@@ -7,7 +7,7 @@ StartupMessage <- function()
  / ___|  \\/  |
 | |   | |\\/| |
 | |___| |  | |
- \\____|_|  |_| \n","E-mail: fdp@pku.edu.cn\nWeChatPlatform: hansenmode"))
+ \\____|_|  |_| \n","WeChatPlatform: hansenmode"))
   return(msg)
 }
 

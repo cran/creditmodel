@@ -554,15 +554,17 @@ psi_plot <- function(dat_train, x, dat_test = NULL,occur_time = NULL,
 #' pd_list = get_partial_dependence_plots(model = lr_model, x_list = x_list[1:2],
 #'  x_train = dat_train, save_data = FALSE,plot_show = TRUE)
 #' @import ggplot2
-#' @importFrom pdp partial
 #' @importFrom dplyr group_by mutate summarize  summarise n  count %>% filter
 #' @importFrom data.table melt dcast
 #' @export
 
 
 partial_dependence_plot <- function(model, x, x_train, n.trees = NULL) {
-    opt = options('warn' = -1,scipen = 200, stringsAsFactors = FALSE, digits = 6) #
-    pd = partial(model,
+    if (!requireNamespace("pdp", quietly = TRUE)) {
+        cat_rule("Package `pdp` needed for partial dependence plot. Use 'require_packages(pdp)' to install and load it, .\n", col = love_color("deep_red"))
+    } else {
+	 opt = options('warn' = -1,scipen = 200, stringsAsFactors = FALSE, digits = 6) #
+     pd = pdp::partial(model,
             pred.var = c(x),
             grid.resolution = NULL,
             train = x_train,
@@ -574,7 +576,7 @@ partial_dependence_plot <- function(model, x, x_train, n.trees = NULL) {
             chull = TRUE,
             trim.outliers = TRUE)
 	yhat = NULL
-   pd_pl =  autoplot(pd, aes(x = pd[x], y = pd$yhat)) +
+    pd_pl =  autoplot(pd, aes(x = pd[x], y = pd$yhat)) +
     geom_line(color = love_color("green_cyan"), size = 1) +
     theme_light() +
     theme(legend.title = element_blank(), legend.position = "top",
@@ -585,6 +587,7 @@ partial_dependence_plot <- function(model, x, x_train, n.trees = NULL) {
     labs(x = x, y = "y_prob", title = paste(x, " - Partial Dependence"))
 	return(pd_pl)
 	options(opt)
+	}
 }
 
 
@@ -595,7 +598,10 @@ partial_dependence_plot <- function(model, x, x_train, n.trees = NULL) {
 
 get_partial_dependence_plots <- function(model, x_train, x_list, n.trees = NULL, 
            dir_path = getwd(),save_data =TRUE, plot_show = FALSE, parallel = FALSE) {
-    pd_list = loop_function(func = partial_dependence_plot,
+    if (!requireNamespace("pdp", quietly = TRUE)) {
+        cat_rule("Package `pdp` needed for partial dependence plot. Use 'require_packages(pdp)' install and load it, .\n", col = love_color("deep_red"))
+    } else {
+	pd_list = loop_function(func = partial_dependence_plot,
                         args = list(model = model, x_train = x_train, n.trees = n.trees),
                         x_list = x_list, parallel = parallel, as_list = TRUE)
     if (save_data) {
@@ -612,6 +618,7 @@ get_partial_dependence_plots <- function(model, x_train, x_list, n.trees = NULL,
      plot(multi_grid(grobs = pd_list))
     }
     return(pd_list)
+	}
 }
 
 

@@ -20,7 +20,7 @@ gbm_filter(dat, target = NULL, x_list = NULL, ex_cols = NULL,
 
 \item{pos_flag}{The value of positive class of target variable, default: "1".}
 
-\item{GBM.params}{Parameters of GBM.The complete list of parameters is available at: \code{\link{gbm}}.}
+\item{GBM.params}{Parameters of GBM.}
 
 \item{cores_num}{The number of CPU cores to use.}
 

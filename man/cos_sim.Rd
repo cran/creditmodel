@@ -7,11 +7,14 @@
 cos_sim(x, y, cos_margin = 1)
 }
 \arguments{
-\item{x}{A list}
+\item{x}{A list of numbers}
 
-\item{y}{A list}
+\item{y}{A list of numbers}
 
-\item{cos_margin}{rows or cols}
+\item{cos_margin}{Margin of matrix, 1 for rows and 2 for cols, Default is 1.}
+}
+\value{
+A number of cosin similarity
 }
 \description{
 This function is not intended to be used by end user.

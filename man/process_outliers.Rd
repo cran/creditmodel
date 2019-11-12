@@ -48,7 +48,8 @@ A data frame with outliers process to all the variables.
 \code{process_outliers} is a simpler wrapper for \code{outliers_kmeans_lof}.
 }
 \examples{
-dat_out = process_outliers(UCICreditCard[1:10000,5:10],
-                          target = "default.payment.next.month",
-                          ex_cols = "date$", kc = 3, kn = 10, parallel = FALSE)
+dat_out = process_outliers(UCICreditCard[1:10000,c(18:21,26)],
+                        target = "default.payment.next.month",
+                       ex_cols = "date$", kc = 3, kn = 10, 
+                       parallel = FALSE,note = TRUE)
 }

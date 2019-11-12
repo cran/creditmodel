@@ -11,7 +11,6 @@
 #' x = "PAY_AMT1", breaks = NULL, bins_no = TRUE)
 #' @export
 
-
 split_bins <- function(dat, x, breaks = NULL,  bins_no = TRUE) {
 
     opt = options(scipen = 200, stringsAsFactors = FALSE) #
@@ -44,11 +43,17 @@ split_bins <- function(dat, x, breaks = NULL,  bins_no = TRUE) {
             for (i in 1:length(breaks_s)) {
                 if (length(which(dat[, x] %in% unlist(breaks_s[[i]]))) > 1) {
                     if (i < 10) {
-                        dat[which(dat[, x] %in% unlist(breaks_s[[i]])), x] =
+                        split_ind = which(dat[, x] %in% unlist(breaks_s[[i]]))
+                        if(length(split_ind) > 0 ){
+                          dat[split_ind, x] =
                           paste(ifelse(bins_no, paste0("0", i),""), paste(breaks_s[[i]], collapse = ";"), sep = ".")
+                        }                       
                     } else {
-                        dat[which(dat[, x] %in% unlist(breaks_s[[i]])), x] =
+                        split_ind = which(dat[, x] %in% unlist(breaks_s[[i]]))
+                        if(length(split_ind) > 0 ){
+                        dat[split_ind, x] =
                           paste(ifelse(bins_no, paste0("0", i), ""), paste(breaks_s[[i]], collapse = ";"), sep = ".")
+                        }
                     }
                 }
             }

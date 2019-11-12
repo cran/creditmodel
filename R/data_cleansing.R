@@ -73,8 +73,7 @@ data_cleansing <- function(dat, target = NULL, obs_id = NULL, occur_time = NULL,
                           save_data = FALSE, file_name = NULL, dir_path = tempdir()) {
     #delete variables that values are all nas.
     opt = options(scipen = 200, "warn" = -1, stringsAsFactors = FALSE, digits = 10)
-    dat = checking_data(dat = dat, target = target, pos_flag = pos_flag,
-                            occur_time = occur_time, note = note)
+    dat = checking_data(dat = dat, target = target, pos_flag = pos_flag,note = note)
     if (save_data) {
         dir_path = ifelse(!is.character(dir_path), tempdir(), dir_path)
         if (!dir.exists(dir_path)) dir.create(dir_path)
@@ -169,12 +168,6 @@ data_cleansing <- function(dat, target = NULL, obs_id = NULL, occur_time = NULL,
                               default_miss = TRUE, parallel = parallel,
                               method = "median", note = FALSE, save_data = save_data, file_name = file_name, dir_path = dir_path)
         }
-
-        re_x_list = gsub("[^\u4e00-\u9fa5,^a-zA-Z,^0-9,^_]", "", c(char_x_list, num_x_list))
-
-        dat = re_name(dat, oldname = c(char_x_list, num_x_list), newname = re_x_list)
-
-
         if (save_data) {
             save_data(dat, dir_path = dir_path, file_name = ifelse(is.null(file_name), "data_cleansing", paste(file_name, "data_cleansing", sep = ".")), append = FALSE, note = note)
         }

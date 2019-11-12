@@ -1,15 +1,15 @@
 Package: creditmodel
-Version: 1.1.5
-Date: 2019-10-14
+Version: 1.1.6
+Date: 2019-10-25
 Title: Toolkit for Credit Modeling
 Authors@R: c(person(given = "Dongping", family = "Fan",email = "fdp@pku.edu.cn",role = c("aut", "cre")))
 Maintainer: Dongping Fan <fdp@pku.edu.cn>
 Description: 
   Provides a highly efficient R tool suite for Credit Modeling, Analysis and Visualization. Contains infrastructure functionalities such as data exploration and preparation, missing values treatment, outliers treatment, variable derivation, variable selection, dimensionality reduction, grid search for hyper parameters, data mining and visualization, model evaluation, strategy analysis etc. This package is designed to make the development of binary classification models (machine learning based models as well as credit scorecard) simpler and faster. 
 Depends: R(>= 3.3.0)
-Imports:
-        data.table,dplyr,ggplot2,foreach,doParallel,glmnet,rpart,xgboost,gbm,randomForest,pdp,cli
-Suggests: pmml,XML,rmarkdown,knitr
+Imports: data.table(>=
+        1.12.6),dplyr,ggplot2,foreach,doParallel,glmnet,rpart,cli,xgboost
+Suggests: pdp,pmml,XML,knitr,gbm,randomForest
 VignetteBuilder: knitr
 Encoding: UTF-8
 ByteCompile: yes
@@ -18,7 +18,7 @@ LazyLoad: yes
 License: AGPL-3
 RoxygenNote: 6.1.1
 NeedsCompilation: no
-Packaged: 2019-10-23 17:08:25 UTC; HANSEN
+Packaged: 2019-11-11 03:46:50 UTC; 28142
 Author: Dongping Fan [aut, cre]
 Repository: CRAN
-Date/Publication: 2019-10-23 23:50:13 UTC
+Date/Publication: 2019-11-12 08:50:02 UTC

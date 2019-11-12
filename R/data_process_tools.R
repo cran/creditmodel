@@ -191,6 +191,7 @@ cv_split <- function(dat, k = 5, occur_time = NULL, seed = 46) {
 #' require_packages(data.table, ggplot2, dplyr)
 #' }
 #' @importFrom cli cat_rule cat_line cat_bullet
+#' @importFrom utils  capture.output  data  install.packages  installed.packages
 #' @export
 require_packages <- function(..., pkg = as.character(substitute(list(...)))) {
     opt = options("warn" = -1)
@@ -199,7 +200,7 @@ require_packages <- function(..., pkg = as.character(substitute(list(...)))) {
         cat_rule("Installing missing packages if needed", col = love_color("light_cyan"))
         install.packages(new_pkg, dependencies = TRUE)
         cat_line("-- Following packages  are installed:", col = love_color("dark_green"))
-        cat_bullet(paste0(format(new_pkg)), col = "darkgrey")
+        cat_bullet(paste0(format(new_pkg)[-1]), col = "darkgrey")
     }
     cat_line("-- Following packages  are loaded:", col = love_color("dark_green"))
     cat_bullet(paste0(format(pkg)[-1]), col = "darkgrey")
@@ -320,7 +321,7 @@ save_data <- function(..., files = list(...), file_name = as.character(substitut
 #' @param pattern An optional regular expression. Only file names which match the regular expression will be returned.
 #' @param sep The separator between columns.
 #' @param stringsAsFactors  Logical. Convert all character columns to factors?
-#' @importFrom data.table fwrite fread dcast melt 
+#' @importFrom data.table fwrite fread dcast melt
 #' @importFrom dplyr distinct
 #' @importFrom cli cat_rule cat_line cat_bullet
 #' @importFrom parallel detectCores
@@ -340,9 +341,9 @@ read_data <- function(path,pattern = NULL,encoding = "unknown", header = TRUE, s
     }
 
     file_format_tx = file_format[!is.na(file_format) && !grepl('xl\\S{1,2}$',file_format)]
-    
+
     dt_list = list()
-    if(length(file_format_tx)>0){   
+    if(length(file_format_tx)>0){
       for (file_name in names(file_format_tx)) {
         file_n = gsub('.csv$|.txt$|.CSV$', "",file_name)
         dt_list[[file_n]] = dplyr::distinct(data.table::fread(paste(path, file_name, sep = "/"),
@@ -419,41 +420,42 @@ check_data_format <- function(path) {
 #' UCICreditCard[1:10, c(1,20:25)], by = "ID")
 #' @export
 
+multi_left_join <- function(..., df_list = list(...), key_dt = NULL, by = NULL) {
+	if (is.null(by)) {
+		stop("Key columns 'by' is missing.\n ")
+	}
+	if (!is.null(key_dt)) {
+		key_id = df_list[key_dt]
+		df_list[key_dt] = NULL
+		df_list = append(key_id, df_list)
+	}
+	for (i in 1:length(df_list)) {
+		by_id = c(df_list[[i]][[by]])
+		if (by != 'id') df_list[[i]][[by]] = NULL
+		if (length(by_id) > 0) {
+			df_list[[i]] = quick_as_df(df_list[[i]])
+			df_list[[i]][["id"]] = as.character(by_id)
 
-multi_left_join = function(..., df_list = list(...), key_dt = NULL, by = NULL) {
-
-    if (is.null(by)) {
-        stop("Key columns 'by' is missing.\n ")
-    }
-    if (!is.null(key_dt)) {
-        key_id = df_list[key_dt]
-        df_list[key_dt] = NULL
-        df_list = append(key_id, df_list)
-    }
-    for (i in 1:length(df_list)) {
-        by_id = c(df_list[[i]][[by]])
-        if (length(by_id) > 0) {
-
-            df_list[[i]] = quick_as_df(df_list[[i]])
-            df_list[[i]][['id']] = as.character(by_id)
-            df_list[[i]][[by]] = NULL
-        } else {
-            warning(paste(paste0("No column called '", by, "'in"), names(df_list[i]), ". Drop it...\n"))
-            df_list[i] = NULL
-        }
-    }
-
-    merge_func = function(x, y) {
-        intersect_name = intersect(colnames(x), colnames(y))
-        intersect_name = intersect_name[-which(intersect_name == 'id')]
-        if (length(intersect_name) > 0) {
-            y = subset(y, select = -which(colnames(y) %in% intersect_name))
-        }
-        merge(x, y, by = 'id', all.x = TRUE)
-    }
-    dat_merge = Reduce("merge_func", df_list) %>% re_name("id", by)
-    return(dat_merge)
+		}else {
+			warning(paste(paste0("No column called '",
+				by, "'in"), names(df_list[i]), ". Drop it...\n"))
+			df_list[i] = NULL
+		}
+	}
+	merge_func = function(x, y) {
+		intersect_name = intersect(colnames(x), colnames(y))
+		intersect_name = intersect_name[-which(intersect_name ==
+			"id")]
+		if (length(intersect_name) > 0) {
+			y = subset(y, select = -which(colnames(y) %in% intersect_name))
+		}
+		merge(x, y, by = "id", all.x = TRUE)
+	}
+	dat_merge = Reduce("merge_func", df_list) %>% re_name("id",
+		by)
+	return(dat_merge)
 }
+
 #' Number of digits
 #'
 #' \code{digits_num} is for caculating optimal digits number for numeric variables.
@@ -799,8 +801,8 @@ get_names <- function(dat, types = c('logical', 'factor', 'character', 'numeric'
      stop("types is missing!")
    }
    if (is.null(ex_cols)) {
-     sel_names = names(dat)[sapply(dat, function(x) any(is.element(class(x), types)))]
-     ex_names = names(dat)[!(sapply(dat, function(x) any(is.element(class(x), types))))]
+     sel_names = unique(names(dat)[sapply(dat, function(x) any(is.element(class(x), types)))])
+     ex_names = unique(names(dat)[!(sapply(dat, function(x) any(is.element(class(x), types))))])
    } else {
      var_names = names(dat)[sapply(dat, function(x) any(is.element(class(x), types)))]
      if (length(ex_cols) == 1 & !any(grepl("\\$|\\*|\\+|\\?|\\[|\\^|\\{|\\}|\\\\|\\|\\)|\\]", ex_cols)) ) {
@@ -854,7 +856,7 @@ get_x_list <- function(dat_train = NULL, dat_test = NULL,x_list = NULL, ex_cols 
                 x_list_s = get_names(dat = dat_test,
                                      types = c('character', 'factor', 'numeric', 'integer', 'double'),
                                      ex_cols = ex_cols, get_ex = FALSE)
-                x_list_retain = intersect(x_list_t, x_list_s)
+                x_list_retain = unique(intersect(x_list_t, x_list_s))
             }
         } else {
             if (is.null(dat_test)) {
@@ -869,7 +871,7 @@ get_x_list <- function(dat_train = NULL, dat_test = NULL,x_list = NULL, ex_cols 
                 x_list_s = get_names(dat = dat_test,
                                      types = c('character', 'factor', 'numeric', 'integer', 'double'),
                                      ex_cols = ex_cols, get_ex = FALSE)
-                x_list_ts = intersect(x_list_t, x_list_s)
+                x_list_ts = unique(intersect(x_list_t, x_list_s))
                 x_excluded_ts = setdiff(x_list_t, x_list_s)
                 if (note & length(x_excluded_ts) > 0) {
 					cat_line("-- Following variables are not both in train & test:", col = love_color("dark_green"))
@@ -922,55 +924,57 @@ get_x_list <- function(dat_train = NULL, dat_test = NULL,x_list = NULL, ex_cols 
 #' dat = checking_data(dat = UCICreditCard, target = "default.payment.next.month")
 #' @export
 
-
 checking_data <- function(dat = NULL, target = NULL, occur_time = NULL,
-                          note = FALSE, pos_flag = NULL) {
-  if (note)cat_line("-- Checking data and target format...", col = love_color("dark_green"))
-  if (is.null(dat)) {
-    warning("dat is null.\n")
-  } else {
-    if (!(class(dat)[1] == "data.frame")) {
-      if (any(is.element(class(dat), c("data.table", "list", "tbl_df", "tbl", "matrix"))) && length(dim(dat)) == 2) {
-        dat = as.data.frame(dat)
-        cat(paste("[NOTE]", "convert", class(dat)[1], "to data.frame.\n"))
-      } else {
-        warning("Dat is not two-dimensional.\n")
-      }
-    }
-  }
-  if (!is.null(target)) {
-    if (!is.character(target) || length(target) > 1) {
-      warning(paste("target is not a string or a name.\n", sep = "\t"))
-    } else {
-      if (length(unique(dat[, target])) < 2) {
-        warning(paste("Unique values of target is only one.\n", sep = "\t"))
-      } else {
-        if (is.null(pos_flag)) {
-          pos_flag = list("1", "bad", 1, "Bad", "positive", "pos", "Positive", "Pos")
-        }
-        if (length(which(dat[, target] %in% pos_flag)) != 0) {
-          if (!all(sort(unique(dat[, target])) == c(0, 1))) {
-            pos = unique(dat[, target])[which(unique(dat[, target]) %in% pos_flag)]
-            dat[, target] = ifelse(dat[, target] %in% pos_flag, 1, 0)
-            warning(paste("The  values in of target has been encoded", pos, "= 1 and others = 0", " \n"))
-          }
-        } else {
-          warning(paste("Positive values of", target, "is not in pos_flag:", paste(pos_flag, collapse = ","), "\nplease set pos_flag. \n", sep = "\t"))
-        }
-      }
-    }
-  }
-  if (!is.null(occur_time)) {
-    if (is.element(occur_time, names(dat))) {
-      dat = time_transfer(dat, date_cols = occur_time)
-      if (!is_date(dat[, occur_time])) {
-        warning(paste("occur_time:", occur_time, "is not time or date.\n", sep = "\t"))
-      }
-    } else {
-      warning(paste("occur_time:", occur_time, "is not in data.\n", sep = "\t"))
-    }
-  }
-  return(dat)
+						  note = FALSE, pos_flag = NULL) {
+	if (note) cat_line("-- Checking data and target format...", col = love_color("dark_green"))
+	if (is.null(dat)) {
+		warning("dat is null.\n")
+	} else {
+		if (!(class(dat)[1] == "data.frame")) {
+			if (any(is.element(class(dat), c("data.table", "list", "tbl_df", "tbl", "matrix")))) {
+				if (note) cat_line(paste("-- Convert", class(dat)[is.element(class(dat), c("data.table", "list", "tbl_df", "tbl", "matrix"))], "to data.frame."), col = love_color("light_green"))
+				dat = quick_as_df(dat)
+				} else {
+					warning("dat is not two-dimensional.\n")
+				}
+		}
+	}
+	if (!is.null(target)) {
+		if (!is.character(target) || length(target) > 1) {
+			warning(paste("target is not a string or a name.\n", sep = "\t"))
+		} else {
+			if (length(unique(dat[, target])) < 2) {
+				warning(paste("Unique values of target is only one.\n", sep = "\t"))
+			} else {
+				if (is.null(pos_flag)) {
+					pos_flag = list("1", "bad", 1, "Bad", "positive", "pos", "Positive", "Pos")
+				}
+
+				if (length(which(dat[, target] %in% pos_flag)) != 0) {
+					if (!all(sort(unique(dat[, target])) == c(0, 1))) {
+						pos = unique(dat[, target])[which(unique(dat[, target]) %in% pos_flag)]
+						dat[, target] = ifelse(dat[, target] %in% pos_flag, 1, 0)
+						warning(paste("The  values in of target has been encoded", pos, "= 1 and others = 0", " \n"))
+					}
+				} else {
+					warning(paste("Positive values of", target, "is not in pos_flag:", paste(pos_flag, collapse = ","), "\nplease set pos_flag. \n", sep = "\t"))
+				}
+				if(!is.numeric(dat[, target])){dat[, target]= as.numeric(as.character(dat[, target]))}
+
+			}
+		}
+	}
+	if (!is.null(occur_time)) {
+		if (is.element(occur_time, names(dat))) {
+			dat = time_transfer(dat, date_cols = occur_time)
+			if (!is_date(dat[, occur_time])) {
+				warning(paste("occur_time:", occur_time, "is not time or date.\n", sep = "\t"))
+			}
+		} else {
+			warning(paste("occur_time:", occur_time, "is not in data.\n", sep = "\t"))
+		}
+	}
+	return(dat)
 }
 
 #' Parallel computing and export variables to global Env.
@@ -985,38 +989,39 @@ checking_data <- function(dat = NULL, target = NULL, occur_time = NULL,
 #' @export
 start_parallel_computing <- function(parallel = TRUE) {
 
-    parallelType <- if (.Platform$OS.type == "windows")
-        "snow" else "multicore"
+  parallelType <- if (.Platform$OS.type == "windows")
+    "snow" else "multicore"
 
-    numCores = parallel::detectCores()-1
-    attr(parallel, "type") <- parallelType
-    attr(parallel, "cores") <- numCores
+  numCores = parallel::detectCores()-1
+  attr(parallel, "type") <- parallelType
+  attr(parallel, "cores") <- numCores
 
-    if (parallel) {
-        if (parallelType == "snow") {
+  if (parallel) {
+    if (parallelType == "snow") {
 
-            cl = parallel::makeCluster(numCores, type = "PSOCK")
-            attr(parallel, "cluster") <- cl
+      cl = parallel::makeCluster(numCores, type = "PSOCK")
+      attr(parallel, "cluster") <- cl
 
-            varlist = ls(envir = parent.frame(), all.names = TRUE)
-            varlist = varlist[varlist != "..."]
-            parallel::clusterExport(cl, varlist = varlist, envir = parent.frame())
-            pkgs = .packages()
-            lapply(pkgs, function(pkg)
-                parallel::clusterCall(cl, library, package = pkg,
-                                     character.only = TRUE))
-            doParallel::registerDoParallel(cl, cores = numCores)
-        }
-        else if (parallelType == "multicore") {
-            cl = parallel::makeCluster(numCores, type = "FORK")
+      varlist = ls(envir = parent.frame(), all.names = TRUE)
+      varlist = varlist[varlist != "..."]
+      parallel::clusterExport(cl, varlist = varlist, envir = parent.frame())
+      parallel::clusterExport(cl, varlist = ls(envir = globalenv(), all.names = TRUE), envir = globalenv())
+      pkgs = .packages()
+      lapply(pkgs, function(pkg)
+        parallel::clusterCall(cl, library, package = pkg,
+                              character.only = TRUE))
+      doParallel::registerDoParallel(cl, cores = numCores)
+    }
+    else if (parallelType == "multicore") {
+      cl = parallel::makeCluster(numCores, type = "FORK")
 
-            doParallel::registerDoParallel(cl, cores = numCores[1])
+      doParallel::registerDoParallel(cl, cores = numCores[1])
 
-            attr(parallel, "cluster") <- cl
-        }
-        else { stop("Only 'snow' and 'multicore' clusters allowed!") }
-        }
-    return(parallel)
+      attr(parallel, "cluster") <- cl
+    }
+    else { stop("Only 'snow' and 'multicore' clusters allowed!") }
+  }
+  return(parallel)
 }
 
 #' Stop parallel computing

@@ -1,7 +1,10 @@
+# creditmodel1.1.6
+**In this version I have:**
+* Fixed some potential bugs in `split_bins`, `woe_transfer`
+
 # creditmodel-1.1.5
 * Add the function `time_series_proc` for time series data processing.
-* Add functions `ranking_percent_proc`,`ranking_percent_dict` are for processing ranking percent variables and
-generating ranking percent dictionary.
+* Add functions `ranking_percent_proc`,`ranking_percent_dict` are for processing ranking percent variables and generating ranking percent dictionary.
 * Change the function name `read_dt` to `read_data` and add and parameter **pattern** for matching files.
 * Change the parameter max.depth to max_depth of the function `traing_xgb`,'xgb_params'
 * Change the function name `save_dt` to `save_data` and `save_data` also supports multiple data frames.

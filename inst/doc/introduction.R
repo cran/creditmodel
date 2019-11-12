@@ -1,75 +1,66 @@
 ## ----setup, include = FALSE----------------------------------------------
-
-knitr::opts_chunk$set(
-
-  collapse = TRUE,
-
-  comment = "#>"
-
-)
-
-
-## ----echo= TRUE, warning=FALSE, message= TRUE,fig.height= 6.5,fig.width= 7.2----
-
+knitr::opts_chunk$set(echo = TRUE)
 library(creditmodel)
 
+## ----fig.width = 10------------------------------------------------------
+
 B_model = training_model(dat = UCICreditCard,
-                         model_name = "UCICreditCard",
-                         target = "default.payment.next.month",
-                         x_list = NULL,
-                         occur_time = "apply_date",
-                         obs_id = "ID",
-                         dat_test = NULL,
-                         preproc = TRUE,
-                         miss_values = c(-1, -2),
-                         missing_proc = TRUE,
-                         outlier_proc = TRUE,
-                         trans_log = TRUE,
-                         feature_filter = list(filter = c("IV", "PSI", "COR", "XGB"),
-                                               cv_folds = 1,
-                                               iv_cp = 0.02,
-                                               psi_cp = 0.2,
-                                               cor_cp = 0.95,
-                                               xgb_cp = 0,
-                                               hopper = TRUE),
-                         vars_plot = FALSE,
-                         algorithm = list("LR","XGB"),
-                         breaks_list = NULL,
-                         LR.params = lr_params(
-                           iter = 2,
-                           method = 'random_search',
-                           tree_control = list(p = 0.02,
-                                               cp = c(0.00001, 0.00000001),
-                                               xval = 5,
-                                               maxdepth = c(10, 15)),
-                           bins_control = list(bins_num = 10,
-                                               bins_pct = c(0.02, 0.03, 0.05),
-                                               b_chi = c(0.01, 0.02, 0.03),
-                                               b_odds = 0.1,
-                                               b_psi = c(0.02, 0.06),
-                                               b_or = c(.05, 0.1, 0.15, 0.2),
-                                               mono = c(0.1, 0.2, 0.4, 0.5),
-                                               odds_psi = c(0.1, 0.15, 0.2),
-                                               kc = 1),
-                           f_eval = 'ks',
-                           lasso = TRUE,
-                           step_wise = FALSE),
-                         XGB.params = xgb_params(
-                           iter = 3,
-                           method = 'random_search',
-                           params = list(
-                             max_depth = c(3:6),
-                             eta = c(0.01, 0.05, 0.1, 0.2),
-                             gamma = c(0.01, 0.05, 0.1),
-                             min_child_weight = c(1, 5, 10, 20, 30, 40, 50),
-                             subsample = c(0.8, 0.7, 0.6, 0.5),
-                             colsample_bytree = c(0.8, 0.7, 0.6, 0.5),
-                             scale_pos_weight = c(1, 2, 3)),
-                           f_eval = 'auc'),
-                         parallel = FALSE,
-                         cores_num = NULL,
-                         save_pmml = FALSE,
-                         plot_show = TRUE,
-                         model_path = tempdir(),
-                         seed = 46)
+                        model_name = "UCICreditCard",
+                        target = "default.payment.next.month",
+                        x_list = NULL,
+                        occur_time = "apply_date",
+                        obs_id = "ID",
+                        dat_test = NULL,
+                        preproc = TRUE,
+                        miss_values = c(-1, -2),
+                        missing_proc = TRUE,
+                        outlier_proc = TRUE,
+                        trans_log = TRUE,
+                        feature_filter = list(filter = c("IV", "PSI", "COR", "XGB"),
+                                            cv_folds = 1,
+                                            iv_cp = 0.02,
+                                            psi_cp = 0.2,
+                                            cor_cp = 0.95,
+                                            xgb_cp = 0,
+                                            hopper = TRUE),
+                        vars_plot = FALSE,
+                        algorithm = list("LR","XGB"),
+                        breaks_list = NULL,
+                        LR.params = lr_params(
+                            iter = 2,
+                            method = 'random_search',
+                            tree_control = list(p = 0.02,
+                                            cp = c(0.00001, 0.00000001),
+                                            xval = 5,
+                                            maxdepth = c(10, 15)),
+                            bins_control = list(bins_num = 10,
+                                            bins_pct = c(0.02, 0.03, 0.05),
+                                            b_chi = c(0.01, 0.02, 0.03),
+                                            b_odds = 0.1,
+                                            b_psi = c(0.02, 0.06),
+                                            b_or = c(.05, 0.1, 0.15, 0.2),
+                                            mono = c(0.1, 0.2, 0.4, 0.5),
+                                            odds_psi = c(0.1, 0.15, 0.2),
+                                            kc = 1),
+                            f_eval = 'ks',
+                            lasso = TRUE,
+                            step_wise = FALSE),
+                        XGB.params = xgb_params(
+                            iter = 3,
+                            method = 'random_search',
+                            params = list(
+                                max_depth = c(3:6),
+                                eta = c(0.01, 0.05, 0.1, 0.2),
+                                gamma = c(0.01, 0.05, 0.1),
+                                min_child_weight = c(1, 5, 10, 20, 30, 40, 50),
+                                subsample = c(0.8, 0.7, 0.6, 0.5),
+                                colsample_bytree = c(0.8, 0.7, 0.6, 0.5),
+                                scale_pos_weight = c(1, 2, 3)),
+                            f_eval = 'auc'),
+                        parallel = FALSE,
+                        cores_num = NULL,
+                        save_pmml = FALSE,
+                        plot_show = TRUE,
+                        model_path = tempdir(),
+                        seed = 46)
 

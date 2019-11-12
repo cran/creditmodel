@@ -6,6 +6,7 @@
 #' @param k Number of neighbors for LOF.Default is 10.
 #' @export
 
+
 local_outlier_factor <- function(dat, k = 10) {
     dat = as.matrix(dat)
     row_num = dim(dat)[1L]
@@ -154,34 +155,38 @@ euclid_dist <- function(x, y, cos_margin = 1) {
 #'
 #' This function is not intended to be used by end user.
 #'
-#' @param  x  A list
-#' @param  y  A list
-#' @param cos_margin  rows or cols
-#' @export
+#' @param  x  A list of numbers
+#' @param  y  A list of numbers
+#' @param cos_margin Margin of matrix, 1 for rows and 2 for cols, Default is 1.
+#' @return A number of cosin similarity
 
-
-cos_sim = function(x, y, cos_margin = 1) {
-    opt = options(digits = 6)
-    max_x = max(unlist(x), na.rm = TRUE)
-    min_x = min(unlist(x), na.rm = TRUE)
-    max_y = max(unlist(y), na.rm = TRUE)
-    min_y = min(unlist(y), na.rm = TRUE)
-    x = ifelse(x - min_x > 0, x - min_x, 0.0001) / ifelse((max_x - min_x) > 0, max_x - min_x, 1)
-    y = ifelse(y - min_y > 0, y - min_y, 0.0001) / ifelse((max_y - min_y) > 0, max_y - min_y, 1)
-    x = as.matrix(x)
-    y = as.matrix(y)
-    dist = NULL
-    if (cos_margin == 1) {
-        nr = nrow(y)
-        dist = sapply(1:nr, function(j) colSums(t(x) * y[j,], na.rm = TRUE) / sqrt(rowSums(x ^ 2, na.rm = TRUE) * sum(y[j,] ^ 2, na.rm = TRUE)))
-        colnames(dist) = rownames(y)
-    } else {
-        nc = ncol(y)
-        dist = sapply(1:nc, function(j) colSums(x * y[, j], na.rm = TRUE) / sqrt(colSums(x ^ 2, na.rm = TRUE) * sum(y[, j] ^ 2, na.rm = TRUE)))
-        colnames(dist) = colnames(y)
-    }
-    return(dist)
-    options(opt)
+cos_sim <- function(x, y, cos_margin = 1) {
+  opt = options(digits = 6)
+  x = as.numeric(x)
+  y = as.numeric(y)
+  max_x = max(unlist(x), na.rm = TRUE)
+  min_x = min(unlist(x), na.rm = TRUE)
+  max_y = max(unlist(y), na.rm = TRUE)
+  min_y = min(unlist(y), na.rm = TRUE)
+  x = ifelse(x - min_x > 0, x - min_x, 0.00001) / ifelse((max_x - min_x) > 0, max_x - min_x, 1)
+  y = ifelse(y - min_y > 0, y - min_y, 0.00001) / ifelse((max_y - min_y) > 0, max_y - min_y, 1)
+  x = as.matrix(x)
+  y = as.matrix(y)
+  dist = NULL
+  if (cos_margin == 1) {
+    nr = nrow(y)
+    dist = sapply(1:nr, function(j) colSums(t(x) * y[j,], na.rm = TRUE) /
+                    sqrt(rowSums(x ^ 2, na.rm = TRUE) * sum(y[j,] ^ 2, na.rm = TRUE)))
+    colnames(dist) = rownames(y)
+  } else {
+    nc = ncol(y)
+    j =1
+    dist = sapply(1:nc, function(j) colSums(x * y[, j], na.rm = TRUE) /
+                    sqrt(colSums(x ^ 2, na.rm = TRUE) * sum(y[, j] ^ 2, na.rm = TRUE)))
+    colnames(dist) = colnames(y)
+  }
+  return(round(dist,4))
+  on.exit(options(opt))
 }
 
 
@@ -303,12 +308,12 @@ tnr_value <- function(prob, target){
    if(!is.numeric(target)){
      target =  as.numeric(as.character(target))
    }
-   tnr = ifelse(length(prob > quantile(prob, 0.9,na.rm = TRUE)) > 0, 
+   tnr = ifelse(length(prob > quantile(prob, 0.9,na.rm = TRUE)) > 0,
                 mean(target[prob > quantile(prob, 0.9,na.rm = TRUE)],na.rm = TRUE),0)
-   if(is.na(tnr)){tnr = 0}			
+   if(is.na(tnr)){tnr = 0}
    return(tnr)
 }
- 
+
 #' lift_value
 #'
 #' \code{lift_value} is for get max lift value for a prob or score.
@@ -330,7 +335,7 @@ lift_value <- function(target, prob) {
    sum_prob[is.na(sum_prob)] = 0
    sum_prob = data.frame(unclass(sum_prob))
    sum_lift = sum_prob[order(sum_prob$prob, decreasing = TRUE),]
-   Lift = round((cumsum(sum_lift$X1) / ifelse(sum_lift$X0 + sum_lift$X1 > 0 ,cumsum(sum_lift$X0 + sum_lift$X1),1)) / 
+   Lift = round((cumsum(sum_lift$X1) / ifelse(sum_lift$X0 + sum_lift$X1 > 0 ,cumsum(sum_lift$X0 + sum_lift$X1),1)) /
                   (sum(sum_lift$X1,na.rm = TRUE) / sum(sum_lift$X0 + sum_lift$X1, na.rm = TRUE)), 6)
    MAX_Lift = mean(Lift, na.rm = TRUE)
    return(MAX_Lift)
