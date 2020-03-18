@@ -96,3 +96,12 @@ NULL
 #' @name lendingclub
 #' @seealso \code{\link{UCICreditCard}}
 NULL
+
+#' Entropy Weight Method Data
+#'
+#'  This data is for Entropy Weight Method examples.
+#' @docType data
+#' @keywords datasets
+#' @format A data frame with 10 rows and 13 variables.
+#' @name ewm_data
+NULL

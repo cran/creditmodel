@@ -159,7 +159,7 @@ euclid_dist <- function(x, y, cos_margin = 1) {
 #' @param  y  A list of numbers
 #' @param cos_margin Margin of matrix, 1 for rows and 2 for cols, Default is 1.
 #' @return A number of cosin similarity
-
+#' @export
 cos_sim <- function(x, y, cos_margin = 1) {
   opt = options(digits = 6)
   x = as.numeric(x)
@@ -211,7 +211,7 @@ cos_sim <- function(x, y, cos_margin = 1) {
 #' @importFrom dplyr  %>% mutate_if
 #' @export
 char_cor_vars <- function(dat, x) {
-    dat = as.data.frame(dat) %>% merge_category() %>% mutate_if(is.factor, as.character)
+    dat = as.data.frame(dat) %>% merge_category(note = FALSE) %>% mutate_if(is.factor, as.character)
 
     vapply(seq_along(dat), function(j) {
         if (length(x) > 1 | length(unlist(x)) > 1) {
@@ -286,12 +286,13 @@ ks_value <- function(target, prob) {
     target =  as.numeric(as.character(target))
   }
  sum_prob = as.data.frame(table(prob,target))
+ sum_prob = as.data.table(sum_prob)
  sum_prob <- data.table :: dcast(sum_prob, prob  ~ target, value.var = "Freq")
  sum_prob[is.na(sum_prob)] = 0
  sum_prob = data.frame(unclass(sum_prob))
  cum_sum_1  = (cumsum(sum_prob$X1) / sum(sum_prob$X1))
  cum_sum_0  = (cumsum(sum_prob$X0) / sum(sum_prob$X0))
- KS = max(abs(round(cum_sum_1 - cum_sum_0, 4)), na.rm = TRUE)
+ KS = max(abs(cum_sum_1 - cum_sum_0), na.rm = TRUE)
   return(KS)
 }
 
@@ -316,8 +317,8 @@ tnr_value <- function(prob, target){
 
 #' lift_value
 #'
-#' \code{lift_value} is for get max lift value for a prob or score.
-#' @param prob A list of redict probability or score.
+#' \code{lift_value} is for getting max lift value for a prob or score.
+#' @param prob A list of predict probability or score.
 #' @param target Vector of target.
 #' @return Max lift value
 #' @export
@@ -331,16 +332,47 @@ lift_value <- function(target, prob) {
    breaks = cut_equal(prob,g = 10)
    prob_bins = split_bins(dat =t_prob,x="prob",breaks)
    sum_prob = as.data.frame(table(prob_bins,target = t_prob$target))
+   sum_prob = as.data.table(sum_prob)
    sum_prob = data.table :: dcast(sum_prob, prob_bins  ~ target, value.var = "Freq")
    sum_prob[is.na(sum_prob)] = 0
    sum_prob = data.frame(unclass(sum_prob))
    sum_lift = sum_prob[order(sum_prob$prob, decreasing = TRUE),]
-   Lift = round((cumsum(sum_lift$X1) / ifelse(sum_lift$X0 + sum_lift$X1 > 0 ,cumsum(sum_lift$X0 + sum_lift$X1),1)) /
-                  (sum(sum_lift$X1,na.rm = TRUE) / sum(sum_lift$X0 + sum_lift$X1, na.rm = TRUE)), 6)
+   Lift = (cumsum(sum_lift$X1) / ifelse(sum_lift$X0 + sum_lift$X1 > 0 ,cumsum(sum_lift$X0 + sum_lift$X1),1)) /
+                  (sum(sum_lift$X1,na.rm = TRUE) / sum(sum_lift$X0 + sum_lift$X1, na.rm = TRUE))
    MAX_Lift = mean(Lift, na.rm = TRUE)
    return(MAX_Lift)
 }
 
+#' Functions of xgboost feval
+#'
+#' \code{eval_auc} ,\code{eval_ks} ,\code{eval_lift},\code{eval_tnr} is for getting best params of xgboost.
+#' @param preds A list of predict probability or score.
+#' @param dtrain Matrix of x predictors.
+#' @return List of best value
+
+eval_auc = function(preds, dtrain) {
+    labels = getinfo(dtrain, "label")
+    auc = auc_value(target = labels, prob = preds)
+    return(list(metric = "auc", value = round(auc, 6)))
+}
+#' @rdname eval_auc
+eval_ks = function(preds, dtrain) {
+    labels = getinfo(dtrain, "label")
+    ks = ks_value(target = labels, prob = preds)
+    return(list(metric = "ks", value = round(ks, 6)))
+}
+#' @rdname eval_auc
+eval_tnr = function(preds, dtrain) {
+    labels = getinfo(dtrain, "label")
+    tnr = tnr_value(target = labels, prob = preds)
+    return(list(metric = "tnr", value = round(tnr, 6)))
+}
+#' @rdname eval_auc
+eval_lift = function(preds, dtrain) {
+    labels = getinfo(dtrain, "label")
+    lift = lift_value(target = labels, prob = preds)
+    return(list(metric = "lift", value = round(lift, 6)))
+}
 
 
 #' get central value.
@@ -348,7 +380,7 @@ lift_value <- function(target, prob) {
 #' This function is not intended to be used by end user.
 #'
 #' @param  x  A vector or list.
-#' @param  weight_avg  avarage weigth to calculate means.
+#' @param  weight_avg  avg weight to calculate means.
 #' @export
 #' @importFrom stats aggregate
 
@@ -368,6 +400,52 @@ get_median <- function(x, weight_avg = NULL) {
         }
     }
     return(central_value)
+}
+
+
+
+#' Entropy Weight Method
+#'
+#' \code{entropy_weight} is for calculating Entropy Weight.
+#'
+#' @param dat A data.frame with independent variables.
+#' @param ID  The name of ID variable.
+#' @param pos_vars Names or index of positive direction variables, the bigger the better.
+#' @param neg_vars Names or index of negative direction variables, the smaller the better.
+#' @return  A data.frame with weights of each variable.
+#' @details
+#' Step1 Raw data normalization
+#' Step2 Find out the total amount of contributions of all samples to the index Xj
+#' Step3 Each element of the step generated matrix is transformed into the product of each element and the LN (element),
+#' and the information entropy is calculated.
+#' Step4 Calculate redundancy.
+#' Step5 Calculate the weight of each index.
+#' @examples
+#' entropy_weight(dat = ewm_data,ID = "ID",
+#'               pos_vars = -c(7,11),
+#'               neg_vars = c(7,11))
+#' @export
+entropy_weight = function(dat,ID = NULL,pos_vars,neg_vars){
+    dat = quick_as_df(dat)
+    if(!is.na(ID)){
+        dat[,ID] = NULL
+    }
+    x_list = get_names(dat,types = c("numeric","double","integer","integer64"))
+
+    if(length(x_list) < 2)stop("Number of numeric variables is less than 2.\n")
+    dat = dat[x_list]
+    dat_pos = apply(dat[,pos_vars], 2, min_max_norm)
+    dat_neg = apply(dat[,neg_vars], 2, max_min_norm)
+	dat_total = cbind(dat_pos,dat_neg)
+    dat_total = apply(dat_total,2,p_ij)
+    dat_total = apply(dat_total, 2, e_ij)
+    n_row = nrow(dat_total)
+    k = 1/log(n_row)
+    d = -k*colSums(dat_total)
+    d = 1 - d
+    w = d / sum(d)
+    w = data.frame(Feature = names(w),Weight = w,stringsAsFactors = FALSE,row.names = NULL)
+    return(w)
 }
 
 

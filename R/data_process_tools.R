@@ -421,39 +421,55 @@ check_data_format <- function(path) {
 #' @export
 
 multi_left_join <- function(..., df_list = list(...), key_dt = NULL, by = NULL) {
+
 	if (is.null(by)) {
-		stop("Key columns 'by' is missing.\n ")
+		for (i in 1:length(df_list)) {
+			intesect_name[[i]] = names(quick_as_df(df_list[[i]]))
+		}
+		by = unique(Reduce('intersect', intesect_name))
+		if (length(by) > 0) {
+			cat(paste("by is missing, Joining by", "(", paste(by,collapse = ','), ")", ".\n ", collapse = ''))
+		} else {
+			stop("Either key columns 'by' is missing or dataset list has no intersect names.\n ")
+		}
 	}
+	if (length(names(by)) > 0) {
+		by = names(by)
+		for (i in 1:length(df_list)) {
+			join_ind = which(names(df_list[[i]]) %in% by)
+			names(df_list[[i]])[join_ind] = by[1:length(join_ind)]
+		}
+		by = unique(by)
+	}
+
 	if (!is.null(key_dt)) {
 		key_id = df_list[key_dt]
 		df_list[key_dt] = NULL
 		df_list = append(key_id, df_list)
 	}
 	for (i in 1:length(df_list)) {
-		by_id = c(df_list[[i]][[by]])
-		if (by != 'id') df_list[[i]][[by]] = NULL
-		if (length(by_id) > 0) {
-			df_list[[i]] = quick_as_df(df_list[[i]])
-			df_list[[i]][["id"]] = as.character(by_id)
-
-		}else {
+		df_list[[i]] = quick_as_df(df_list[[i]])
+		by_id = c(df_list[[i]][by])
+		if (length(by_id) == 0) {
 			warning(paste(paste0("No column called '",
 				by, "'in"), names(df_list[i]), ". Drop it...\n"))
-			df_list[i] = NULL
-		}
+			df_list[[i]] = NULL
+		} 
 	}
-	merge_func = function(x, y) {
-		intersect_name = intersect(colnames(x), colnames(y))
-		intersect_name = intersect_name[-which(intersect_name ==
-			"id")]
-		if (length(intersect_name) > 0) {
-			y = subset(y, select = -which(colnames(y) %in% intersect_name))
+	dat_merge = Reduce(function(x, y) {
+		i = 1
+		intersect_name = list()
+		while (TRUE) {
+			intersect_name[[i]] = intersect(colnames(x), colnames(y))
+			intersect_name[[i]] = intersect_name[[i]][-which(intersect_name[[i]] %in% by)]
+			if (length(intersect_name[[i]]) == 0) break
+			names(y)[which(colnames(y) %in% intersect_name[[i]])] = paste(intersect_name[[1]], i, sep = '_')
+			i = i + 1
 		}
-		merge(x, y, by = "id", all.x = TRUE)
-	}
-	dat_merge = Reduce("merge_func", df_list) %>% re_name("id",
-		by)
-	return(dat_merge)
+		merge(x, y, by = by, all.x = TRUE)
+	}, df_list)
+
+	return(quick_as_df(dat_merge))
 }
 
 #' Number of digits
@@ -632,25 +648,17 @@ as_percent <- function(x, digits = 2) {
 #' names(dt['target'])
 #' @export
 
-
-re_name <- function(dat, oldname = c(), newname = c()) {
-    ind = which(names(dat) %in% oldname)
-    names(dat)[ind] = newname
-    dat
+re_name = function(dat, oldname = c(), newname = c()) {
+	if (length(oldname) == length(newname)) {
+		name_merge = merge(data.frame(oldname, newname), data.frame(oldname = names(dat), ind = 1:length(dat)), by = "oldname", all.x = TRUE)
+		name_merge = name_merge[!is.na(name_merge[, "ind"]),]
+		ind = name_merge[, "ind"]
+		names(dat)[ind] = as.character(name_merge[, "newname"])
+	}
+	dat
 }
 
-#' Min Max Normalization
-#'
-#' \code{min_max_norm} is for normalizing each column vector of matrix 'x' using min_max normalization
-#' @param x  Vector
-#' @return Normalized vector
-#' @examples
-#' dat_s = apply(UCICreditCard[,12:14], 2, min_max_norm)
-#' @export
 
-min_max_norm <- function(x) {
-    ((x - min(x , na.rm = TRUE)) / (max(x, na.rm = TRUE) - min(x, na.rm = TRUE)))
-}
 #' Functions for vector operation.
 #'
 #' @param x  A data.frame or Matrix.
@@ -794,33 +802,37 @@ avg_x <- function(x) {
 #' @export
 
 
-get_names <- function(dat, types = c('logical', 'factor', 'character', 'numeric','integer64',
-                                      'integer', 'double', "Date", "POSIXlt", "POSIXct", "POSIXt"),
-                       ex_cols = NULL, get_ex = FALSE) {
-   if (is.null(types)) {
-     stop("types is missing!")
-   }
-   if (is.null(ex_cols)) {
-     sel_names = unique(names(dat)[sapply(dat, function(x) any(is.element(class(x), types)))])
-     ex_names = unique(names(dat)[!(sapply(dat, function(x) any(is.element(class(x), types))))])
-   } else {
-     var_names = names(dat)[sapply(dat, function(x) any(is.element(class(x), types)))]
-     if (length(ex_cols) == 1 & !any(grepl("\\$|\\*|\\+|\\?|\\[|\\^|\\{|\\}|\\\\|\\|\\)|\\]", ex_cols)) ) {
-       ex_vars = names(dat)[colnames(dat) %in% ex_cols]
-     } else {
-       ex_vars = names(dat)[colnames(dat) %alike% ex_cols]
-     }
-     ex_types = names(dat)[!(sapply(dat, function(x) any(is.element(class(x), types))))]
-     ex_names = unique(c(ex_vars, ex_types))
-     sel_names = setdiff(var_names, ex_names)
-   }
-   if (get_ex) {
-     dat = dat[ex_names]
-   } else {
-     dat = dat[sel_names]
-   }
-   var_names <- names(dat)
-   return(var_names)
+get_names = function(dat, types = c('logical', 'factor', 'character', 'numeric', 'integer64',
+									  'integer', 'double', "Date", "POSIXlt", "POSIXct", "POSIXt"),
+					   ex_cols = NULL, get_ex = FALSE) {
+	if (is.null(types)) {
+		stop("types is missing!")
+	}
+	if (is.null(ex_cols)) {
+		sel_names = unique(names(dat)[sapply(dat, function(x) any(is.element(class(x), types)))])
+		ex_names = unique(names(dat)[!(sapply(dat, function(x) any(is.element(class(x), types))))])
+	} else {
+		var_names = names(dat)[sapply(dat, function(x) any(is.element(class(x), types)))]
+		if (length(ex_cols) == 1 & !any(grepl("\\$|\\*|\\+|\\?|\\[|\\^|\\{|\\}|\\\\|\\|\\)|\\]", ex_cols))) {
+			ex_vars = names(dat)[colnames(dat) %in% ex_cols]
+		} else {
+			if (any(grepl("\\$|\\*|\\+|\\?|\\[|\\^|\\{|\\}|\\\\|\\|\\)|\\]", ex_cols))) {
+				ex_vars = names(dat)[colnames(dat) %alike% ex_cols]
+			} else {
+				ex_vars = names(dat)[colnames(dat) %in% ex_cols]
+			}
+		}
+		ex_types = names(dat)[!(sapply(dat, function(x) any(is.element(class(x), types))))]
+		ex_names = unique(c(ex_vars, ex_types))
+		sel_names = setdiff(var_names, ex_names)
+	}
+	if (get_ex) {
+		dat = dat[ex_names]
+	} else {
+		dat = dat[sel_names]
+	}
+	var_names <- names(dat)
+	return(var_names)
 }
 
 
@@ -1114,7 +1126,7 @@ loop_function <- function(func = NULL, args = list(data = NULL), x_list = NULL,
 
 #' string match
 #' #' \code{str_match} search for matches to argument pattern within each element of a character vector:
-#' @param pattern character string containing a regular expression (or character string for fixed = TRUE) to be matched in the given character vector. Coerced by as.character to a character string if possible. If a character vector of length 2 or more is supplied, the first element is used with a warning. Missing values are allowed except for regexpr and gregexpr.
+#' @param pattern character string containing a regular expression (or character string for fixed = TRUE) to be matched in the given character vector. Coerced by as.character to a character string if possible. If a character vector of length 2 or more is supplied, the first element is used with a warning. missing values are allowed except for regexpr and gregexpr.
 #' @param str_r	a character vector where matches are sought, or an object which can be coerced by as.character to a character vector. Long vectors are supported.
 #'
 #' @examples
@@ -1129,7 +1141,7 @@ str_match <- function(pattern, str_r) {
 
 
 #' re_code
-#' #' \code{re_code} search for matches to argument pattern within each element of a character vector:
+#' \code{re_code} search for matches to argument pattern within each element of a character vector:
 #' @param x Variable to recode.
 #' @param codes	A data.frame of original value & recode value
 #' @examples
@@ -1143,3 +1155,58 @@ re_code <- function(x,codes){
     }
     return(x)
 }
+
+
+
+#'  Max Min Normalization
+#'
+#' \code{max_min_norm} is for normalizing each column vector of matrix 'x' using max_min normalization
+#' @param x Vector
+#' @return Normalized vector
+#' @examples
+#' dat_s = apply(UCICreditCard[,12:14], 2, max_min_norm)
+#' @export
+max_min_norm <- function(x) {
+    (max(x,na.rm = TRUE) - x) / (max(x,na.rm = TRUE) - min(x, na.rm = TRUE))
+}
+
+
+#' Min Max Normalization
+#'
+#' \code{min_max_norm} is for normalizing each column vector of matrix 'x' using min_max normalization
+#' @param x  Vector
+#' @return Normalized vector
+#' @examples
+#' dat_s = apply(UCICreditCard[,12:14], 2, min_max_norm)
+#' @export
+
+min_max_norm <- function(x) {
+    ((x - min(x , na.rm = TRUE)) / (max(x, na.rm = TRUE) - min(x, na.rm = TRUE)))
+}
+
+#' Entropy
+#'
+#' This function is not intended to be used by end user.
+#' @param x  A numeric vector.
+#' @return  A numeric vector of entropy.
+
+p_ij <- function(x){
+    x = unlist(x)
+    x = x/sum(x,na.rm = TRUE)
+    return(x)
+}
+
+#' @rdname p_ij
+e_ij <- function(x) {
+    x = unlist(x)
+    for (i in 1:length(x)) {
+        if (is.na(x[i]) || x[i] == 0 ) {
+            x[i] = 0
+        } else {
+            x[i] = x[i] * log(x[i])
+        }
+    }
+    return(x)
+}
+
+

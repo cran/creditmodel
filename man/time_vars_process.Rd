@@ -4,7 +4,7 @@
 \alias{time_vars_process}
 \title{Processing of Time or Date Variables}
 \usage{
-time_vars_process(df_tm = df_tm, x, enddate = "occur_time")
+time_vars_process(df_tm = df_tm, x, enddate = NULL)
 }
 \arguments{
 \item{df_tm}{A data.frame}

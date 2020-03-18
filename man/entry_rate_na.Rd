@@ -2,7 +2,7 @@
 % Please edit documentation in R/data_cleansing.R
 \name{entry_rate_na}
 \alias{entry_rate_na}
-\title{Max Percent of Missing Value}
+\title{Max Percent of missing Value}
 \usage{
 entry_rate_na(dat, nr = 0.98, note = FALSE)
 }
@@ -17,7 +17,7 @@ entry_rate_na(dat, nr = 0.98, note = FALSE)
 A data.frame
 }
 \description{
-\code{entry_rate_na} is the function to recode variables which NAs or  miss value rate is more than 95%.
+\code{entry_rate_na} is the function to recode variables with missing values up to a certain percentage with missing and non_missing.
 }
 \examples{
 datss = entry_rate_na(dat = lendingclub[1:1000, ], nr = 0.98)

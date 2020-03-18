@@ -7,16 +7,16 @@
 \usage{
 get_plots(dat_train, dat_test = NULL, x_list = NULL, target = NULL,
   ex_cols = NULL, breaks_list = NULL, pos_flag = NULL,
-  equal_bins = FALSE, best = TRUE, g = 20, tree_control = NULL,
-  bins_control = NULL, plot_show = TRUE, save_data = FALSE,
-  file_name = NULL, parallel = FALSE, g_width = 8,
-  dir_path = tempdir())
+  equal_bins = FALSE, cut_bin = "equal_depth", best = TRUE, g = 20,
+  tree_control = NULL, bins_control = NULL, plot_show = TRUE,
+  save_data = FALSE, file_name = NULL, parallel = FALSE,
+  g_width = 8, dir_path = tempdir())
 
 plot_vars(dat_train, x, target, dat_test = NULL, g_width = 8,
-  breaks_list = NULL, pos_flag = list("1", 1, "bad", "positive"),
-  equal_bins = TRUE, best = FALSE, g = 10, tree_control = NULL,
-  bins_control = NULL, plot_show = TRUE, save_data = FALSE,
-  dir_path = tempdir())
+  breaks_list = NULL, breaks = NULL, pos_flag = list("1", 1, "bad",
+  "positive"), equal_bins = TRUE, cut_bin = "equal_depth",
+  best = FALSE, g = 10, tree_control = NULL, bins_control = NULL,
+  plot_show = TRUE, save_data = FALSE, dir_path = tempdir())
 }
 \arguments{
 \item{dat_train}{A data.frame with independent variables and target variable.}
@@ -33,7 +33,9 @@ plot_vars(dat_train, x, target, dat_test = NULL, g_width = 8,
 
 \item{pos_flag}{Value of positive class, Default is "1".}
 
-\item{equal_bins}{Logical, generates initial breaks for equal frequency binning.}
+\item{equal_bins}{Logical, generates initial breaks for equal frequency or width binning.}
+
+\item{cut_bin}{A string, if equal_bins is TRUE, 'equal_depth' or 'equal_width', default is 'equal_depth'.}
 
 \item{best}{Logical, merge initial breaks to get optimal breaks for binning.}
 
@@ -56,6 +58,8 @@ plot_vars(dat_train, x, target, dat_test = NULL, g_width = 8,
 \item{dir_path}{The path for periodically saved graphic files.}
 
 \item{x}{The name of an independent variable.}
+
+\item{breaks}{Splitting points for an independent variable. Default is NULL.}
 }
 \description{
 You can use the \code{plot_vars} to produce plots that characterize the frequency or the distribution of your data.

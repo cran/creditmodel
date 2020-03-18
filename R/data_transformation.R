@@ -111,7 +111,7 @@ woe_trans <- function(dat, x, bins_table = NULL, target = NULL, breaks_list = NU
            if(length(woe_ind) > 0){
                dat[woe_ind, woe_names] = bins_tbl[i, "woe"]
            }
-         
+
         }
         dat[, woe_names] = as.numeric(dat[, woe_names])
     }
@@ -180,7 +180,7 @@ one_hot_encoding <- function(dat, cat_vars = NULL, ex_cols = NULL,
 #' \code{de_one_hot_encoding} is for one-hot encoding recovery processing
 #' @param dat_one_hot A dat frame with the one hot encoding variables
 #' @param cat_vars  variables to be recovery processed, default is null, if null, find these variables through regular expressions .
-#' @param na_act Logical,If true, the missing value is  assigned as "Missing", if FALSE missing value is omitted, the default is TRUE.
+#' @param na_act Logical,If true, the missing value is  assigned as "missing", if FALSE missing value is omitted, the default is TRUE.
 #' @param note Logical.Outputs info.Default is TRUE.
 #' @return A dat frame with the one hot encoding recorery character variables
 #' @seealso \code{\link{one_hot_encoding}}
@@ -264,101 +264,115 @@ de_one_hot_encoding <- function(dat_one_hot, cat_vars = NULL, na_act = TRUE,note
 #' dat = time_transfer(dat = lendingclub,date_cols = NULL)
 #' class(dat[,"issue_d"])
 #' @export
+
 time_transfer <- function(dat, date_cols = NULL, ex_cols = NULL, note = FALSE) {
-	dat = checking_data(dat,note = FALSE)
-	if (note) cat_line("-- Formating time variables", col = love_color("dark_green"))
-	x_list = get_x_list(x_list = NULL, dat_train = dat, dat_test = NULL, ex_cols = ex_cols)
-	date_cols1 = NULL
-	if (!is.null(date_cols)) {
-		date_cols1 <- names(dat[x_list])[colnames(dat[x_list]) %islike% date_cols]
-	} else {
-		date_cols1 = names(dat[x_list])
-	}
-	df_date = dat[date_cols1]
-	df_date <- df_date[!colAllnas(df_date)]
-	df_date = df_date[!sapply(df_date, is_date)]
-	if (dim(df_date)[2] != 0) {
-		df_date_cols <- names(df_date)
-		t_sample <- list()
-		t_len <- list()
-		t_sam = NULL
-		tryCatch({
-			for (x in 1:ncol(df_date)) {
-				t_sam = vapply(as.character(sample(na.omit(df_date[[x]]), 100, replace = TRUE)),
-					   function(i) {
-						if (nchar(i) >= 6) { nchar(i) } else { 0 }
- 					   }, FUN.VALUE = numeric(1))
-				t_sample[[x]] = min(unlist(t_sam), na.rm = TRUE)
-				t_len[[x]] = as.character(names(t_sam)[which(nchar(names(t_sam)) == t_sample[[x]])][1])
+  dat = checking_data(dat, note = FALSE)
+  if (note) cat_line("-- Formating time variables", col = love_color("dark_green"))
+  x_list = get_x_list(x_list = NULL, dat_train = dat, dat_test = NULL, ex_cols = ex_cols)
+  date_cols1 = NULL
+  if (!is.null(date_cols)) {
+    date_cols1 <- names(dat[x_list])[colnames(dat[x_list]) %islike% date_cols]
+  } else {
+    date_cols1 = names(dat[x_list])
+  }
+  df_date = dat[date_cols1]
+  df_date = df_date[!colAllnas(df_date)]
+  df_date = df_date[!sapply(df_date, is_date)]
+  if (dim(df_date)[2] != 0) {
+    df_date_cols <- names(df_date)
+    t_sample <- list()
+    t_len <- list()
+    t_sam = NULL
+    tryCatch({
+      for (x in 1:ncol(df_date)) {
+        t_sam = vapply(as.character(sample(na.omit(df_date[[x]]), 100, replace = TRUE)),
+                       function(i) {
+                         if (nchar(i) >= 6) { nchar(i) } else { 0 }
+                       }, FUN.VALUE = numeric(1))
+        t_sam = unlist(t_sam[which(unlist(t_sam) > 4)])
+        if (length(t_sam) > 0) {
+          t_sample[[x]] = min(t_sam, na.rm = TRUE)
+        } else {
+          t_sample[[x]] = 0
+        }
+        t_len[[x]] = as.character(names(t_sam)[which(nchar(names(t_sam)) == t_sample[[x]])][1])
+      }
+    }, error = function(e) { cat("ERROR :", conditionMessage(e), "\n") },
+    warning = function(w) { "" })
+    date_cols2 = which(t_sample != 0 & t_sample != Inf)
 
-			}
-		}, error = function(e) { cat("ERROR :", conditionMessage(e), "\n") },
-	warning = function(w) { "" })
-		date_cols2 = which(t_sample != 0)
+    for (x in date_cols2) {
 
-		for (x in date_cols2) {
-			t_len[[x]] = gsub(" ", "", t_len[[x]])
-			if (t_sample[[x]] >= 5& t_sample[[x]] <= 6 &
-				grepl(pattern = "^[2]{1}[0]{1}[0-3]{1}[0-9]{1}-[0-9]{1}$|^[2]{1}[0]{1}[0-3]{1}[0-9]{1}-[0-9]{1,2}$|^[1]{1}[9]{1}[0-9]{2}-[0-9]{1,2}$", x = substr(t_len[[x]], 1, 10))) {
-				df_date[[x]] = paste(df_date[[x]],"-01")
-				df_date[[x]] = as.Date(as.character(df_date[[x]]), "%Y-%m-%d")
-			}
-			if (t_sample[[x]] >= 5 & t_sample[[x]] <= 6 &
-				grepl(pattern = "^[2]{1}[0]{1}[0-3]{1}[0-9]{1}/[0-9]{1}$|^[2]{1}[0]{1}[0-3]{1}[0-9]{1}/[0-9]{1,2}$|^[1]{1}[9]{1}[0-9]{2}/[0-9]{1,2}$", x = substr(t_len[[x]], 1, 10))) {
-				df_date[[x]] = paste(df_date[[x]], "/01")
-				df_date[[x]] = as.Date(as.character(df_date[[x]]), "%Y/%m/%d")
-			}
+      if(!is.numeric(df_date[[x]])){
+        df_date[[x]] = gsub("\\.0$", "", df_date[[x]])
+        t_len[[x]] = gsub(" |\\.0$", "", t_len[[x]])
+      }
+      if (t_sample[[x]] >= 5 & t_sample[[x]] <= 6 &
+          grepl(pattern = "^[2]{1}[0]{1}[0-3]{1}[0-9]{1}-[0-9]{1}$|^[2]{1}[0]{1}[0-3]{1}[0-9]{1}-[0-9]{1,2}$|^[1]{1}[9]{1}[0-9]{2}-[0-9]{1,2}$", x = substr(t_len[[x]], 1, 10))) {
 
-			if (t_sample[[x]] >= 8 & t_sample[[x]] <= 10 &
-	  		  grepl(pattern = "^[2]{1}[0]{1}[0-3]{1}[0-9]{1}-[0-9]{1}-[0-9]{1,2}$|^[2]{1}[0]{1}[0-3]{1}[0-9]{1}-[0-9]{1,2}-[0-3]{1}[0-9]{1}$|^[1]{1}[9]{1}[0-9]{2}-[0-9]{1,2}-[0-3]{1}[0-9]{1}$", x = substr(t_len[[x]], 1, 10))) {
-				df_date[[x]] = as.Date(as.character(df_date[[x]]), "%Y-%m-%d")
-			}
-			if (t_sample[[x]] > 10 & grepl(pattern = "^[2]{1}[0]{1}[0-3]{1}[0-9]{1}-[0-9]{1}-[0-3]{1}[0-9]{1,2}$|^[2]{1}[0]{1}[0-3]{1}[0-9]{1}-[0-9]{1,2}-[0-3]{1}[0-9]{1}$|^[1]{1}[9]{1}[0-9]{2}-[0-9]{1,2}-[0-3]{1}[0-9]{1}$", x =  substr(t_len[[x]], 1, 10)) & grepl(pattern = "^[0-1]{1}[0-9]{1}:[0-9]{2}$", substr(t_len[[x]], 11, nchar(t_len[[x]])))) {
-				df_date[[x]] = paste0(df_date[[x]],":00") 
-				df_date[[x]] = as.POSIXct(as.character(df_date[[x]]), format = "%Y-%m-%d %H:%M:%S")
-			}
-			if (t_sample[[x]] > 10 & grepl(pattern = "^[2]{1}[0]{1}[0-3]{1}[0-9]{1}-[0-9]{1}-[0-3]{1}[0-9]{1,2}$|^[2]{1}[0]{1}[0-3]{1}[0-9]{1}-[0-9]{1,2}-[0-3]{1}[0-9]{1}$|^[1]{1}[9]{1}[0-9]{2}-[0-9]{1,2}-[0-3]{1}[0-9]{1}$", x = substr(t_len[[x]], 1, 10)) & grepl(pattern = "^[0-1]{1}[0-9]{1}:[0-9]{2}:[0-9]{2}",  substr(t_len[[x]], 11, nchar(t_len[[x]])))) {
-				df_date[[x]] = as.POSIXct(as.character(df_date[[x]]), format = "%Y-%m-%d %H:%M:%S")
-			}
+        df_date[[x]] = paste(df_date[[x]], "-01")
+        df_date[[x]] = as.Date(as.character(df_date[[x]]), "%Y-%m-%d")
+      }
+      if (t_sample[[x]] >= 5 & t_sample[[x]] <= 6 &
+          grepl(pattern = "^[2]{1}[0]{1}[0-3]{1}[0-9]{1}/[0-9]{1}$|^[2]{1}[0]{1}[0-3]{1}[0-9]{1}/[0-9]{1,2}$|^[1]{1}[9]{1}[0-9]{2}/[0-9]{1,2}$", x = substr(t_len[[x]], 1, 10))) {
+        df_date[[x]] = paste(df_date[[x]], "/01")
+        df_date[[x]] = as.Date(as.character(df_date[[x]]), "%Y/%m/%d")
+      }
 
-			if (t_sample[[x]] >= 7 & t_sample[[x]] <= 9 &
-	  		  grepl(pattern = "^[2]{1}[0]{1}[0-5]{1}[0-9]{1}[0-9]{1}[0-3]{1}[0-9]{1,2}$|^[2]{1}[0]{1}[0-5]{1}[0-9]{1}[0-9]{1,2}[0-3]{1}[0-9]{1}$|^[1]{1}[9]{1}[0-9]{2}[0-9]{1,2}[0-3]{1}[0-9]{1}$", x = t_len[[x]])) {
-				df_date[[x]] = as.Date(as.character(df_date[[x]]), "%Y%m%d")
-			}
-			if (t_sample[[x]] > 10 & grepl(pattern = "^[2]{1}[0]{1}[0-5]{1}[0-9]{1}[0-9]{1}[0-3]{1}[0-9]{1,2}$|^[2]{1}[0]{1}[0-5]{1}[0-9]{1}[0-9]{1,2}[0-3]{1}[0-9]{1}$|^[1]{1}[9]{1}[0-9]{2}[0-9]{1,2}[0-3]{1}[0-9]{1}$", x =substr(t_len[[x]], 1, 8)) & grepl(pattern = "^[0-9]{1,2}:[0-9]{2}:[0-9]{2}$", substr(t_len[[x]], 9, nchar(t_len[[x]])))) {
-				df_date[[x]] = gsub(" ", "", df_date[[x]])
-				df_date[[x]] = paste(substr(df_date[[x]], 1, 8), substr(df_date[[x]], 9, nchar(df_date[[x]])))
-				df_date[[x]] = as.POSIXct(as.character(df_date[[x]]), format = "%Y%m%d %H:%M:%S")
-			}
-			if (t_sample[[x]] > 10 & grepl(pattern = "^[2]{1}[0]{1}[0-5]{1}[0-9]{1}[0-9]{1}[0-3]{1}[0-9]{1,2}$|^[2]{1}[0]{1}[0-5]{1}[0-9]{1}[0-9]{1,2}[0-3]{1}[0-9]{1}$|^[1]{1}[9]{1}[0-9]{2}[0-9]{1,2}[0-3]{1}[0-9]{1}$", x = substr(t_len[[x]], 1, 8)) & grepl(pattern = "^[0-9]{1,2}:[0-9]{2}$", substr(t_len[[x]], 9, nchar(t_len[[x]])))) {
-				df_date[[x]] = gsub(" ", "", df_date[[x]])
-				df_date[[x]] = paste(substr(df_date[[x]], 1, 8), substr(df_date[[x]], 9, nchar(df_date[[x]])),":00")
-				df_date[[x]] = as.POSIXct(as.character(df_date[[x]]), format = "%Y%m%d %H:%M:%S")
-			}
-			if (t_sample[[x]] >= 8 & t_sample[[x]] <= 10 &
-	  		  grepl(pattern = "^[2]{1}[0]{1}[0-3]{1}[0-9]{1}/[0-9]{1,2}/[0-9]{1,2}$|^[1]{1}[9]{1}[0-9]{2}/[0-9]{1,2}/[0-9]{1,2}$", x = substr(t_len[[x]], 1, 10))) {
-				df_date[[x]] = as.Date(as.character(df_date[[x]]), "%Y/%m/%d")
-			}
-			if (t_sample[[x]] > 10 & grepl(pattern = "^[2]{1}[0]{1}[0-3]{1}[0-9]{1}/[0-9]{1,2}/[0-9]{1,2}$|^[2]{1}[0]{1}[0-3]{1}[0-9]{1}/[0-9]{1}/[0-9]{1}$|^[2]{1}[0]{1}[0-3]{1}[0-9]{1}/[0-9]{1,2}/[0-3]{1}[0-9]{1}$|^[2]{1}[0]{1}[0-3]{1}[0-9]{1}/[0-9]{1}/[0-3]{1}[0-9]{1}$|^[1]{1}[9]{1}[0-9]{2}/[0-9]{1,2}/[0-3]{1}[0-9]{1}$", x = substr(t_len[[x]], 1, 10)) & grepl(pattern = "^[0-9]{1,2}:[0-9]{2}$", substr(t_len[[x]], 11, nchar(t_len[[x]])))) {
-				df_date[[x]] = paste0(df_date[[x]], ":00")
-				df_date[[x]] = as.POSIXct(as.character(df_date[[x]]), format = "%Y/%m/%d %H:%M:%S")
-			}
-			if (t_sample[[x]] > 10 & grepl(pattern = "^[2]{1}[0]{1}[0-3]{1}[0-9]{1}/[0-9]{1,2}/[0-9]{1,2}$|^[2]{1}[0]{1}[0-3]{1}[0-9]{1}/[0-9]{1}/[0-9]{1}$|^[2]{1}[0]{1}[0-3]{1}[0-9]{1}/[0-9]{1,2}/[0-3]{1}[0-9]{1}$|^[2]{1}[0]{1}[0-3]{1}[0-9]{1}/[0-9]{1}/[0-3]{1}[0-9]{1}$|^[1]{1}[9]{1}[0-9]{2}/[0-9]{1,2}/[0-3]{1}[0-9]{1}$", x = substr(t_len[[x]], 1, 10)) & grepl(pattern = "^[0-9]{1,2}:[0-9]{2}:[0-9]{2}$", substr(t_len[[x]], 11, nchar(t_len[[x]])))) {
-				df_date[[x]] = as.POSIXct(as.character(df_date[[x]]), format = "%Y/%m/%d %H:%M:%S")
-			}
-			if (t_sample[[x]] == 10 & grepl(pattern = "^[1]{1}[0-9]{9}", x = t_len[[x]])) {
-				df_date[[x]] = as.POSIXct(as.numeric(df_date[[x]]), origin = "1970-01-01 00:00:00")
-			}
-			if (t_sample[[x]] == 13 & grepl(pattern = "^[1]{1}[0-9]{12}", x = t_len[[x]])) {
-				df_date[[x]] = as.POSIXct(as.numeric(df_date[[x]]) / 1000, origin = "1970-01-01 00:00:00")
-			}
-		}
-		dat[df_date_cols] <- df_date
-		rm(df_date)
-	} else {
-		dat = dat
-	}
-	dat
+      if (t_sample[[x]] >= 8 & t_sample[[x]] <= 10 &
+          grepl(pattern = "^[2]{1}[0]{1}[0-3]{1}[0-9]{1}-[0-9]{1}-[0-9]{1,2}$|^[2]{1}[0]{1}[0-3]{1}[0-9]{1}-[0-9]{1,2}-[0-3]{1}[0-9]{1}$|^[1]{1}[9]{1}[0-9]{2}-[0-9]{1,2}-[0-3]{1}[0-9]{1}$", x = substr(t_len[[x]], 1, 10))) {
+        df_date[[x]] = as.Date(as.character(df_date[[x]]), "%Y-%m-%d")
+      }
+      if (t_sample[[x]] > 10 & grepl(pattern = "^[2]{1}[0]{1}[0-3]{1}[0-9]{1}-[0-9]{1}-[0-3]{1}[0-9]{1,2}$|^[2]{1}[0]{1}[0-3]{1}[0-9]{1}-[0-9]{1,2}-[0-3]{1}[0-9]{1}$|^[1]{1}[9]{1}[0-9]{2}-[0-9]{1,2}-[0-3]{1}[0-9]{1}$", x = substr(t_len[[x]], 1, 10)) & grepl(pattern = "^[0-1]{1}[0-9]{1}:[0-9]{2}$", substr(t_len[[x]], 11, nchar(t_len[[x]])))) {
+        df_date[[x]] = paste0(df_date[[x]], ":00")
+        df_date[[x]] = as.POSIXct(as.character(df_date[[x]]), format = "%Y-%m-%d %H:%M:%S")
+      }
+      if (t_sample[[x]] > 10 & grepl(pattern = "^[2]{1}[0]{1}[0-3]{1}[0-9]{1}-[0-9]{1}-[0-3]{1}[0-9]{1,2}$|^[2]{1}[0]{1}[0-3]{1}[0-9]{1}-[0-9]{1,2}-[0-3]{1}[0-9]{1}$|^[1]{1}[9]{1}[0-9]{2}-[0-9]{1,2}-[0-3]{1}[0-9]{1}$", x = substr(t_len[[x]], 1, 10)) & grepl(pattern = "^[0-1]{1}[0-9]{1}:[0-9]{2}:[0-9]{2}", substr(t_len[[x]], 11, nchar(t_len[[x]])))) {
+        df_date[[x]] = as.POSIXct(as.character(df_date[[x]]), format = "%Y-%m-%d %H:%M:%S")
+      }
+
+      if (t_sample[[x]] >= 7 & t_sample[[x]] <= 9 &
+          grepl(pattern = "^[2]{1}[0]{1}[0-5]{1}[0-9]{1}[0-9]{1}[0-3]{1}[0-9]{1,2}$|^[2]{1}[0]{1}[0-5]{1}[0-9]{1}[0-9]{1,2}[0-3]{1}[0-9]{1}$|^[1]{1}[9]{1}[0-9]{2}[0-9]{1,2}[0-3]{1}[0-9]{1}$", x = t_len[[x]])) {
+        df_date[[x]] = as.Date(as.character(df_date[[x]]), "%Y%m%d")
+      }
+      if (t_sample[[x]] > 10 & grepl(pattern = "^[2]{1}[0]{1}[0-5]{1}[0-9]{1}[0-9]{1}[0-3]{1}[0-9]{1,2}$|^[2]{1}[0]{1}[0-5]{1}[0-9]{1}[0-9]{1,2}[0-3]{1}[0-9]{1}$|^[1]{1}[9]{1}[0-9]{2}[0-9]{1,2}[0-3]{1}[0-9]{1}$", x = substr(t_len[[x]], 1, 8)) & grepl(pattern = "^[0-9]{1,2}:[0-9]{2}:[0-9]{2}$", substr(t_len[[x]], 9, nchar(t_len[[x]])))) {
+        df_date[[x]] = gsub(" ", "", df_date[[x]])
+        df_date[[x]] = paste(substr(df_date[[x]], 1, 8), substr(df_date[[x]], 9, nchar(df_date[[x]])))
+        df_date[[x]] = as.POSIXct(as.character(df_date[[x]]), format = "%Y%m%d %H:%M:%S")
+      }
+      if (t_sample[[x]] > 10 & grepl(pattern = "^[2]{1}[0]{1}[0-5]{1}[0-9]{1}[0-9]{1}[0-3]{1}[0-9]{1,2}$|^[2]{1}[0]{1}[0-5]{1}[0-9]{1}[0-9]{1,2}[0-3]{1}[0-9]{1}$|^[1]{1}[9]{1}[0-9]{2}[0-9]{1,2}[0-3]{1}[0-9]{1}$", x = substr(t_len[[x]], 1, 8)) & grepl(pattern = "^[0-9]{1,2}:[0-9]{2}$", substr(t_len[[x]], 9, nchar(t_len[[x]])))) {
+        df_date[[x]] = gsub(" ", "", df_date[[x]])
+        df_date[[x]] = paste(substr(df_date[[x]], 1, 8), substr(df_date[[x]], 9, nchar(df_date[[x]])), ":00")
+        df_date[[x]] = as.POSIXct(as.character(df_date[[x]]), format = "%Y%m%d %H:%M:%S")
+      }
+      if (t_sample[[x]] >= 8 & t_sample[[x]] <= 10 &
+          grepl(pattern = "^[2]{1}[0]{1}[0-3]{1}[0-9]{1}/[0-9]{1,2}/[0-9]{1,2}$|^[1]{1}[9]{1}[0-9]{2}/[0-9]{1,2}/[0-9]{1,2}$", x = substr(t_len[[x]], 1, 10))) {
+        df_date[[x]] = as.Date(as.character(df_date[[x]]), "%Y/%m/%d")
+      }
+      if (t_sample[[x]] > 10 & grepl(pattern = "^[2]{1}[0]{1}[0-3]{1}[0-9]{1}/[0-9]{1,2}/[0-9]{1,2}$|^[2]{1}[0]{1}[0-3]{1}[0-9]{1}/[0-9]{1}/[0-9]{1}$|^[2]{1}[0]{1}[0-3]{1}[0-9]{1}/[0-9]{1,2}/[0-3]{1}[0-9]{1}$|^[2]{1}[0]{1}[0-3]{1}[0-9]{1}/[0-9]{1}/[0-3]{1}[0-9]{1}$|^[1]{1}[9]{1}[0-9]{2}/[0-9]{1,2}/[0-3]{1}[0-9]{1}$", x = substr(t_len[[x]], 1, 10)) & grepl(pattern = "^[0-9]{1,2}:[0-9]{2}$", substr(t_len[[x]], 11, nchar(t_len[[x]])))) {
+        df_date[[x]] = paste0(df_date[[x]], ":00")
+        df_date[[x]] = as.POSIXct(as.character(df_date[[x]]), format = "%Y/%m/%d %H:%M:%S")
+      }
+      if (t_sample[[x]] > 10 & grepl(pattern = "^[2]{1}[0]{1}[0-3]{1}[0-9]{1}/[0-9]{1,2}/[0-9]{1,2}$|^[2]{1}[0]{1}[0-3]{1}[0-9]{1}/[0-9]{1}/[0-9]{1}$|^[2]{1}[0]{1}[0-3]{1}[0-9]{1}/[0-9]{1,2}/[0-3]{1}[0-9]{1}$|^[2]{1}[0]{1}[0-3]{1}[0-9]{1}/[0-9]{1}/[0-3]{1}[0-9]{1}$|^[1]{1}[9]{1}[0-9]{2}/[0-9]{1,2}/[0-3]{1}[0-9]{1}$", x = substr(t_len[[x]], 1, 8)) & grepl(pattern = "^[0-9]{1,2}:[0-9]{2}$", substr(t_len[[x]], 9, nchar(t_len[[x]])))) {
+        df_date[[x]] = paste0(df_date[[x]], ":00")
+        df_date[[x]] = as.POSIXct(as.character(df_date[[x]]), format = "%Y/%m/%d %H:%M:%S")
+      }
+      if (t_sample[[x]] > 10 & grepl(pattern = "^[2]{1}[0]{1}[0-3]{1}[0-9]{1}/[0-9]{1,2}/[0-9]{1,2}$|^[2]{1}[0]{1}[0-3]{1}[0-9]{1}/[0-9]{1}/[0-9]{1}$|^[2]{1}[0]{1}[0-3]{1}[0-9]{1}/[0-9]{1,2}/[0-3]{1}[0-9]{1}$|^[2]{1}[0]{1}[0-3]{1}[0-9]{1}/[0-9]{1}/[0-3]{1}[0-9]{1}$|^[1]{1}[9]{1}[0-9]{2}/[0-9]{1,2}/[0-3]{1}[0-9]{1}$", x = substr(t_len[[x]], 1, 10)) & grepl(pattern = "^[0-9]{1,2}:[0-9]{2}:[0-9]{2}$", substr(t_len[[x]], 11, nchar(t_len[[x]])))) {
+        df_date[[x]] = as.POSIXct(as.character(df_date[[x]]), format = "%Y/%m/%d %H:%M:%S")
+      }
+      if (t_sample[[x]] == 10 & grepl(pattern = "^[1]{1}[0-9]{9}", x = t_len[[x]])) {
+        df_date[[x]] = as.POSIXct(as.numeric(df_date[[x]]), origin = "1970-01-01 00:00:00")
+      }
+      if (t_sample[[x]] == 13 & grepl(pattern = "^[1]{1}[0-9]{12}", x = t_len[[x]])) {
+        df_date[[x]] = as.POSIXct(as.numeric(df_date[[x]]) / 1000, origin = "1970-01-01 00:00:00")
+      }
+    }
+    dat[df_date_cols] <- df_date
+    rm(df_date)
+  } else {
+    dat = dat
+  }
+  dat
 }
 
 
@@ -461,7 +475,7 @@ derived_ts <- function(dat, grx_x = NULL, x_list = NULL, td = NULL, ID = NULL, e
     cv_cols = cv_cols[!is.na(cv_cols)]
     dat = dat[c(ID, cv_cols)]
     if (length(cv_cols) > 0) {
-        setDT(dat)
+        dat = as.data.table(dat)
         name_n = orignal_nam = sim_nam = str_num = c()
         orignal_nam = names(dat[, cv_cols, with = FALSE])
         str_num = as.numeric(str_match(str_r = orignal_nam, pattern = "\\d+"))
@@ -474,7 +488,7 @@ derived_ts <- function(dat, grx_x = NULL, x_list = NULL, td = NULL, ID = NULL, e
         sim_nam = paste(unique(lapply(1:(length(orignal_nam) - 1),
                                   function(x) sim_str(orignal_nam[x], orignal_nam[x + 1], sep = "_|[0-9]")))[[1]], collapse = "_")
         if (any(der == "cvs")) {
-                  dat = dat[, paste(sim_nam, name_n, "cvs", sep = "_") := ifelse(rowAllnas(dat[, cv_cols, with = FALSE]), NA, 
+                  dat = dat[, paste(sim_nam, name_n, "cvs", sep = "_") := ifelse(rowAllnas(dat[, cv_cols, with = FALSE]), NA,
 				  rowCVs(dat[, cv_cols, with = FALSE], na.rm = TRUE))]
         }
         if (any(der == "sums")) {
@@ -529,31 +543,94 @@ derived_ts <- function(dat, grx_x = NULL, x_list = NULL, td = NULL, ID = NULL, e
 #' @param ID  The name of ID of observations or key variable of data. Default is NULL.
 #' @param time The name of variable which is time when behavior was happened.
 #' @details  The key to creating a good model is not the power of a specific modelling technique, but the breadth and depth of derived variables that represent a higher level of knowledge about the phenomena under examination.
-#' @importFrom data.table setDT :=  rbindlist dcast
-#' @importFrom dplyr %>% arrange mutate group_by lead ungroup
+#' @importFrom data.table setDT := dcast.data.table shift .SD
+#' @examples
+#' dat = data.frame(id = c(1,1,1,2,2,3,3,3,4,4,4,4,4,5,5,6,7,7,
+#'                             8,8,8,9,9,9,10,10,11,11,11,11,11,11),
+#'                      terms = c('a','b','c','a','c','d','d','a',
+#'                                'b','c','a','c','d','a','c',
+#'                                   'd','a','e','f','b','c','f','b',
+#'                                'c','h','h','i','c','d','g','k','k'),
+#'                      time = c(8,3,1,9,6,1,4,9,1,3,4,8,2,7,1,
+#'                               3,4,1,8,7,2,5,7,8,8,2,1,5,7,2,7,3))
+#'
+#' time_series_proc(dat = dat, ID = 'id', group = 'terms',time = 'time')
 #' @export
 
 time_series_proc <- function(dat, ID = NULL, group = NULL, time = NULL) {
-    if (is.null(time)) stop("time variable is missing.\n")
-    dat$time = as.numeric(dat[[time]])
-    if (!is.null(ID)) {
-        dat$ID = as.character(dat[[ID]])
-    } else {
-        dat$ID = as.character(rownames(dat))
-        ID = "ID"
-    }
-    if (!is.null(group)) {
-        dat$group = as.character(dat[[group]])
-    } else {
-        dat$group = "1"
-    }
-    dat = dat %>% dplyr::group_by(ID) %>% dplyr::arrange(time) %>%
-    dplyr::mutate(time_interval = as.numeric(dplyr::lead(time, default = max(time, na.rm = TRUE)) - time)) %>% dplyr::ungroup()
-    dat = data.table::dcast(setDT(dat), ID ~ group,
-                             fun.aggregate = list(cnt_x, sum_x, max_x, min_x, avg_x), value.var = c('time_interval'))
-    colnames(dat)[1] = ID
-    quick_as_df(dat)
+  time_interval = NULL
+  if (is.null(time)) stop("time variable is missing.\n")
+  dat$time = as.numeric(dat[[time]])
+  if (!is.null(ID)) {
+    dat$ID = as.character(dat[[ID]])
+  } else {
+    dat$ID = as.character(rownames(dat))
+    ID = "ID"
+  }
+  if (!is.null(group)) {
+    dat$group = as.character(dat[[group]])
+  } else {
+    dat$group = "1"
+  }
+  dat = as.data.table(dat)
+  dat = dat[,.SD[order(time)],by = 'ID']
+  dat[,time_interval := as.numeric(data.table::shift(time,
+                                                     fill = max(time,na.rm = TRUE),
+                                                     type = "lead") - time),by = 'ID']
+  dat = dcast.data.table(dat, ID ~ group,
+                          fun.aggregate = list(cnt_x, sum_x, max_x, min_x, avg_x),
+                          value.var = c('time_interval'))
+  colnames(dat)[1] = ID
+  quick_as_df(dat)
 }
+
+#' Process group numeric variables
+#'
+#' This function is used for grouped numeric data processing.
+#'
+#' @param dat  A data.frame contained only predict variables.
+#' @param group The group of behavioral or status variables.
+#' @param ID  The name of ID of observations or key variable of data. Default is NULL.
+#' @param num_var The name of numeric variable to process.
+#' @importFrom data.table setDT := dcast.data.table shift
+#' @examples
+#' dat = data.frame(id = c(1,1,1,2,2,3,3,3,4,4,4,4,4,5,5,6,7,7,
+#'                             8,8,8,9,9,9,10,10,11,11,11,11,11,11),
+#'                      terms = c('a','b','c','a','c','d','d','a',
+#'                                'b','c','a','c','d','a','c',
+#'                                   'd','a','e','f','b','c','f','b',
+#'                                'c','h','h','i','c','d','g','k','k'),
+#'                      time = c(8,3,1,9,6,1,4,9,1,3,4,8,2,7,1,
+#'                               3,4,1,8,7,2,5,7,8,8,2,1,5,7,2,7,3))
+#'
+#' time_series_proc(dat = dat, ID = 'id', group = 'terms',time = 'time')
+#' @export
+var_group_proc = function(dat, ID = NULL, group = NULL, num_var = NULL){
+   dat = quick_as_df(dat)
+   if(!is.null(ID)){
+     dat$ID = as.character(dat[[ID]])
+   }else{
+     dat$ID = as.character(rownames(dat))
+     ID = "ID"
+   }
+   if (!is.null(group)){
+     dat$group = as.character(dat[[group]])
+   }else{
+     dat$group = "1"
+   }
+   if (!is.null(num_var)){
+     dat[[num_var]] = as.numeric(dat[[num_var]])
+   } else{
+     dat$num_var = 1
+     num_var = "num_var"
+   }
+   dat = as.data.table(dat)
+   dat = dcast.data.table(dat, ID ~ group,
+                           fun.aggregate = list(cnt_x, sum_x, max_x, min_x, avg_x), value.var = c(num_var))
+   colnames(dat)[1] = ID
+   quick_as_df(dat)
+}
+
 
 #' Processing of Time or Date Variables
 #'
@@ -564,23 +641,23 @@ time_series_proc <- function(dat, ID = NULL, group = NULL, time = NULL) {
 #' @param  enddate  End time.
 #' @export
 #' @importFrom data.table  hour setnames
-time_vars_process <- function(df_tm = df_tm, x, enddate = "occur_time") {
-    if ((class(df_tm[[x]])[1] == 'POSIXct' | class(df_tm[[x]])[1] == 'Date') & x != enddate) {
-        mydata <- within(df_tm, {
-            new = as.numeric(as.Date(df_tm[[enddate]]) - as.Date(df_tm[[x]]))
-            new2 = ifelse(is.na(df_tm[[x]]), 0, 1)
-            new3 = hour(round(as.POSIXct(df_tm[[x]])))
-        })
-        new_name <- c(paste(x, "_", enddate, "_duration", sep = ""),
-                      paste(x, "IF", sep = "_"),
-                      paste(x, "hours", sep = "_"))
-        setnames(mydata, c("new", "new2", "new3"), c(new_name))
-        return(mydata[, new_name])
-    }
+
+time_vars_process = function(df_tm = df_tm, x, enddate = NULL) {
+	if (is_date(df_tm[[x]]) & x != enddate & (!is.null(enddate) && is_date(df_tm[[enddate]]))){
+		mydata <- within(df_tm, {
+			new = as.numeric(as.Date(df_tm[[enddate]]) - as.Date(df_tm[[x]]))
+			new2 = hour(round(as.POSIXct(df_tm[[x]])))
+			new3 = weekdays(round(as.POSIXct(df_tm[[x]])), abbreviate = TRUE)
+		})
+		new_name <- c(paste(x, "_to_", enddate, "_duration", sep = ""),
+					  paste(x, "hours", sep = "_"),
+					  paste(x, "weekdays", sep = "_"))
+		mydata = re_name(mydata, oldname =  c("new", "new2", "new3"),  newname = c(new_name))
+		return(mydata[, new_name])
+	}
 }
 
-
-#' time_varieble
+#' time_variable
 #'
 #' This function is not intended to be used by end user.
 #'
@@ -588,32 +665,35 @@ time_vars_process <- function(df_tm = df_tm, x, enddate = "occur_time") {
 #' @param  date_cols  Time variables.
 #' @param  enddate  End time.
 #' @export
-time_varieble <- function(dat, date_cols = NULL, enddate = NULL) {
-    dat = checking_data(dat = dat)
-    date_cols1 = NULL
-    if (!is.null(date_cols)) {
-        date_cols1 <- names(dat)[colnames(dat) %islike% c(enddate, date_cols)]
-    } else {
-        date_cols1 = names(dat)
-    }
-    df_date = dat[date_cols1]
-    df_date = time_transfer(dat = df_date, date_cols = c(enddate, date_cols))
-    df_date <- df_date[!colAllnas(df_date)]
-    df_tm = df_date[sapply(df_date, is_date)]
 
-    time_vars_list <- lapply(date_cols1, function(x) time_vars_process(df_tm = df_tm, x, enddate = enddate))
-    index <- 0;
-    j <- 1
-    for (i in 1:length(time_vars_list)) {
-        if (is.null(time_vars_list[[i]])) {
-            index[j] <- i
-            j <- j + 1
-        }
-    }
-    tm_vars_tbl <- as.data.frame(Reduce("cbind", time_vars_list[-index]))
+time_variable = function(dat, date_cols = NULL, enddate = NULL) {
+	dat = checking_data(dat = dat)
+	date_cols1 = NULL
+	if (!is.null(date_cols)) {
+		date_cols1 <- names(dat)[colnames(dat) %islike% c(enddate, date_cols)]
+	} else {
+		date_cols1 = names(dat)
+	}
+	df_date = dat[date_cols1]
+	df_date = time_transfer(dat = df_date, date_cols = c(enddate, date_cols))
+	df_date <- df_date[!colAllnas(df_date)]
+	df_tm = df_date[sapply(df_date, is_date)]
 
-    return(tm_vars_tbl)
+	time_vars_list <- lapply(date_cols1, function(x) time_vars_process(df_tm = df_tm, x, enddate = enddate))
+	index <- 0;
+	j <- 1
+	for (i in 1:length(time_vars_list)) {
+		if (is.null(time_vars_list[[i]])) {
+			index[j] <- i
+			j <- j + 1
+		}
+	}
+	tm_vars_tbl <- as.data.frame(Reduce("cbind", time_vars_list[-index]))
+	dat = cbind(dat, tm_vars_tbl)
+	return(dat)
 }
+
+
 
 
 #' Processing of Address Variables
@@ -624,57 +704,60 @@ time_varieble <- function(dat, date_cols = NULL, enddate = NULL) {
 #' @param x Variables of city,
 #' @param city_class  Class or levels of cities.
 #' @export
-city_varieble_process <- function(df_city, x, city_class) {
-    if (class(df_city)[1] != "data.frame") {
-        df_city <- as.data.frame(df_city)
-    }
-    df_city <- within(df_city, {
-        city_level <- NA
-        city_level[df_city[[x]] %alike% city_class[1]] <- 1
-        city_level[df_city[[x]] %alike% city_class[2]] <- 2
-        city_level[df_city[[x]] %alike% city_class[3]] <- 3
-        city_level[df_city[[x]] %alike% city_class[4]] <- 4
-        city_level[df_city[[x]] %alike% city_class[5]] <- 5
-        city_level[df_city[[x]] %alike% city_class[6]] <- 6
-        city_level[is.null(df_city[[x]]) == TRUE | df_city[[x]] == "NULL" | df_city[[x]] == "" |
-            df_city[[x]] == "Missing" | city_level == "NA" | df_city[[x]] == "NA"] <- -1
-        city_level[is.na(city_level)] <- -1
-    })
-    NAsRate <- length(which(df_city$city_level == -1)) / nrow(df_city)
-    if (NAsRate >= 0.3 & NAsRate < 0.6) {
-        df_city2 <- data.frame()
-        df_city2 <- within(df_city, {
-            city_level <- NA
-            city_level[df_city[[x]] %alike% city_class[1]] <- 1
-            city_level[df_city[[x]] %alike% city_class[2]] <- 2
-            city_level[df_city[[x]] %alike% city_class[3]] <- 3
-            city_level[df_city[[x]] %alike% city_class[4]] <- 4
-            city_level[df_city[[x]] %alike% city_class[5]] <- 4
-            city_level[df_city[[x]] %alike% city_class[6]] <- 4
-            city_level[is.null(df_city[[x]]) == TRUE | df_city[[x]] == "NULL" | df_city[[x]] == "" |
-                df_city[[x]] == "Missing" | city_level == "NA" | df_city[[x]] == "NA"] <- -1
-            city_level[is.na(city_level)] <- -1
-        })
-    }
-    if (NAsRate >= 0.6) {
-        df_city3 <- data.frame()
-        df_city3 <- within(df_city, {
-            city_level <- NULL
-            city_level[df_city[[x]] %alike% city_class[1]] <- 1
-            city_level[df_city[[x]] %alike% city_class[2]] <- 1
-            city_level[df_city[[x]] %alike% city_class[3]] <- 1
-            city_level[df_city[[x]] %alike% city_class[4]] <- 1
-            city_level[df_city[[x]] %alike% city_class[5]] <- 1
-            city_level[df_city[[x]] %alike% city_class[6]] <- 1
-            city_level[is.null(df_city[[x]]) == TRUE | df_city[[x]] == "NULL" | df_city[[x]] == "" |
-                df_city[[x]] == "Missing" | city_level == "NA" | df_city[[x]] == "NA"] <- -1
-            city_level[is.na(city_level)] <- -1
-        })
-    }
-    city_level_name <- paste(x, "city_level", sep = "_")
-    df_city <- re_name(df_city, city_level, city_level_name)
-    return(df_city[city_level_name])
+
+city_varieble_process = function(df_city, x, city_class) {
+	if (class(df_city)[1] != "data.frame") {
+		df_city <- as.data.frame(df_city)
+	}
+	df_city <- within(df_city, {
+		city_level <- NA
+		city_level[df_city[[x]] %alike% city_class[1]] <- 1
+		city_level[df_city[[x]] %alike% city_class[2]] <- 2
+		city_level[df_city[[x]] %alike% city_class[3]] <- 3
+		city_level[df_city[[x]] %alike% city_class[4]] <- 4
+		city_level[df_city[[x]] %alike% city_class[5]] <- 5
+		city_level[df_city[[x]] %alike% city_class[6]] <- 6
+		city_level[is.null(df_city[[x]]) == TRUE | df_city[[x]] == "NULL" | df_city[[x]] == "" |
+			df_city[[x]] == "Missing" | city_level == "NA" | df_city[[x]] == "NA"] <- -1
+		city_level[is.na(city_level)] <- -1
+	})
+	NAsRate <- length(which(df_city$city_level == -1)) / nrow(df_city)
+	if (NAsRate >= 0.3 & NAsRate < 0.6) {
+		df_city2 <- data.frame()
+		df_city2 <- within(df_city, {
+			city_level <- NA
+			city_level[df_city[[x]] %alike% city_class[1]] <- 1
+			city_level[df_city[[x]] %alike% city_class[2]] <- 2
+			city_level[df_city[[x]] %alike% city_class[3]] <- 3
+			city_level[df_city[[x]] %alike% city_class[4]] <- 4
+			city_level[df_city[[x]] %alike% city_class[5]] <- 4
+			city_level[df_city[[x]] %alike% city_class[6]] <- 4
+			city_level[is.null(df_city[[x]]) == TRUE | df_city[[x]] == "NULL" | df_city[[x]] == "" |
+				df_city[[x]] == "Missing" | city_level == "NA" | df_city[[x]] == "NA"] <- -1
+			city_level[is.na(city_level)] <- -1
+		})
+	}
+	if (NAsRate >= 0.6) {
+		df_city3 <- data.frame()
+		df_city3 <- within(df_city, {
+			city_level <- NULL
+			city_level[df_city[[x]] %alike% city_class[1]] <- 1
+			city_level[df_city[[x]] %alike% city_class[2]] <- 1
+			city_level[df_city[[x]] %alike% city_class[3]] <- 1
+			city_level[df_city[[x]] %alike% city_class[4]] <- 1
+			city_level[df_city[[x]] %alike% city_class[5]] <- 1
+			city_level[df_city[[x]] %alike% city_class[6]] <- 1
+			city_level[is.null(df_city[[x]]) == TRUE | df_city[[x]] == "NULL" | df_city[[x]] == "" |
+				df_city[[x]] == "Missing" | city_level == "NA" | df_city[[x]] == "NA"] <- -1
+			city_level[is.na(city_level)] <- -1
+		})
+	}
+	city_level_name <- paste(x, "city_level", sep = "_")
+	df_city <- re_name(dat = df_city, oldname = "city_level", newname = city_level_name)
+	return(df_city[city_level_name])
 }
+
+
 
 #' city_varieble
 #'
@@ -690,42 +773,42 @@ city_varieble_process <- function(df_city, x, city_class) {
 #' @importFrom doParallel registerDoParallel
 #' @importFrom foreach foreach %dopar% %do%  registerDoSEQ
 #' @export
-city_varieble <- function(df = df, city_cols = NULL,
-                          city_pattern = "city$", city_class = city_class,
-                          parallel = TRUE) {
-    if (class(df)[1] != "data.frame") {
-        df <- as.data.frame(df)
-    }
-    if (is.null(city_cols)) {
-        city_index <- grepl(city_pattern, paste(colnames(df)))
-        city_cols <- names(df[city_index])
-    } else {
-        city_cols <- names(df[city_cols])
-    }
-    df_city = df[, city_cols]
-    if (parallel) {
-        parallel <- start_parallel_computing(parallel)
-        stopCluster <- TRUE
-    } else {
-        parallel <- stopCluster <- FALSE
-    }
-    on.exit(if (parallel & stopCluster) stop_parallel_computing(attr(parallel, "cluster")))
-    i. = NULL
-    df_city_list = list()
-    if (!parallel) {
-        df_city_list <- lapply(city_cols, function(x) city_varieble_process(df_city, x, city_class))
-        df_city_tbl <- Reduce("cbind", df_city_list) %>% as.data.frame()
-    } else {
-        df_city_list <- foreach(i. = city_cols, .combine = "c") %dopar% {
-            try(do.call(city_varieble_process,
-                        args = list(df_city = df_city, x = i., city_class = city_class)),
-                silent = TRUE)
-        }
-        df_city_tbl <- as.data.frame(df_city_list)
-    }
-    return(df_city_tbl)
-}
 
+city_varieble = function(df = df, city_cols = NULL,
+						  city_pattern = NULL, city_class = city_class,
+						  parallel = TRUE) {
+	if (class(df)[1] != "data.frame") {
+		df <- as.data.frame(df)
+	}
+	if (is.null(city_cols)) {
+		city_index <- grepl(city_pattern, paste(colnames(df)))
+		city_cols <- names(df[city_index])
+	} else {
+		city_cols <- names(df[city_cols])
+	}
+	df_city = df[, city_cols]
+	if (parallel) {
+		parallel <- start_parallel_computing(parallel)
+		stopCluster <- TRUE
+	} else {
+		parallel <- stopCluster <- FALSE
+	}
+	on.exit(if (parallel & stopCluster) stop_parallel_computing(attr(parallel, "cluster")))
+	i. = NULL
+	df_city_list = list()
+	if (!parallel) {
+		df_city_list <- lapply(city_cols, function(x) city_varieble_process(df_city=df_city, x = x, city_class = city_class))
+		df_city_tbl <- Reduce("cbind", df_city_list) %>% as.data.frame()
+	} else {
+		df_city_list <- foreach(i. = city_cols, .combine = "c") %dopar% {
+			try(do.call(city_varieble_process,
+						args = list(df_city = df_city, x = i., city_class = city_class)),
+				silent = TRUE)
+		}
+		df_city_tbl <- as.data.frame(df_city_list)
+	}
+	return(df_city_tbl)
+}
 #' add_variable_process
 #'
 #' This function is not intended to be used by end user.
@@ -962,9 +1045,9 @@ de_percent <- function(x, digits = 2) {
 #' str(dat[,char_list])
 #' @export
 
-merge_category <- function(dat, ex_cols = "date$|id$|time$|DATA$|ID$|TIME$", p = 0.01, m = 10, note = TRUE) {
+merge_category <- function(dat, ex_cols = NULL, p = 0.01, m = 10, note = TRUE) {
     opt = options(scipen = 200, stringsAsFactors = FALSE, "warn" = -1)
-    if (note)cat_line(paste("-- Merging categories which percent is less than", p ,"or obs number is less than", m), col = love_color("dark_green"))
+    if (note)cat_line(paste0("-- Merging categories..."), col = love_color("dark_green"))
 
 
     char_list = get_names(dat = dat,
@@ -985,7 +1068,7 @@ merge_category <- function(dat, ex_cols = "date$|id$|time$|DATA$|ID$|TIME$", p =
             dat[which(dat[, x] %in% names(dt_x[max_class])), x] = "other"
         }
     }
- 
+
     return(dat)
 	options(opt) # reset
 }
@@ -1105,6 +1188,7 @@ log_vars <- function(dat, x_list = NULL, target = NULL,cor_dif = 0.01,ex_cols = 
 #' @param x The name of an independent variable.
 #' @param rank_dict The dictionary of rank_percent generated by \code{ranking_percent_dict} .
 #' @param ex_cols Names of excluded variables. Regular expressions can also be used to match variable names. Default is NULL.
+#' @param pct Percent of rank. Default is 0.01.
 #' @param note Logical, outputs info. Default is TRUE.
 #' @param parallel Logical, parallel computing. Default is FALSE.
 #' @param save_data Logical, save results in locally specified folder. Default is FALSE
@@ -1113,14 +1197,14 @@ log_vars <- function(dat, x_list = NULL, target = NULL,cor_dif = 0.01,ex_cols = 
 #' @param ...  Additional parameters.
 #' @return Data.frame with new processed variables.
 #' @examples
-#' rank_dict = ranking_percent_dict(dat = UCICreditCard[1:1000,], 
+#' rank_dict = ranking_percent_dict(dat = UCICreditCard[1:1000,],
 #' x_list = c("LIMIT_BAL","BILL_AMT2","PAY_AMT3"), ex_cols = NULL )
-#' UCICreditCard_new = ranking_percent_proc(dat = UCICreditCard[1:1000,], 
+#' UCICreditCard_new = ranking_percent_proc(dat = UCICreditCard[1:1000,],
 #' x_list = c("LIMIT_BAL", "BILL_AMT2", "PAY_AMT3"), rank_dict = rank_dict, parallel = FALSE)
 #' @importFrom data.table is.data.table
 #' @export
 
-ranking_percent_proc <- function(dat, ex_cols = NULL, x_list = NULL, rank_dict = NULL,
+ranking_percent_proc <- function(dat, ex_cols = NULL, x_list = NULL, rank_dict = NULL,pct = 0.01,
                              parallel = FALSE, note = FALSE, save_data = FALSE,file_name = NULL,dir_path= tempdir(), ... ){
     if (note) cat_line("-- Processing ranking percent variables.\n", col = love_color("dark_green"))
     x_list = get_x_list(x_list = x_list, dat_train = dat, dat_test = NULL, ex_cols = ex_cols)
@@ -1135,13 +1219,13 @@ ranking_percent_proc <- function(dat, ex_cols = NULL, x_list = NULL, rank_dict =
 		save_data = save_data, file_name = file_name,dir_path = dir_path )
     }
     if (any(is.element(sapply(rank_dict, class), c("character", "factor")))) {
-        rank_dict[, which(is.element(sapply(rank_dict, class), c("character", "factor")))] = 
+        rank_dict[, which(is.element(sapply(rank_dict, class), c("character", "factor")))] =
 		as.numeric(as.character(rank_dict[, which(is.element(sapply(rank_dict, class), c("character", "factor")))]))
     }
     new_x = paste(num_x_list,"rank_pct",sep = "_")
     if (length(num_x_list) > 0) {
         dat[, new_x] = loop_function(func = ranking_percent_proc_x, x_list = num_x_list,
-                                          args = list(dat = dat, rank_dict = rank_dict),
+                                          args = list(dat = dat, rank_dict = rank_dict,pct = pct),
                                           bind = "cbind", as_list = FALSE, parallel = parallel)
     }
 	if (save_data) {
@@ -1149,7 +1233,7 @@ ranking_percent_proc <- function(dat, ex_cols = NULL, x_list = NULL, rank_dict =
                       tempdir(), dir_path)
         if (!dir.exists(dir_path)) dir.create(dir_path)
         if (!is.character(file_name)) file_name = NULL
-        save_data(dat, file_name = ifelse(is.null(file_name), "dat_rank_percent", 
+        save_data(dat, file_name = ifelse(is.null(file_name), "dat_rank_percent",
 		paste(file_name, "dat_rank_percent", sep = ".")), dir_path = dir_path, note = note)
     }
     return(dat)
@@ -1160,7 +1244,7 @@ ranking_percent_proc <- function(dat, ex_cols = NULL, x_list = NULL, rank_dict =
 #' @rdname ranking_percent_proc
 #' @export
 
-ranking_percent_proc_x <- function(dat, x,rank_dict = NULL) {
+ranking_percent_proc_x <- function(dat, x,rank_dict = NULL,pct = 0.01) {
     if ((!is.null(x) && is.character(x)) & !is.null(dat)) {
         dat_x = abs(dat[, x][complete.cases(dat[, x])])
     } else {
@@ -1178,93 +1262,197 @@ ranking_percent_proc_x <- function(dat, x,rank_dict = NULL) {
         }
     }
     if (is.null(rank_dict)) {
-        QL <- quantile(dat_x, 0.25)
-        QU <- quantile(dat_x, 0.75)
+        QL <- quantile(dat_x, 0.01)
+        QU <- quantile(dat_x, 0.99)
         QU_QL <- QU - QL
         outliers <- QU + 4 * QU_QL
         dat_x[dat_x > QU + 4 * QU_QL] <- outliers
         rank_dict_x = NULL
-        rank_x = quantile(ecdf(unique(dat_x)), seq(0, 1, by = 0.001))
+        rank_x = quantile(ecdf(unique(dat_x)), seq(0, 1, by = pct))
         rank_percent = as.double(sub("%", "", names(rank_x))) / 100
         rank_dict_x = data.frame(rank_percent, rank_x)
         colnames(rank_dict_x)[2] = x
     }
     if (any(is.element(sapply(rank_dict, class), c("character", "factor")))) {
-        rank_dict[, which(is.element(sapply(rank_dict, class), c("character", "factor")))] = 
+        rank_dict[, which(is.element(sapply(rank_dict, class), c("character", "factor")))] =
 		as.numeric(as.character(rank_dict[, which(is.element(sapply(rank_dict, class), c("character", "factor")))]))
     }
 
     x_new = paste(x,"rank_pct",sep = "_")
-    dat[which(!is.na(dat[, x])), x_new] = vapply(dat_x, function(i) { 
-	round(rank_dict[, "rank_percent"][which.min(i > rank_dict[, x])], 3) 
+    dat[which(!is.na(dat[, x])), x_new] = vapply(dat_x, function(i) {
+	round(rank_dict[, "rank_percent"][which.min(i > rank_dict[, x])], 3)
 	}, FUN.VALUE = numeric(1))
     return(dat[x_new])
 }
 
 
-
-
 #' @rdname ranking_percent_proc
 #' @export
-ranking_percent_dict <- function(dat, x_list = NULL, ex_cols = NULL, parallel = FALSE,
-               save_data = FALSE,file_name = NULL,dir_path= tempdir(), ...) {
-    x_list = get_x_list(x_list = x_list, dat_train = dat, dat_test = NULL, ex_cols = ex_cols)
-    if (length(x_list) > 0) {
-        num_x_list = get_names(dat = dat[x_list], types = c('numeric', 'integer', 'double'),
-                           ex_cols = c(ex_cols), get_ex = FALSE)
-    } else {
-        stop("No variable in the x_list or ex_col excludes all variables.\n ")
-    }
-    rank_dict = NULL
-    if (length(num_x_list) > 0) {
-        rank_dict = loop_function(func = ranking_percent_dict_x, x_list = num_x_list,
-                                          args = list(dat = dat),
-                                          bind = "cbind", as_list = TRUE, parallel = parallel)
-        rank_dict = multi_left_join(df_list = rank_dict, by = "rank_percent")
-        rank_dict[, "rank_percent"] = as.numeric(as.character(rank_dict[, "rank_percent"]))
-    }
+ranking_percent_dict <- function(dat, x_list = NULL, ex_cols = NULL, pct = 0.01, parallel = FALSE,
+			   save_data = FALSE, file_name = NULL, dir_path = tempdir(), ...) {
+	x_list = get_x_list(x_list = x_list, dat_train = dat, dat_test = NULL, ex_cols = ex_cols)
+	if (length(x_list) > 0) {
+		num_x_list = get_names(dat = dat[x_list], types = c('numeric', 'integer', 'double'),
+						   ex_cols = c(ex_cols), get_ex = FALSE)
+	} else {
+		stop("No variable in the x_list or ex_col excludes all variables.\n ")
+	}
+	rank_dict = NULL
+	if (length(num_x_list) > 0) {
+		rank_dict = loop_function(func = ranking_percent_dict_x, x_list = num_x_list,
+										  args = list(dat = dat, pct = pct),
+										  bind = "cbind", as_list = TRUE, parallel = parallel)
+		rank_dict = multi_left_join(df_list = rank_dict, by = "rank_percent")
+		rank_dict[, "rank_percent"] = as.numeric(as.character(rank_dict[, "rank_percent"]))
+	}
 	if (save_data) {
-        dir_path = ifelse(!is.character(dir_path),
-                      tempdir(), dir_path)
-        if (!dir.exists(dir_path)) dir.create(dir_path)
-        if (!is.character(file_name)) file_name = NULL
-        save_data(rank_dict, file_name = ifelse(is.null(file_name), "rank_percent_dict", 
+		dir_path = ifelse(!is.character(dir_path),
+					  tempdir(), dir_path)
+		if (!dir.exists(dir_path)) dir.create(dir_path)
+		if (!is.character(file_name)) file_name = NULL
+		save_data(rank_dict, file_name = ifelse(is.null(file_name), "rank_percent_dict",
 		paste(file_name, "rank_percent_dict", sep = ".")), dir_path = dir_path, note = TRUE)
-    }
-    return(rank_dict)
+	}
+	return(rank_dict)
 }
 
 
+
 #' @rdname ranking_percent_proc
 #' @export
-ranking_percent_dict_x <- function(dat, x = NULL) {
-    if ((!is.null(x) && is.character(x)) & !is.null(dat)) {
-        dat_x = abs(dat[, x][complete.cases(dat[, x])])
-    } else {
-        if (!is.null(dat)&& is.vector(dat)) {
-            dat_x = abs(dat[complete.cases(dat)])
-            x = "rank_x"
-        } else {
-            if (!is.null(dat) && (is.data.frame(dat) | is.data.table(dat)) && length(dat) == 1 && unlist(dat) > 2) {
-                x = colnames(dat)[1]
-                dat = unlist(dat)
-                dat_x = abs(dat[complete.cases(dat)])
-            } else {
-                stop("dat is null & x is null")
-            }
-        }
+
+ranking_percent_dict_x <- function(dat, x = NULL, pct = 0.01) {
+	if ((!is.null(x) && is.character(x)) & !is.null(dat)) {
+		dat_x = abs(dat[, x][complete.cases(dat[, x])])
+	} else {
+		if (!is.null(dat) && is.vector(dat)) {
+			dat_x = abs(dat[complete.cases(dat)])
+			x = "rank_x"
+		} else {
+			if (!is.null(dat) && (is.data.frame(dat) | is.data.table(dat)) && length(dat) == 1 && unlist(dat) > 2) {
+				x = colnames(dat)[1]
+				dat = unlist(dat)
+				dat_x = abs(dat[complete.cases(dat)])
+			} else {
+				stop("dat is null & x is null")
+			}
+		}
+	}
+	QL = quantile(dat_x, 0.01)
+	QU = quantile(dat_x, 0.99)
+	QU_QL = QU - QL
+	outliers = QU + 4* QU_QL
+	dat_x[dat_x > QU + 4 * QU_QL] = outliers
+	rank_dict_x = NULL
+	rank_x = quantile(ecdf(unique(dat_x)), seq(0, 1, by = pct))
+	rank_percent = as.double(sub("%", "", names(rank_x))) / 100
+	rank_dict_x = data.frame(rank_percent, rank_x)
+	colnames(rank_dict_x)[2] = x
+	return(rank_dict_x)
+}
+
+
+#' TF-IDF
+#'
+#' The \code{term_filter} is for filtering stop_words and low frequency words.
+#' The \code{term_idf} is for computing idf(inverse documents frequency) of terms.
+#' The \code{term_tfidf} is for computing tf-idf of documents.
+#' @param term_df A data.frame with id and term.
+#' @param low_freq Use rate of terms or use numbers of terms.
+#' @param stop_words Stop words.
+#' @param n_total Number of documents.
+#' @param idf A data.frame with idf.
+#' @return A data.frame
+#' @examples
+#' term_df = data.frame(id = c(1,1,1,2,2,3,3,3,4,4,4,4,4,5,5,6,7,7,
+#'                             8,8,8,9,9,9,10,10,11,11,11,11,11,11),
+#' terms = c('a','b','c','a','c','d','d','a','b','c','a','c','d','a','c',
+#'           'd','a','e','f','b','c','f','b','c','h','h','i','c','d','g','k','k'))
+#' term_df = term_filter(term_df = term_df, low_freq = 1)
+#' idf = term_idf(term_df)
+#' tf_idf = term_tfidf(term_df,idf = idf)
+#' @importFrom data.table setDT .N := dcast merge.data.table as.data.table
+#' @export
+
+term_tfidf = function(term_df, idf = NULL){
+  n_term = tf = id = term = NULL
+  term_df = as.data.table(term_df,key = 'id')
+  term_df[,n_term := 1]
+  term_df[,n_term := sum(n_term), by= list(id,term)]
+  term_df[,tf := n_term / sum(n_term), by= 'id']
+  n_total = length(unique(term_df$id))
+  if (is.null(idf)){
+    idf = term_idf(term_df = term_df,n_total = n_total)
+  }
+  term_df = data.table::merge.data.table(term_df,idf,by = 'term',all.x = TRUE)
+  term_df[,tfidf := tf * idf]
+  nw = tryCatch(n_total*as.integer(nrow(idf)),warning = function(w){NA})
+  if(!is.na(nw)&& nw < 1000000000 ){
+  term_df = as.data.table(term_df,key = 'id')
+    tfidf  = data.table::dcast(term_df, id ~ term, sum,
+                               value.var = "tfidf")
+  }else{
+    for(k in 2:100){
+      nr = tryCatch(n_total*as.integer(nrow(idf)/k),warning = function(w){NA})
+      if(!is.na(nr)&& nr < 1000000000)break
     }
-    QL = quantile(dat_x, 0.25)
-    QU = quantile(dat_x, 0.75)
-    QU_QL = QU - QL
-    outliers = QU + 4 * QU_QL
-    dat_x[dat_x > QU + 4 * QU_QL] = outliers
-    rank_dict_x = NULL
-    rank_x = quantile(ecdf(unique(dat_x)), seq(0, 1, by = 0.001))
-    rank_percent = as.double(sub("%", "", names(rank_x))) / 100
-    rank_dict_x = data.frame(rank_percent, rank_x)
-    colnames(rank_dict_x)[2] = x
-    
-    return(rank_dict_x)
+    k = k*20
+    w_cv = cv_split(idf,k = k)
+    tfidf = list()
+    for(i in 1:k){
+      terms = idf[w_cv[[i]],'term']
+      idf_term = term_df[term %in% unlist(terms)]
+      tfidf[[i]] = idf_term[,c('id','term','tfidf')]
+    }
+
+    tfidf =  lapply(tfidf,function(z)data.table::dcast(z,id ~ term, sum,
+                                                       value.var = "tfidf"))
+    tfidf = Reduce(function(...)merge.data.table(...,by = 'id', all = TRUE),
+                   tfidf)
+  }
+  return(quick_as_df(tfidf))
+}
+
+#' @rdname term_tfidf
+#' @export
+#'
+term_idf = function(term_df,n_total = NULL){
+  id = N = NULL
+  colnames(term_df)[1] = 'id'
+  colnames(term_df)[2] = 'term'
+  if(is.null(n_total)){
+    n_total = length(unique(term_df$id))
+  }
+  term_df = as.data.table(term_df,key = 'id')
+  words_freq = term_df[,.N,'term']
+  words_freq[,idf := log(n_total / (N + 1))]
+  idf = words_freq[,c('term','idf')]
+  return(quick_as_df(idf))
+}
+
+#' @rdname term_tfidf
+#' @export
+
+term_filter = function(term_df, low_freq = 0.01, stop_words = NULL){
+  N = use_rate = term = id = NULL
+  colnames(term_df)[1] = 'id'
+  colnames(term_df)[2] = 'term'
+  term_df = as.data.table(term_df,key = 'id')
+  words_freq = term_df[,.N,'term']
+  if(is.numeric(low_freq) && low_freq < 1){
+    n_total = length(unique(term_df$id))
+    words_freq[,use_rate := N / n_total]
+    low_freq_words = words_freq[use_rate < low_freq,'term']
+  }else{
+    if(is.numeric(low_freq) && low_freq>= 1){
+      low_freq_words = words_freq[ N <= low_freq,'term']
+    }else{
+      low_freq_words = words_freq[ N <= 1,'term']
+    }
+  }
+
+  term_df = term_df[!term_df$term %in% c('',as.character(unlist(low_freq_words)),
+                                         as.character(unlist(stop_words)))]
+  return(quick_as_df(term_df))
 }
 

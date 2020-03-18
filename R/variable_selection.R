@@ -165,6 +165,7 @@ psi_iv_filter <- function(dat, dat_test = NULL, target, x_list = NULL,
 #' @param ex_cols A list of excluded variables. Regular expressions can also be used to match variable names. Default is NULL.
 #' @param pos_flag The value of positive class of target variable, default: "1".
 #' @param xgb_params Parameters of xgboost.The complete list of parameters is available at: \url{ http://xgboost.readthedocs.io/en/latest/parameter.html}.
+#' @param f_eval Custimized evaluation function,"ks" & "auc" are available.
 #' @param cv_folds Number of cross-validations. Default: 5.
 #' @param cp Threshold of XGB feature's Gain. Default is 1/number of independent variables.
 #' @param seed  Random number seed. Default is 46.
@@ -178,9 +179,17 @@ psi_iv_filter <- function(dat, dat_test = NULL, target, x_list = NULL,
 #' @seealso \code{\link{psi_iv_filter}}, \code{\link{gbm_filter}}, \code{\link{feature_selector}}
 #' @examples
 #' dat = UCICreditCard[1:1000,c(2,4,8:9,26)]
+#' xgb_params = list(nrounds = 100, max_depth = 6, eta = 0.1,
+#'                                        min_child_weight = 1, subsample = 1,
+#'                                        colsample_bytree = 1, gamma = 0, scale_pos_weight = 1,
+#'                                        early_stopping_rounds = 10,
+#'                                        objective = "binary:logistic")
+#' \dontrun{
 #' xgb_features <- xgb_filter(dat_train = dat, dat_test = NULL,
-#' target = "default.payment.next.month", occur_time = "apply_date",
+#' target = "default.payment.next.month", occur_time = "apply_date",f_eval = 'ks',
+#' xgb_params = xgb_params,
 #' cv_folds = 1, ex_cols = "ID$|date$|default.payment.next.month$", vars_name = FALSE)
+#'}
 #' @importFrom xgboost xgb.importance xgb.train xgb.DMatrix getinfo
 #' @export
 
@@ -190,7 +199,8 @@ xgb_filter <- function(dat_train, dat_test = NULL, target = NULL, pos_flag = NUL
                                          min_child_weight = 1, subsample = 1,
                                          colsample_bytree = 1, gamma = 0, scale_pos_weight = 1,
                                          early_stopping_rounds = 10,
-                                         eval_metric = "auc", objective = "binary:logistic"),
+                                         objective = "binary:logistic"),
+					   f_eval = 'auc', 				 
                        cv_folds = 1, cp = NULL, seed = 46, vars_name = TRUE,
                        note = TRUE, save_data = FALSE,
                        file_name = NULL, dir_path = tempdir(), ...) {
@@ -216,8 +226,6 @@ xgb_filter <- function(dat_train, dat_test = NULL, target = NULL, pos_flag = NUL
                           xgb_params[["scale_pos_weight"]], 0)
     early_stopping_rounds = ifelse(!is.null(xgb_params[["early_stopping_rounds"]]),
                                  xgb_params[["early_stopping_rounds"]], 10)
-    eval_metric = ifelse(!is.null(xgb_params[["eval_metric"]]),
-                       xgb_params[["eval_metric"]], "auc")
     objective = ifelse(!is.null(xgb_params[["objective"]]),
                      xgb_params[["objective"]], "binary:logistic")
     cp = ifelse(is.null(cp), 0, cp)
@@ -268,13 +276,25 @@ xgb_filter <- function(dat_train, dat_test = NULL, target = NULL, pos_flag = NUL
         k = 1
     }
     dt_imp_XGB = list()
-
-    evalauc <- function(preds, dtrain) {
-        labels <- getinfo(dtrain, "label")
-        err <- as.numeric(sum(labels != (preds > 0))) / length(labels)
-        auc = auc_value(target = labels, prob = preds)
-        return(list(metric = "auc", value = round(auc, 4)))
+   if (f_eval == 'ks') {
+    feval = eval_ks
+    }else {
+    if(f_eval == 'auc'){
+      feval = eval_auc
+    }else{
+      if(f_eval == 'tnr'){
+        feval = eval_tnr
+      }else{
+        if(f_eval == 'lift'){
+          feval = eval_lift
+        }else{         
+          feval = eval_auc
+        }
+      }
     }
+  }
+
+
 
 
     for (i in 1:k) {
@@ -308,7 +328,7 @@ xgb_filter <- function(dat_train, dat_test = NULL, target = NULL, pos_flag = NUL
                               gamma = gamma,
                               scale_pos_weight = scale_pos_weight,
                               early_stopping_rounds = early_stopping_rounds,
-                              feval = evalauc,
+                              feval = feval,
                               objective = objective,
                               verbose = 0,
                               maximize = TRUE)
@@ -323,7 +343,7 @@ xgb_filter <- function(dat_train, dat_test = NULL, target = NULL, pos_flag = NUL
     }
 
     merge_all_xy = function(x, y) {
-        merge(x, y, by.x = "Feature", by.y = "Feature", all = FALSE)
+        merge(x, y, by.x = "Feature", by.y = "Feature", all = TRUE)
     }
     dt_imp_var <- Reduce("merge_all_xy", dt_imp_XGB)
     dt_imp_var[is.na(dt_imp_var)] = 0
@@ -653,7 +673,6 @@ feature_selector <- function(dat_train, dat_test = NULL, x_list = NULL, target =
                                             min_child_weight = 1, subsample = 1,
                                             colsample_bytree = 1, gamma = 0,
                                             scale_pos_weight = 1, early_stopping_rounds = 100,
-                                            eval_metric = "auc",
                                             objective = "binary:logistic"),
                           cv_folds = cv_folds, cp = xgb_cp, seed = seed, note = TRUE,
                           vars_name = FALSE, save_data = FALSE)
@@ -809,10 +828,10 @@ fast_high_cor_filter <- function(dat, p = 0.95, x_list = NULL, com_list = NULL,
 			num_cor_list = data.frame(Feature = cor_nums, cor_Means = rowMeans(cor_mat_num[cor_nums, cor_nums])) 
         } else {
 		    if (length(num_x_list) == 1) {
-            cor_vars = num_x_list
+            cor_nums = num_x_list
 			num_cor_list = data.frame(Feature = cor_nums, cor_Means = 0) 
 			} else {
-			 cor_vars = num_x_list
+			 cor_nums = num_x_list
 			 num_cor_list = data.frame(Feature = NULL, cor_Means = NULL) 
 			}
         }
@@ -919,7 +938,6 @@ high_cor_filter <- function(dat, com_list = NULL, x_list = NULL, ex_cols = NULL,
     if (note) cat_line("-- Selecting the variable with the highest IV in a highly correlated variable group", col = love_color("dark_purple2"))
     dat = checking_data(dat = dat)
     dat = time_transfer(dat)
-    dat = merge_category(dat, note = FALSE)
 
     if (!is.null(x_list)) {
         dat = dat[, unique(c(x_list))]

@@ -5,12 +5,11 @@
 \title{Data Cleaning}
 \usage{
 data_cleansing(dat, target = NULL, obs_id = NULL, occur_time = NULL,
-  x_list = NULL, pos_flag = NULL, miss_values = NULL,
-  ex_cols = NULL, low_var = TRUE, outlier_proc = TRUE,
-  missing_proc = TRUE, merge_cat = TRUE, trans_log = FALSE,
-  one_hot = FALSE, p = 0.001, m = 20, lvp = 0.999, nr = 0.999,
-  cor_dif = 0.01, parallel = FALSE, note = FALSE,
-  save_data = FALSE, file_name = NULL, dir_path = tempdir())
+  pos_flag = NULL, x_list = NULL, ex_cols = NULL,
+  miss_values = NULL, remove_dup = TRUE, outlier_proc = TRUE,
+  missing_proc = "median", low_var = 0.999, missing_rate = 0.98,
+  merge_cat = 30, note = TRUE, parallel = FALSE, save_data = FALSE,
+  file_name = NULL, dir_path = tempdir())
 }
 \arguments{
 \item{dat}{A data frame with x and target.}
@@ -21,39 +20,29 @@ data_cleansing(dat, target = NULL, obs_id = NULL, occur_time = NULL,
 
 \item{occur_time}{The name of occur time of observations.Default is NULL.}
 
-\item{x_list}{A list of x variables.}
-
 \item{pos_flag}{The value of positive class of target variable, default: "1".}
 
-\item{miss_values}{Other extreme value might be used to represent missing values, e.g: -9999, -9998. These miss_values will be encoded to -1 or "Missing".}
+\item{x_list}{A list of x variables.}
 
 \item{ex_cols}{A list of excluded variables. Default is NULL.}
 
-\item{low_var}{Logical, delete low variance variables or not. Default is TRUE.}
+\item{miss_values}{Other extreme value might be used to represent missing values, e.g: -9999, -9998. These miss_values will be encoded to -1 or "missing".}
+
+\item{remove_dup}{Logical, if TRUE, remove the duplicated observations.}
 
 \item{outlier_proc}{Logical, process outliers or not. Default is TRUE.}
 
-\item{missing_proc}{Logical, process nas or not. Default is TRUE.}
+\item{missing_proc}{If logical, process missing values or not. If "median", then Nas imputation with k neighbors median. If "avg_dist", the distance weighted average method is applied to determine the NAs imputation with k neighbors. If "default", assigning the missing values to -1 or "missing", otherwise ,processing the missing values according to the results of missing analysis.}
 
-\item{merge_cat}{merge categories of character variables that  is more than m.}
+\item{low_var}{The maximum percent of unique values (including NAs) for filtering low variance variables.}
 
-\item{trans_log}{Logical, Logarithmic transformation. Default is FALSE.}
+\item{missing_rate}{The maximum percent of missing values for recoding values to missing and non_missing.}
 
-\item{one_hot}{Logical. If TRUE, one-hot_encoding  of category variables. Default is FASLE.}
-
-\item{p}{The minimum percent of samples in a category to merge.}
-
-\item{m}{The minimum number of categories.}
-
-\item{lvp}{The maximum percent of unique values (including NAs).}
-
-\item{nr}{The maximum percent of NAs.}
-
-\item{cor_dif}{The correlation coefficient difference with the target of logarithm transformed variable and original variable.}
-
-\item{parallel}{Logical, parallel computing or not. Default is FALSE.}
+\item{merge_cat}{The minimum number of categories or the minimum percent of samples in a category for merging categories of character variables.}
 
 \item{note}{Logical. Outputs info. Default is TRUE.}
+
+\item{parallel}{Logical, parallel computing or not. Default is FALSE.}
 
 \item{save_data}{Logical, save the result or not. Default is FALSE.}
 
@@ -88,7 +77,6 @@ dat_cl <- data_cleansing(dat = UCICreditCard[1:2000,],
                        ex_cols = c("PAY_6|BILL_"),
                        outlier_proc = TRUE,
                        missing_proc = TRUE,
-                      one_hot = FALSE,
                        low_var = TRUE,
                        save_data = FALSE)
 

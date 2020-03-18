@@ -4,14 +4,16 @@
 \alias{cut_equal}
 \title{Generating Initial Equal Size Sample Bins}
 \usage{
-cut_equal(dat_x, g = 10, sp_values = list(-1, "Missing"))
+cut_equal(dat_x, g = 10, sp_values = NULL, cut_bin = "equal_depth")
 }
 \arguments{
 \item{dat_x}{A vector of an variable x.}
 
 \item{g}{numeric, number of initial bins for equal_bins.}
 
-\item{sp_values}{a list of special value. Default: list(-1, "Missing")}
+\item{sp_values}{a list of special value. Default: list(-1, "missing")}
+
+\item{cut_bin}{A string, 'equal_depth' or 'equal_width', default is 'equal_depth'.}
 }
 \description{
 \code{cut_equal} is used to generate initial breaks for equal frequency binning.

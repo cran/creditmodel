@@ -7,12 +7,12 @@
 training_model(model_name = "mymodel", dat, dat_test = NULL,
   target = NULL, occur_time = NULL, obs_id = NULL, x_list = NULL,
   ex_cols = NULL, pos_flag = NULL, prop = 0.7, preproc = TRUE,
-  low_var = TRUE, merge_cat = TRUE, one_hot = FALSE,
-  trans_log = FALSE, outlier_proc = TRUE, missing_proc = TRUE,
-  miss_values = NULL, feature_filter = list(filter = c("IV", "PSI",
-  "COR", "XGB"), iv_cp = 0.02, psi_cp = 0.1, xgb_cp = 0, cv_folds = 1,
-  hopper = FALSE), algorithm = list("LR", "XGB", "GBM", "RF"),
-  LR.params = lr_params(), XGB.params = xgb_params(),
+  low_var = 0.99, missing_rate = 0.98, merge_cat = 30,
+  outlier_proc = TRUE, missing_proc = "median", miss_values = NULL,
+  one_hot = FALSE, trans_log = FALSE, feature_filter = list(filter =
+  c("IV", "PSI", "COR", "XGB"), iv_cp = 0.02, psi_cp = 0.1, xgb_cp = 0,
+  cv_folds = 1, hopper = FALSE), algorithm = list("LR", "XGB", "GBM",
+  "RF"), LR.params = lr_params(), XGB.params = xgb_params(),
   GBM.params = gbm_params(), RF.params = rf_params(),
   breaks_list = NULL, parallel = FALSE, cores_num = NULL,
   save_pmml = FALSE, plot_show = FALSE, vars_plot = TRUE,
@@ -43,17 +43,19 @@ training_model(model_name = "mymodel", dat, dat_test = NULL,
 
 \item{low_var}{Logical, delete low variance variables or not. Default is TRUE.}
 
+\item{missing_rate}{The maximum percent of missing values for recoding values to missing and non_missing.}
+
 \item{merge_cat}{merge categories of character variables that  is more than m.}
+
+\item{outlier_proc}{Logical, process outliers or not. Default is TRUE.}
+
+\item{missing_proc}{If logical, process missing values or not. If "median", then Nas imputation with k neighbors median. If "avg_dist", the distance weighted average method is applied to determine the NAs imputation with k neighbors. If "default", assigning the missing values to -1 or "missing", otherwise ,processing the missing values according to the results of missing analysis.}
+
+\item{miss_values}{Other extreme value might be used to represent missing values, e.g: -9999, -9998. These miss_values will be encoded to -1 or "missing".}
 
 \item{one_hot}{Logical. If TRUE, one-hot_encoding  of category variables. Default is FASLE.}
 
 \item{trans_log}{Logical, Logarithmic transformation. Default is FALSE.}
-
-\item{outlier_proc}{Logical. If TRUE,  Outliers processing using Kmeans and Local Outlier Factor. Default is TRUE}
-
-\item{missing_proc}{Logical. If TRUE, missing value analysis and process missing value by knn imputation or central impulation or random imputation. Default is TRUE}
-
-\item{miss_values}{Other extreme value might be used to represent missing values, e.g: -9999, -9998. These miss_values will be encoded to -1 or "Missing".}
 
 \item{feature_filter}{Parameters for selecting important and stable features.See details at: \code{\link{feature_selector}}}
 

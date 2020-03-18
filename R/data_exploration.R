@@ -9,7 +9,7 @@
 #' @examples
 #' data_ex = data_exploration(dat = UCICreditCard[1:1000,])
 #' @importFrom dplyr group_by mutate summarize  summarise n  count %>% filter mutate_if ungroup count 
-#' @importFrom data.table fwrite melt fread dcast
+#' @importFrom data.table fwrite melt fread dcast as.data.table
 #' @export
 data_exploration <- function(dat,  save_data = FALSE, file_name = NULL, dir_path = tempdir()) {
   opt = options("warn" = -1, scipen = 100, stringsAsFactors = FALSE, digits = 2) # suppress warnings
@@ -47,7 +47,9 @@ data_exploration <- function(dat,  save_data = FALSE, file_name = NULL, dir_path
                                      c("NA","NA's", "NA\'s","Other"), "NMiss", view_num[, "Summary"])
     view_num[is.na(view_num)] = 0
     #reshape data
-    view_num = data.table::dcast(as.data.frame(view_num), Feature ~ Summary,  value.var = "View")
+	view_num = as.data.table(view_num)
+    view_num = data.table::dcast(view_num, Feature ~ Summary,  value.var = "View")
+	view_num = as.data.frame(view_num)
     if (!is.element("NMiss", names(view_num))) {
       view_num$NMiss = 0
     }
@@ -80,7 +82,9 @@ data_exploration <- function(dat,  save_data = FALSE, file_name = NULL, dir_path
     v_name = strsplit(paste0("Value", 1:max(n_len$n), sep = "", collapse = ","), ",")
     view_char$ids = rep(unlist(v_name), length(char_x_list))
     #reshape data
-    view_char1 = data.table::dcast(setDT(as.data.frame(view_char)), Feature ~ ids, value.var = c("Value"))
+	view_char = as.data.table(view_char)
+    view_char1 = data.table::dcast(view_char, Feature ~ ids, value.var = c("Value"))
+	view_char1 = as.data.frame(view_char1)
     dat1[char_x_list] = merge_category(dat1[char_x_list], m = 10,note = FALSE)
     Corr_dt = data.frame(Feature = char_x_list, NMiss = unlist(lapply(char_x_list, function(x) sum(is.na(dat1[, x])))))
     view_char1 = merge(view_char1, Corr_dt)

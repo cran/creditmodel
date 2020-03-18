@@ -7,17 +7,17 @@
 \usage{
 get_breaks_all(dat, target = NULL, x_list = NULL, ex_cols = NULL,
   pos_flag = NULL, occur_time = NULL, oot_pct = 0.7, best = TRUE,
-  equal_bins = FALSE, g = 10, sp_values = NULL,
-  tree_control = list(p = 0.05, cp = 1e-06, xval = 5, maxdepth = 10),
-  bins_control = list(bins_num = 10, bins_pct = 0.05, b_chi = 0.05,
-  b_odds = 0.1, b_psi = 0.05, b_or = 0.15, mono = 0.3, odds_psi = 0.2, kc =
-  1), parallel = FALSE, note = FALSE, save_data = FALSE,
-  file_name = NULL, dir_path = tempdir(), ...)
+  equal_bins = FALSE, cut_bin = "equal_depth", g = 10,
+  sp_values = NULL, tree_control = list(p = 0.05, cp = 1e-06, xval = 5,
+  maxdepth = 10), bins_control = list(bins_num = 10, bins_pct = 0.05,
+  b_chi = 0.05, b_odds = 0.1, b_psi = 0.05, b_or = 0.15, mono = 0.3,
+  odds_psi = 0.2, kc = 1), parallel = FALSE, note = FALSE,
+  save_data = FALSE, file_name = NULL, dir_path = tempdir(), ...)
 
 get_breaks(dat, x, target = NULL, pos_flag = NULL, best = TRUE,
-  equal_bins = FALSE, g = 10, sp_values = NULL, occur_time = NULL,
-  oot_pct = 0.7, tree_control = NULL, bins_control = NULL,
-  note = FALSE, ...)
+  equal_bins = FALSE, cut_bin = "equal_depth", g = 10,
+  sp_values = NULL, occur_time = NULL, oot_pct = 0.7,
+  tree_control = NULL, bins_control = NULL, note = FALSE, ...)
 }
 \arguments{
 \item{dat}{A data frame with x and target.}
@@ -37,6 +37,8 @@ get_breaks(dat, x, target = NULL, pos_flag = NULL, best = TRUE,
 \item{best}{Logical, if TRUE, merge initial breaks to get optimal breaks for binning.}
 
 \item{equal_bins}{Logical, if TRUE, equal sample size initial breaks generates.If FALSE , tree breaks generates using desison tree.}
+
+\item{cut_bin}{A string, if equal_bins is TRUE, 'equal_depth' or 'equal_width', default is 'equal_depth'.}
 
 \item{g}{Integer, number of initial bins for equal_bins.}
 
@@ -93,19 +95,19 @@ bins_control = list(bins_num = 10, bins_pct = 0.02, b_chi = 0.02, b_odds = 0.1,
 b <-  get_breaks(dat = UCICreditCard[1:1000,], x = "MARRIAGE",
                 target = "default.payment.next.month",
                 occur_time = "apply_date",
-                sp_values = list(-1, "Missing"),
+                sp_values = list(-1, "missing"),
                 tree_control = tree_control, bins_control = bins_control)
 # get numeric variable breaks
 b2 <-  get_breaks(dat = UCICreditCard[1:1000,], x = "PAY_2",
                  target = "default.payment.next.month",
                  occur_time = "apply_date",
-                 sp_values = list(-1, "Missing"),
+                 sp_values = list(-1, "missing"),
                  tree_control = tree_control, bins_control = bins_control)
 # get breaks of all predictive variables
 b3 <-  get_breaks_all(dat = UCICreditCard[1:1000,], target = "default.payment.next.month",
                      x_list = c("MARRIAGE","PAY_2"),
                      occur_time = "apply_date", ex_cols = "ID",
-                     sp_values = list(-1, "Missing"),
+                     sp_values = list(-1, "missing"),
                     tree_control = tree_control, bins_control = bins_control,
                      save_data = FALSE)
 

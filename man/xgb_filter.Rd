@@ -8,9 +8,9 @@ xgb_filter(dat_train, dat_test = NULL, target = NULL,
   pos_flag = NULL, x_list = NULL, occur_time = NULL,
   ex_cols = NULL, xgb_params = list(nrounds = 100, max_depth = 6, eta =
   0.1, min_child_weight = 1, subsample = 1, colsample_bytree = 1, gamma =
-  0, scale_pos_weight = 1, early_stopping_rounds = 10, eval_metric = "auc",
-  objective = "binary:logistic"), cv_folds = 1, cp = NULL, seed = 46,
-  vars_name = TRUE, note = TRUE, save_data = FALSE,
+  0, scale_pos_weight = 1, early_stopping_rounds = 10, objective =
+  "binary:logistic"), f_eval = "auc", cv_folds = 1, cp = NULL,
+  seed = 46, vars_name = TRUE, note = TRUE, save_data = FALSE,
   file_name = NULL, dir_path = tempdir(), ...)
 }
 \arguments{
@@ -29,6 +29,8 @@ xgb_filter(dat_train, dat_test = NULL, target = NULL,
 \item{ex_cols}{A list of excluded variables. Regular expressions can also be used to match variable names. Default is NULL.}
 
 \item{xgb_params}{Parameters of xgboost.The complete list of parameters is available at: \url{ http://xgboost.readthedocs.io/en/latest/parameter.html}.}
+
+\item{f_eval}{Custimized evaluation function,"ks" & "auc" are available.}
 
 \item{cv_folds}{Number of cross-validations. Default: 5.}
 
@@ -56,9 +58,17 @@ Selected variables.
 }
 \examples{
 dat = UCICreditCard[1:1000,c(2,4,8:9,26)]
+xgb_params = list(nrounds = 100, max_depth = 6, eta = 0.1,
+                                       min_child_weight = 1, subsample = 1,
+                                       colsample_bytree = 1, gamma = 0, scale_pos_weight = 1,
+                                       early_stopping_rounds = 10,
+                                       objective = "binary:logistic")
+\dontrun{
 xgb_features <- xgb_filter(dat_train = dat, dat_test = NULL,
-target = "default.payment.next.month", occur_time = "apply_date",
+target = "default.payment.next.month", occur_time = "apply_date",f_eval = 'ks',
+xgb_params = xgb_params,
 cv_folds = 1, ex_cols = "ID$|date$|default.payment.next.month$", vars_name = FALSE)
+}
 }
 \seealso{
 \code{\link{psi_iv_filter}}, \code{\link{gbm_filter}}, \code{\link{feature_selector}}

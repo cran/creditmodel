@@ -4,7 +4,7 @@
 \alias{low_variance_filter}
 \title{Filtering Low Variance Variables}
 \usage{
-low_variance_filter(dat, lvp = 0.97, note = FALSE)
+low_variance_filter(dat, lvp = 0.97, note = FALSE, ex_cols = NULL)
 }
 \arguments{
 \item{dat}{A data frame with x and target.}
@@ -12,12 +12,14 @@ low_variance_filter(dat, lvp = 0.97, note = FALSE)
 \item{lvp}{The maximum percent of unique values (including NAs).}
 
 \item{note}{Logical.Outputs info.Default is TRUE.}
+
+\item{ex_cols}{A list of excluded variables. Default is NULL.}
 }
 \value{
 A data.frame
 }
 \description{
-\code{low_variance_filter} is the function for filtering low variance variables.
+\code{low_variance_filter} is for removing variables with repeated values up to a certain percentage.
 }
 \examples{
 dat = low_variance_filter(lendingclub[1:1000, ], lvp = 0.9)

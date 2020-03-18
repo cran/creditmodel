@@ -285,7 +285,7 @@ cohort_analysis <- function(dat, obs_id = NULL, occur_time = NULL, MOB = NULL,
 cohort_table <- function(dat, obs_id = NULL, occur_time = NULL, MOB = NULL,
                         period = "monthly", status = NULL, amount = NULL, by_out = "cnt",
                         start_date = NULL, end_date = NULL, dead_status = 30){
-  Cohort_Group= Cohort_Period =Events= Events_rate= Opening_Total= Retention_Total =cohor_dat= final_Events =m_a= max_age=NULL					
+  Cohort_Group= Cohort_Period =Events= Events_rate= Opening_Total= Retention_Total =cohor_dat= final_Events =m_a= max_age=NULL
   dat1 = cohort_analysis(dat = dat , obs_id = obs_id,
                          occur_time = occur_time, MOB = MOB,
                          period =period, status = status,
@@ -297,9 +297,9 @@ cohort_table <- function(dat, obs_id = NULL, occur_time = NULL, MOB = NULL,
 	}else{
 	 value_var = "Retention_rate"
 	}
-                      					 
+  dat1 = as.data.table(dat1)
   dat4 = data.table::dcast(dat1, Cohort_Group ~ Cohort_Period,
-                           value.var = value_var) %>% as.data.frame
+                           value.var = value_var) %>% as.data.frame()
   dat4[-1] = data.frame(lapply(dat4[-1], function(x){
     x = as_percent(x, 4)
     sub("NA|NaN|Inf", "", as.character(x))
@@ -333,175 +333,218 @@ cohort_table <- function(dat, obs_id = NULL, occur_time = NULL, MOB = NULL,
 #' @importFrom rpart rpart rpart.control
 #' @export
 
-get_ctree_rules <- function(tree_fit = NULL, train_dat = NULL, target = NULL, test_dat = NULL,
-                           tree_control = list(p = 0.05, cp = 0.0001,
-                                               xval = 1, maxdepth = 10), seed = 46) {
-  opt = options(scipen = 200, stringsAsFactors = FALSE, digits = 6) #
-  rules_list = split_rule = terminal_nodes = nodes_no = depth = node_rules = NULL
-  
-  if (is.null(tree_fit)) {
-    cp = ifelse(!is.null(tree_control[["cp"]]), tree_control[["cp"]], 0.00001)
-    xval = ifelse(!is.null(tree_control[["xval"]]), tree_control[["xval"]], 5)
-    maxdepth = ifelse(!is.null(tree_control[["maxdepth"]]), tree_control[["maxdepth"]], 10)
-    p = ifelse(!is.null(tree_control[["p"]]), tree_control[["p"]], 0.02)
-    set.seed(seed)
-    trcontrol <- rpart.control(minbucket = round(nrow(train_dat) * p),
-                               cp = cp,
-                               xval = xval,
-                               maxdepth = maxdepth)
-    
-    Formula <- as.formula(paste(target, ".", sep = ' ~ '))
-    tree_fit = rpart(data = train_dat, Formula
-                     , control = trcontrol
-                     , parms = list(split = "information"))
-  }
-  
-  if (!is.null(tree_fit) && class(tree_fit)[1] == "rpart") {
-    rules_list = capture.output(tree_fit)[-c(1:5)]
-    split_rule = strsplit(rules_list, ")|;")
-    terminal_nodes = sapply(split_rule, function(x) x[[1]][1])
-    node_rules$tree_nodes = 1:length(terminal_nodes)
-    nodes_no = as.numeric(row.names(tree_fit$frame))
-    node_rules$depth = floor(log(nodes_no, base = 2) + 1e-07) + 1
-    rownam = 1:length(terminal_nodes)
-    tree_rules = sapply(1:length(terminal_nodes), function(x) as.character(split_rule[x][[1]][2]))
-    #split node rules
-    tree_rules_split = strsplit(tree_rules, "\\s{1,10}")
-    node_rules$tree_rules = sapply(tree_rules_split, function(x) {
-      x = x[which(x != "")]
-      y = NULL
-      if (any(grepl("<", x))) {
-        y = paste(x[1], x[2])
-      } else {
-        y = x[1]
-      }
-      y
-    })
-    node_rules = as.data.frame(node_rules)
-    terminal_tree_nodes = which(grepl("\\*", rules_list))
-    tree_where = data.frame(tree_nodes = as.integer(tree_fit$where), target = as.character(unlist(tree_fit$y)))
-    target = as.character(tree_fit$terms[[2]])
-    
-  } else {
-    if (class(tree_fit)[1] == "BinaryTree") {
-      rules_list = capture.output(tree_fit@tree)
-      split_rule = strsplit(rules_list, ")|;")
-      tree_nodes = sapply(split_rule, function(x) x[[1]][1])
-      depth = (nchar(gsub("\\d{1,4}", "", tree_nodes))) / 2 + 1
-      tree_rules = sapply(1:length(split_rule), function(x) as.character(split_rule[x][[1]][2]))
-      node_rules = data.frame(tree_nodes = as.integer(tree_nodes),
-                              depth = depth, tree_rules = as.character(tree_rules),
-                              row.names = 1:length(tree_nodes), stringsAsFactors = FALSE)
-      terminal_tree_nodes = which(!grepl("*>[:digit:]*|*<=[:digit:]*", rules_list))
-      rownam = as.integer(rownames(node_rules))
-      node_rules[terminal_tree_nodes, "tree_rules"] = ""
-      tree_where = data.frame(tree_nodes = as.integer(tree_fit@where),
-                              target = as.character(unlist(tree_fit@responses@variables)))
-      target = names(tree_fit@responses@variables)
-    } else {
-      stop("Support only rpart tree & ctree (party package).\n")
-    }
-  }
-  terminal_rules = train_sum = rule_no = c_rules = final_rules = train_ks = dt_rules = dt_rules_k = NULL  
-  for(i in terminal_tree_nodes){
-    inds = ifelse(any(node_rules$tree_rules == "root"), 2, 1)
-    c_rules = sapply(inds:node_rules$depth[i], function(j) {
-      rule_no = which(rownam == max(which(node_rules$depth == j & rownam <= rownam[i])))
-      node_rules$tree_rules[rule_no]
-    })
-    c_rules = c_rules[c_rules != ""]
-    terminal_rules[i] = paste(terminal_rules[i], c_rules, collapse = " & ", sep = "")
-    terminal_rules[i] = gsub("NA", " ", terminal_rules[i])
-  }
-  #final_rules
-  final_rules = cbind(node_rules, terminal_rules)[terminal_tree_nodes, c("tree_nodes", "terminal_rules")]
-  #1_percent
-  X.train_total = X.train_1 = X.test_total = X.test_1 = tree = train_total = test_total = G = B = `%train` = `#train` = NULL
-  #train
-  tree_where$target = ifelse(tree_where[, "target"] %in% list("0", "0", 0), "G", "B")
-  tree_where_pct = tree_where %>%
-    dplyr::group_by(tree_nodes) %>%
-    dplyr::count(tree_nodes, target) %>%
-    dplyr::mutate(train_1_pct = as_percent(n / sum(n), digits = 4))
-  train_sum <- dcast(tree_where_pct[c("tree_nodes", "target", "n")],
-                     tree_nodes ~ target, value.var = "n")
-  train_sum[is.na(train_sum)] <- 0
-  train_ks <- transform(train_sum,
-                        train_total = G + B,
-                        `%train_total` = round((G + B) / sum(G + B), 3),
-                        `%train_1` = round(B / (G + B), 3)
+get_ctree_rules = function(tree_fit = NULL, train_dat = NULL, target = NULL, test_dat = NULL,
+						   tree_control = list(p = 0.05, cp = 0.0001,
+											   xval = 1, maxdepth = 10), seed = 46) {
+	opt = options(scipen = 200, stringsAsFactors = FALSE, digits = 6) #
+	rules_list = split_rule = terminal_nodes = nodes_no = depth = node_rules = NULL
+
+	if (is.null(tree_fit)) {
+		cp = ifelse(!is.null(tree_control[["cp"]]), tree_control[["cp"]], 0.00001)
+		xval = ifelse(!is.null(tree_control[["xval"]]), tree_control[["xval"]], 5)
+		maxdepth = ifelse(!is.null(tree_control[["maxdepth"]]), tree_control[["maxdepth"]], 10)
+		p = ifelse(!is.null(tree_control[["p"]]), tree_control[["p"]], 0.02)
+		set.seed(seed)
+		trcontrol <- rpart.control(minbucket = round(nrow(train_dat) * p),
+							   cp = cp,
+							   xval = xval,
+							   maxdepth = maxdepth)
+
+		Formula <- as.formula(paste(target, ".", sep = ' ~ '))
+		tree_fit = rpart(data = train_dat, Formula
+					 , control = trcontrol
+					 , parms = list(split = "information"))
+	}
+
+	if (!is.null(tree_fit) && class(tree_fit)[1] == "rpart") {
+		rules_list = capture.output(tree_fit)[-c(1:5)]
+		split_rule = strsplit(rules_list, ")|;")
+		terminal_nodes = sapply(split_rule, function(x) x[[1]][1])
+		node_rules$tree_nodes = 1:length(terminal_nodes)
+		nodes_no = as.numeric(row.names(tree_fit$frame))
+		node_rules$depth = floor(log(nodes_no, base = 2) + 1e-07) + 1
+		rownam = 1:length(terminal_nodes)
+		tree_rules = sapply(1:length(terminal_nodes), function(x) as.character(split_rule[x][[1]][2]))
+		#split node rules
+		tree_rules_split = strsplit(tree_rules, "\\s{1,10}")
+
+		node_rules$tree_rules = sapply(tree_rules_split, function(x) {
+			x = x[which(x != "")]
+			y = NULL
+			if (any(grepl("<", x))) {
+				y = paste(x[1], x[2])
+			} else {
+				if (any(grepl("=", x)) & !any(grepl(">=", x))) {
+					x_1 = strsplit(x, "=")[[1]]
+					z = strsplit(x_1[2], split = '\\,')
+					if (length(unlist(z)) > 1) {
+						y = paste(x_1[1], "%in%", z)
+						y = gsub("\"", "'", y)
+					} else {
+						y =  paste0(x_1[1],'==',"'",z,"'")
+					}
+				} else {
+					y = x[1]
+
+				}
+			}
+			y
+		})
+		node_rules = as.data.frame(node_rules)
+		terminal_tree_nodes = which(grepl("\\*", rules_list))
+		tree_where = data.frame(tree_nodes = as.integer(tree_fit$where), target = as.character(unlist(tree_fit$y)))
+		target = as.character(tree_fit$terms[[2]])
+
+	} else {
+		if (class(tree_fit)[1] == "BinaryTree") {
+			rules_list = capture.output(tree_fit@tree)
+			split_rule = strsplit(rules_list, ")|;")
+			tree_nodes = sapply(split_rule, function(x) x[[1]][1])
+			depth = (nchar(gsub("\\d{1,4}", "", tree_nodes))) / 2 + 1
+			tree_rules = sapply(1:length(split_rule), function(x) as.character(split_rule[x][[1]][2]))
+			node_rules = data.frame(tree_nodes = as.integer(tree_nodes),
+							  depth = depth, tree_rules = as.character(tree_rules),
+							  row.names = 1:length(tree_nodes), stringsAsFactors = FALSE)
+
+			node_rules$tree_rules = sapply(tree_rules, function(x) {
+				x = x[which(x != "")]
+				y = NULL
+				if (any(grepl("<", x))) {
+					y = paste(x[1], x[2])
+				} else {
+					if (any(grepl("==", x)) & !any(grepl(">=", x))) {
+						x_1 = strsplit(x, "==")[[1]]
+						x_1 = gsub("\\{|\\}| ","", x_1)
+						z = strsplit(x_1[2], split = '\\,')
+						if (length(unlist(z)) > 1) {
+							y = paste(x_1[1], "%in%", z)
+							y = gsub("\"", "'", y)
+						} else {
+							y = paste0(x_1[1], '==', "'", z, "'")
+						}
+					} else {
+						y = x[1]
+					}
+				}
+				y
+			})
+
+			terminal_tree_nodes = which(!grepl("*>[:digit:]*|*<=[:digit:]*|==", rules_list))
+			rownam = as.integer(rownames(node_rules))
+			node_rules[terminal_tree_nodes, "tree_rules"] = ""
+			tree_where = data.frame(tree_nodes = as.integer(tree_fit@where),
+							  target = as.character(unlist(tree_fit@responses@variables)))
+			target = names(tree_fit@responses@variables)
+		} else {
+			stop("Support only rpart tree & ctree (party package).\n")
+		}
+	}
+	terminal_rules = train_sum = rule_no = c_rules = final_rules = train_ks = dt_rules = dt_rules_k = NULL
+
+	for (i in terminal_tree_nodes) {
+		inds = ifelse(any(node_rules$tree_rules == "root"), 2, 1)
+		c_rules = sapply(inds:node_rules$depth[i], function(j) {
+			rule_no = which(rownam == max(which(node_rules$depth == j & rownam <= rownam[i])))
+			node_rules$tree_rules[rule_no]
+		})
+		c_rules = c_rules[c_rules != ""]
+
+		terminal_rules[i] = paste(terminal_rules[i], c_rules, collapse = " & ", sep = "")
+		terminal_rules[i] = gsub("NA", " ", terminal_rules[i])
+	}
+	#final_rules
+	final_rules = cbind(node_rules, terminal_rules)[terminal_tree_nodes, c("tree_nodes", "terminal_rules")]
+	#1_percent
+	X.train_total = X.train_1 = X.test_total = X.test_1 = tree = train_total = test_total = G = B = `%train` = `#train` = NULL
+	#train
+	tree_where$target = ifelse(tree_where[, "target"] %in% list("0", "0", 0), "G", "B")
+	tree_where_pct = tree_where %>%
+	dplyr::group_by(tree_nodes) %>%
+	dplyr::count(tree_nodes, target) %>%
+	dplyr::mutate(train_1_pct = as_percent(n / sum(n), digits = 4))
+	tree_where_pct = as.data.table(tree_where_pct)
+	train_sum = data.table::dcast(tree_where_pct[,c("tree_nodes", "target", "n"), with = FALSE],
+					 tree_nodes ~ target, value.var = "n")
+	train_sum = quick_as_df(train_sum)
+	train_sum[is.na(train_sum)] <- 0
+	train_ks <- transform(train_sum,
+						train_total = G + B,
+						`%train_total` = round((G + B) / sum(G + B), 3),
+						`%train_1` = round(B / (G + B), 3)
   )
-  dt_rules = merge(final_rules, train_ks)
-  dt_rules = dt_rules[order(dt_rules$X.train_1),]
-  dt_rules_k = transform(dt_rules,
-                         X.train_total = as_percent(X.train_total, digits = 3),
-                         X.train_1 = as_percent(X.train_1, digits = 3),
-                         `%train_cumsum` = as_percent(cumsum(train_total) / sum(train_total), digits = 4),
-                         `%train_cum_1_rate` = as_percent(cumsum(B) / cumsum(train_total), digits = 4),
-                         `%train_cum_1` = as_percent(cumsum(B) / sum(B), digits = 4),
-                         `%train_cum_0` = as_percent(cumsum(G) / sum(G), digits = 4)
+	dt_rules = merge(final_rules, train_ks)
+	dt_rules = dt_rules[order(dt_rules$X.train_1),]
+	dt_rules_k = transform(dt_rules,
+						 X.train_total = as_percent(X.train_total, digits = 3),
+						 X.train_1 = as_percent(X.train_1, digits = 3),
+						 `%train_cumsum` = as_percent(cumsum(train_total) / sum(train_total), digits = 4),
+						 `%train_cum_1_rate` = as_percent(cumsum(B) / cumsum(train_total), digits = 4),
+						 `%train_cum_1` = as_percent(cumsum(B) / sum(B), digits = 4),
+						 `%train_cum_0` = as_percent(cumsum(G) / sum(G), digits = 4)
   )
-  names(dt_rules_k) = c("tree_nodes", "tree_rules", "train_1", "train_0",
-                        "#train", "%train", "%train_1", "%train_cumsum", "%train_cum_1_rate",
-                        "%train_cum_1", "%train_cum_0")
-  
-  if (!is.null(test_dat)) {
-    test_dat = checking_data(dat = test_dat)
-    test_dat$target = test_dat[, target]
-    test_rules = list()
-    filter_s = sub_dat = test_rules_dt = tree_test_pct = test_sum = test_ks = dt_rules_ts = dt_rules_ts1 = NULL
-    for (i in 1:nrow(final_rules)) {
-      filter_s =  as.character(final_rules[i, 2])
-      sub_dat = test_dat %>% dplyr::filter(eval(parse(text = filter_s)))
-      colnames(sub_dat) <- iconv(colnames(sub_dat), from = "UTF-8", to = "GBK")
-      if (nrow(sub_dat) > 0) {
-        sub_dat$tree_nodes = final_rules[i, 1]
-        test_rules[[i]] = sub_dat[c("tree_nodes", "target")]
-      }
-    }
-    
-    test_rules_dt = Reduce("rbind", test_rules)
-    test_rules_dt$target = ifelse(test_rules_dt[, "target"] %in% list("0", "0", 0), "G", "B")
-    tree_test_pct = test_rules_dt %>%
-      dplyr::group_by(tree_nodes) %>%
-      dplyr::count(tree_nodes, target) %>%
-      dplyr::mutate(test_1_pct = as_percent(n / sum(n), digits = 4))
-    
-    test_sum <- dcast(tree_test_pct[c("tree_nodes", "target", "n")],
-                      tree_nodes ~ target, value.var = "n")
-    test_sum[is.na(test_sum)] <- 0
-    test_ks <- transform(test_sum,
-                         test_total = G + B,
-                         `%test_total` = round((G + B) / (sum(G + B)), 3),
-                         `%test_1` = round(B / (G + B), 3))
-    #  test_ks = test_ks[c(1, 4:6)]
-    #  names(test_ks) = c("tree_nodes", "#test", "%test", "%test_1")
-    dt_rules_ts = merge(dt_rules_k, test_ks)
-    dt_rules_ts = dt_rules_ts[order(de_percent(dt_rules_ts$`%train_1`)),]
-    dt_rules_ts1 = dt_rules_ts %>%
-      dplyr::mutate(psi = round((de_percent(`%train`) - X.test_total) * log(de_percent(`%train`) / X.test_total), 3),
-                    `#total` = `#train` + test_total,
-                    `%total` = as_percent((`#train` + test_total) / sum(`#train` + test_total), 3),
-                    X.test_total = as_percent(X.test_total, digits = 4),
-                    X.test_1 = as_percent(X.test_1, digits = 4),
-                    `%test_cumsum` = as_percent(cumsum(test_total) / sum(test_total), digits = 4),
-                    `%test_cum_1_rate` = as_percent(cumsum(B) / cumsum(test_total), digits = 4),
-                    `%test_cum_1` = as_percent(cumsum(B) / sum(B), digits = 4),
-                    `%test_cum_0` = as_percent(cumsum(G) / sum(G), digits = 4)
-      )
-    names(dt_rules_ts1) = c("tree_nodes", "tree_rules", "train_1", "train_0",
-                            "#train", "%train", "%train_1", "%train_cumsum",
-                            "%train_cum_1_rate", "%train_cum_1", "%train_cum_0", "test_1", "test_0",
-                            "#test", "%test", "%test_1", "psi", "#total", "%total",
-                            "%test_cumsum", "%test_cum_1_rate", "%test_cum_1", "%test_cum_0")
-    dt_rules_k = dt_rules_ts1[c("tree_nodes", "tree_rules", "#total", "%total", "train_1", "train_0",
-                                "#train", "%train", "%train_1", "%train_cumsum", "%train_cum_1_rate",
-                                "%train_cum_1", "%train_cum_0", "test_1", "test_0",
-                                "#test", "%test", "%test_1", "%test_cumsum", "%test_cum_1_rate",
-                                "%test_cum_1", "%test_cum_0", "psi")]
-  }
-  return(dt_rules_k)
-  options(opt) # reset
+	names(dt_rules_k) = c("tree_nodes", "tree_rules", "train_1", "train_0",
+						"#train", "%train", "%train_1", "%train_cumsum", "%train_cum_1_rate",
+						"%train_cum_1", "%train_cum_0")
+
+	if (!is.null(test_dat)) {
+		test_dat = checking_data(dat = test_dat)
+		test_dat$target = test_dat[, target]
+		test_rules = list()
+		filter_s = sub_dat = test_rules_dt = tree_test_pct = test_sum = test_ks = dt_rules_ts = dt_rules_ts1 = NULL
+		for (i in 1:nrow(final_rules)) {
+			filter_s = as.character(final_rules[i, 2])
+
+			sub_dat = test_dat %>% dplyr::filter(eval(parse(text = filter_s)))
+			colnames(sub_dat) <- iconv(colnames(sub_dat), from = "UTF-8", to = "GBK")
+			if (nrow(sub_dat) > 0) {
+				sub_dat$tree_nodes = final_rules[i, 1]
+				test_rules[[i]] = sub_dat[c("tree_nodes", "target")]
+			}
+		}
+
+		test_rules_dt = Reduce("rbind", test_rules)
+		test_rules_dt$target = ifelse(test_rules_dt[, "target"] %in% list("0", "0", 0), "G", "B")
+		tree_test_pct = test_rules_dt %>%
+  	  dplyr::group_by(tree_nodes) %>%
+  	  dplyr::count(tree_nodes, target) %>%
+  	  dplyr::mutate(test_1_pct = as_percent(n / sum(n), digits = 4))
+		tree_test_pct = as.data.table(tree_test_pct)
+		test_sum = data.table::dcast(tree_test_pct[,c("tree_nodes", "target", "n"), with = FALSE],
+					  tree_nodes ~ target, value.var = "n")
+		test_sum = quick_as_df(test_sum)
+		test_sum[is.na(test_sum)] <- 0
+		test_ks = transform(test_sum,
+						 test_total = G + B,
+						 `%test_total` = round((G + B) / (sum(G + B)), 3),
+						 `%test_1` = round(B / (G + B), 3))
+		#  test_ks = test_ks[c(1, 4:6)]
+		#  names(test_ks) = c("tree_nodes", "#test", "%test", "%test_1")
+		dt_rules_ts = merge(dt_rules_k, test_ks)
+		dt_rules_ts = dt_rules_ts[order(de_percent(dt_rules_ts$`%train_1`)),]
+		dt_rules_ts1 = dt_rules_ts %>%
+  	  dplyr::mutate(psi = round((de_percent(`%train`) - X.test_total) * log(de_percent(`%train`) / X.test_total), 3),
+					`#total` = `#train` + test_total,
+					`%total` = as_percent((`#train` + test_total) / sum(`#train` + test_total), 3),
+					X.test_total = as_percent(X.test_total, digits = 4),
+					X.test_1 = as_percent(X.test_1, digits = 4),
+					`%test_cumsum` = as_percent(cumsum(test_total) / sum(test_total), digits = 4),
+					`%test_cum_1_rate` = as_percent(cumsum(B) / cumsum(test_total), digits = 4),
+					`%test_cum_1` = as_percent(cumsum(B) / sum(B), digits = 4),
+					`%test_cum_0` = as_percent(cumsum(G) / sum(G), digits = 4)
+	  )
+		names(dt_rules_ts1) = c("tree_nodes", "tree_rules", "train_1", "train_0",
+							"#train", "%train", "%train_1", "%train_cumsum",
+							"%train_cum_1_rate", "%train_cum_1", "%train_cum_0", "test_1", "test_0",
+							"#test", "%test", "%test_1", "psi", "#total", "%total",
+							"%test_cumsum", "%test_cum_1_rate", "%test_cum_1", "%test_cum_0")
+		dt_rules_k = dt_rules_ts1[c("tree_nodes", "tree_rules", "#total", "%total", "train_1", "train_0",
+								"#train", "%train", "%train_1", "%train_cumsum", "%train_cum_1_rate",
+								"%train_cum_1", "%train_cum_0", "test_1", "test_0",
+								"#test", "%test", "%test_1", "%test_cumsum", "%test_cum_1_rate",
+								"%test_cum_1", "%test_cum_0", "psi")]
+	}
+	return(dt_rules_k)
+	options(opt) # reset
 }
 
 
@@ -528,91 +571,117 @@ get_ctree_rules <- function(tree_fit = NULL, train_dat = NULL, target = NULL, te
 #' @export
 
 
-check_rules <- function(rules_list,test_dat, target){
-  filter_s = sub_dat = test_rules_dt = test_pct = test_sum = test_ks = B = G = X.test_1= X.test_total= rules_no = rules = NULL 
-  final_rules = data.frame(rules_no = 1:length(rules_list),rules = unlist(rules_list) ,stringsAsFactors = FALSE) 
-  test_dat = checking_data(dat = test_dat)
-  test_dat$target = test_dat[,target]
-  test_rules = list()
 
-  for (i in 1:nrow(final_rules)){
-    filter_s =  as.character(final_rules[i, "rules"])
-    sub_dat = test_dat %>%  dplyr:: filter(eval(parse(text = filter_s)))
-    colnames(sub_dat) <- iconv(colnames(sub_dat), from = "UTF-8", to = "GBK")
-    if (nrow(sub_dat) > 0) {
-      sub_dat$rules_no = final_rules[i, 'rules_no']
-      test_rules[[i]] = sub_dat[c("rules_no", "target")]
-    }
-  }
-  
-  filter_all = as.character( paste("(",final_rules[, "rules"],")",collapse = '|'))
-  dat_all = test_dat %>% dplyr::filter(eval(parse(text = filter_all)))
-  dat_all_sub = subset(dat_all,target %in% list("0", "1", 0,1))
-  dat_all_sub$target = ifelse(dat_all_sub[, "target"] %in% list("0", 0), "G", "B")
-  dat_all$target = ifelse(dat_all[, "target"] %in% list("0", 0), "G", "B")
-   dat_all_pct = dat_all %>%
-    dplyr::count(target) %>%
-    dplyr::mutate(test_1_pct = as_percent(n / sum(n), digits = 4))
-   dat_all_sum <- dcast(dat_all_pct[c("target", "n")], .~ target, value.var = "n")
-   dat_all_sum[is.na(dat_all_sum)] <- 0  
-   
-   
-   dat_all_sub_pct = dat_all_sub %>%
-     dplyr::count(target) %>%
-     dplyr::mutate(test_1_pct = as_percent(n / sum(n), digits = 4))
-   dat_all_sub_sum <- dcast(dat_all_sub_pct[c("target", "n")],.~ target, value.var = "n")
-   dat_all_sub_sum[is.na(dat_all_sub_sum)] <- 0  
-   
-   
-  test_rules_dt = Reduce("rbind", test_rules)
-  test_rules_dt_sub = subset(test_rules_dt,target %in% list("0", "1", 0,1))
-  test_rules_dt_sub$target = ifelse(test_rules_dt_sub[, "target"] %in% list("0", "0", 0), "G", "B")
-  tree_test_pct_sub = test_rules_dt_sub %>%
-    dplyr::group_by(rules_no) %>%
-    dplyr::count(rules_no, target) %>%
-    dplyr::mutate(test_1_pct = as_percent(n / sum(n), digits = 4))
-  
-  test_sum_sub <- dcast(tree_test_pct_sub[c("rules_no", "target", "n")],
-                        rules_no ~ target, value.var = "n")
-  test_sum_sub[is.na(test_sum_sub)] <- 0  
+check_rules <- function(rules_list, test_dat, target) {
+	filter_s = sub_dat = test_rules_dt = test_pct = test_sum = test_ks = B = G =
+	X.test_1 = X.test_total = rules_no = rules = X.total_1=  test_total = hit_total = NULL
+	final_rules = data.frame(rules_no = 1:length(rules_list), rules = unlist(rules_list), stringsAsFactors = FALSE)
+	test_dat = checking_data(dat = test_dat)
+	test_dat$target = as.character(test_dat[, target])
+	test_rules = list()
 
-    test_rules_dt$target = ifelse(test_rules_dt[, "target"] %in% list("0", 0), "G", "B")
-  test_pct = test_rules_dt %>%
-    dplyr::group_by(rules_no) %>%
-    dplyr::count(rules_no, target) %>%
-    dplyr::mutate(test_1_pct = as_percent(n / sum(n), digits = 4))
-  
-  test_sum <- dcast(test_pct[c("rules_no", "target", "n")],
-                    rules_no ~ target, value.var = "n")
-  test_sum[is.na(test_sum)] <- 0  
-  test_ks <- transform(test_sum_sub,
-                       test_total = nrow(test_dat),
-                       `%test_total` = round((test_sum$G + test_sum$B)/nrow(test_dat),4),
-                       hit_total = test_sum$G + test_sum$B,
-                       `%test_1` = round(B / ifelse(G + B > 0,G + B, 1), 4))
-  
-  dt_rules = merge(final_rules[c('rules_no','rules')], test_ks,all.x = TRUE)
-  dt_rules[is.na(dt_rules)] = 0
-  dt_rules_k = transform(dt_rules,
-                         X.test_total = as_percent(X.test_total, digits =4),
-                         X.test_1 = as_percent(X.test_1, digits = 4)
+	for (i in 1:nrow(final_rules)) {
+		filter_s = as.character(final_rules[i, "rules"])
+		sub_dat = test_dat %>% dplyr::filter(eval(parse(text = filter_s)))
+		colnames(sub_dat) = iconv(colnames(sub_dat), from = "UTF-8", to = "GBK")
+		if (nrow(sub_dat) > 0) {
+			sub_dat$rules_no = final_rules[i, 'rules_no']
+			test_rules[[i]] = sub_dat[c("rules_no", "target")]
+		}
+	}
+
+	filter_all = as.character(paste("(", final_rules[, "rules"], ")", collapse = '|'))
+	dat_all = test_dat %>% dplyr::filter(eval(parse(text = filter_all)))
+	dat_all_sub = subset(dat_all, target %in% list("0", "1", 0, 1))
+	dat_all_sub$target = ifelse(dat_all_sub[, "target"] %in% list("0", 0), "G", "B")
+	dat_all$target = ifelse(dat_all[, "target"] %in% list("0", 0), "G", "B")
+	dat_all_pct = dat_all %>%
+	dplyr::count(target) %>%
+	dplyr::mutate(test_1_pct = as_percent(n / sum(n), digits = 4))
+	dat_all_pct = as.data.table(dat_all_pct)
+	dat_all_sum = data.table::dcast(dat_all_pct[,c("target", "n"), with = FALSE], . ~ target, value.var = "n")
+	dat_all_sum = quick_as_df(dat_all_sum)
+	dat_all_sum[is.na(dat_all_sum)] = 0
+
+
+	dat_all_sub_pct = dat_all_sub %>%
+	 dplyr::count(target) %>%
+	 dplyr::mutate(test_1_pct = as_percent(n / sum(n), digits = 4))
+	dat_all_sub_pct = as.data.table(dat_all_sub_pct)
+	dat_all_sub_sum = data.table::dcast(dat_all_sub_pct[,c("target", "n"), with = FALSE], . ~ target, value.var = "n")
+	dat_all_sub_sum = quick_as_df(dat_all_sub_sum)
+		dat_all_sub_sum[is.na(dat_all_sub_sum)] = 0
+
+	test_rules_dt = Reduce("rbind", test_rules)
+	test_rules_dt_sub = subset(test_rules_dt, target %in% list("0", "1", 0, 1))
+	test_rules_dt_sub$target = ifelse(test_rules_dt_sub[, "target"] %in% list("0", "0", 0), "G", "B")
+	tree_test_pct_sub = test_rules_dt_sub %>%
+	dplyr::group_by(rules_no) %>%
+	dplyr::count(rules_no, target) %>%
+	dplyr::mutate(test_1_pct = as_percent(n / sum(n), digits = 4))
+	tree_test_pct_sub = as.data.table(tree_test_pct_sub)
+	test_sum_sub = data.table::dcast(tree_test_pct_sub[,c("rules_no", "target", "n"), with = FALSE],
+						rules_no ~ target, value.var = "n")
+	test_sum_sub = quick_as_df(test_sum_sub)
+	test_sum_sub[is.na(test_sum_sub)] = 0
+
+	test_rules_dt$target = ifelse(test_rules_dt[, "target"] %in% list("0", 0), "G", "B")
+	test_pct = test_rules_dt %>%
+	dplyr::group_by(rules_no) %>%
+	dplyr::count(rules_no, target) %>%
+	dplyr::mutate(test_1_pct = as_percent(n / sum(n), digits = 4))
+	test_pct = as.data.table(test_pct)
+	test_sum = data.table::dcast(test_pct[,c("rules_no", "target", "n"), with = FALSE],
+					rules_no ~ target, value.var = "n")
+	test_sum = quick_as_df(test_sum)
+	test_sum[is.na(test_sum)] = 0
+	test_tb = table(test_dat[, "target"])
+
+	test_ks = transform(test_sum_sub,
+					   test_total = nrow(test_dat),
+					   total_1 = test_tb[2],
+					   `%total_1` = test_tb[2] / sum(test_tb),
+					   `%test_total` = round((test_sum$G + test_sum$B) / nrow(test_dat), 4),
+					   hit_total = test_sum$G + test_sum$B,
+					   `%test_1` = round(B / ifelse(G + B > 0, G + B, 1), 4)
+					   )
+
+	dt_rules = merge(final_rules[c('rules_no', 'rules')], test_ks, all.x = TRUE)
+	dt_rules[is.na(dt_rules)] = 0
+	dt_rules_k = transform(dt_rules,
+						X.total_1 = as_percent(X.total_1, digits = 4),
+						 X.test_total = as_percent(X.test_total, digits = 4),
+						 X.test_1 = as_percent(X.test_1, digits = 4),
+						 lift = round((B / ifelse(G + B > 0, G + B, 1))/(test_tb[2] / test_total), 2),
+						 res_1 = as_percent((test_tb[2] - B) / (test_total - hit_total), digits = 4),
+						 res_total = as_percent((test_total - hit_total) / test_total , digits = 4)
   )
-  names(dt_rules_k) = c("rules_no", "rules", "test_1", "test_0",
-                        "#test", "%hit","#hit", "%test_1")
-  dt_rules_k = dt_rules_k[c("rules_no", "rules","#test","#hit", "%hit","test_0", "test_1", 
-                            "%test_1")] 
-  total <- c("Total",
-             "--", 
-             max(dt_rules_k$`#test`, na.rm = TRUE),
-             dat_all_sum$B + dat_all_sum$G,
-             as_percent((dat_all_sum$B + dat_all_sum$G) / max(dt_rules_k$`#test`, na.rm = TRUE), 4),
-             dat_all_sub_sum$G, 
-             dat_all_sub_sum$B, 
-             as_percent(dat_all_sub_sum$B/ ifelse(dat_all_sub_sum$G + dat_all_sub_sum$B > 0 ,
-                                                  dat_all_sub_sum$G + dat_all_sub_sum$B,1), 4))
-  dt_rules_k = rbind(dt_rules_k, total)
-  return(dt_rules_k)
+	names(dt_rules_k) = c("rules_no", "rules", "hit_1", "hit_0",
+						"#total","total_1","%total_1", "%hit", "#hit", "%hit_1","lift","%res_1","%res_total")
+	dt_rules_k = dt_rules_k[c("rules_no", "rules", "#total","total_1","%total_1", "#hit", "%hit", "hit_0", "hit_1","%hit_1","lift", "%res_1", "%res_total")]
+
+
+	total <- c("Total",
+			 "--",
+			 max(dt_rules_k$`#total`, na.rm = TRUE),
+			 max(dt_rules_k$total_1, na.rm = TRUE),
+			 as_percent(test_tb[2] / sum(test_tb), 4),
+			 dat_all_sum$B + dat_all_sum$G,
+			 as_percent((dat_all_sum$B + dat_all_sum$G) / max(dt_rules_k$`#total`, na.rm = TRUE), 4),
+			 dat_all_sub_sum$G,
+			 dat_all_sub_sum$B,
+			 as_percent(dat_all_sub_sum$B / ifelse(dat_all_sub_sum$G + dat_all_sub_sum$B > 0,
+												  dat_all_sub_sum$G + dat_all_sub_sum$B, 1), 4),
+		 round( (dat_all_sub_sum$B / ifelse(dat_all_sub_sum$G + dat_all_sub_sum$B > 0,
+												  dat_all_sub_sum$G + dat_all_sub_sum$B, 1)) / (test_tb[2] / sum(test_tb)), 2),
+	as_percent((test_tb[2] - dat_all_sub_sum$B) / (max(dt_rules_k$`#total`, na.rm = TRUE) - (dat_all_sum$B + dat_all_sum$G)), 4),
+
+	as_percent((max(dt_rules_k$`#total`, na.rm = TRUE) - (dat_all_sum$B + dat_all_sum$G)) / max(dt_rules_k$`#total`, na.rm = TRUE), 4)
+          )
+	dt_rules_k = rbind(dt_rules_k, total)
+	return(dt_rules_k)
 }
+
 
 
 
@@ -653,7 +722,7 @@ get_bins_table_all <- function(dat, x_list = NULL, target = NULL, pos_flag = NUL
                                note = FALSE, bins_total = TRUE,
                                save_data = FALSE, file_name = NULL, dir_path = tempdir()) {
     if (note)cat_line("-- Processing bins table", col = love_color("deep_green"))
-	
+
     opt = options(scipen = 200, stringsAsFactors = FALSE) #
     if (is.null(x_list)) {
         if (!is.null(breaks_list)) {
@@ -687,7 +756,7 @@ get_bins_table_all <- function(dat, x_list = NULL, target = NULL, pos_flag = NUL
 get_bins_table <- function(dat, x, target = NULL, pos_flag = NULL, dat_test = NULL,
                            breaks = NULL, breaks_list = NULL,bins_total = TRUE,
                            note = FALSE) {
-  
+
   opt = options(scipen = 200, stringsAsFactors = FALSE) #
   good = bad = NULL
   if (is.null(breaks)) {
@@ -708,7 +777,7 @@ get_bins_table <- function(dat, x, target = NULL, pos_flag = NULL, dat_test = NU
         } else {
           dat[, target] = ifelse(dat[, target] %in% pos_flag, 0, 1)
         }
-        
+
         if (length(unique(dat$target)) == 1) {
           stop(paste("The value in pos_flag is not one of the value of  target.\n"))
         }
@@ -719,11 +788,11 @@ get_bins_table <- function(dat, x, target = NULL, pos_flag = NULL, dat_test = NU
   } else {
     stop(paste("The target variable is missing.\n"))
   }
-  
+
   best_bins = split_bins(dat = dat, x = x, breaks = breaks, bins_no = TRUE)
   dt_bins <- table(best_bins, dat[, target])
   rm(best_bins)
-  
+
   dt_bins = data.frame(unclass(dt_bins))
   if (all(names(dt_bins) == c("X0", "X1"))) {
     names(dt_bins) = c("good", "bad")
@@ -749,7 +818,7 @@ get_bins_table <- function(dat, x, target = NULL, pos_flag = NULL, dat_test = NU
     iv = round(((ifelse(good >0, good,1) / sum(good,na.rm = TRUE)) - (ifelse(bad>0,bad,1) / sum(bad,na.rm = TRUE))) * woe, 4)
   })
   rm(dt_bins)
-  
+
   if (!is.null(dat_test)) {
     dt_psi = get_psi(dat = dat, x = x, breaks = breaks,
                      pos_flag = pos_flag,
@@ -763,13 +832,13 @@ get_bins_table <- function(dat, x, target = NULL, pos_flag = NULL, dat_test = NU
   }
   df_bins = df_bins[c("Feature", "bins", "cuts", "total", "good", "bad",
                       "%total", "%good", "%bad", "bad_rate", "woe", "GB_index", "iv", "psi")]
-  
-  
+
+
   if (note){
     cat_bullet(paste(x, "IV:", round(sum(df_bins$iv,na.rm = TRUE), 3), "PSI:",
-                     ifelse(all(df_bins$psi > -1),round(sum(df_bins$psi,na.rm = TRUE), 3), -1), 
-                     collapse = "\t"), col = "darkgrey")     
-  }					
+                     ifelse(all(df_bins$psi > -1),round(sum(df_bins$psi,na.rm = TRUE), 3), -1),
+                     collapse = "\t"), col = "darkgrey")
+  }
   if (bins_total) {
     total_sum = c("Total", "--", "--", sum(df_bins$total),
                   sum(df_bins$good), sum(df_bins$bad),
@@ -778,9 +847,9 @@ get_bins_table <- function(dat, x, target = NULL, pos_flag = NULL, dat_test = NU
                   as_percent(sum(df_bins$bad) / sum(df_bins$total), 2), 0, 100,
                   round(sum(df_bins$iv,na.rm = TRUE), 3), ifelse(all(df_bins$psi > -1),round(sum(df_bins$psi,na.rm = TRUE), 3), -1))
     df_bins = rbind(df_bins, total_sum)
-    
+
   }
-  rownames(df_bins) = NULL  
+  rownames(df_bins) = NULL
   return(df_bins)
   options(opt) # reset
 }
@@ -805,7 +874,8 @@ get_bins_table <- function(dat, x, target = NULL, pos_flag = NULL, dat_test = NU
 #' @param occur_time The name of the variable that represents the time at which each observation takes place.
 #' @param oot_pct  Percentage of observations retained for overtime test (especially to calculate PSI). Defualt is 0.7
 #' @param best  Logical, merge initial breaks to get optimal breaks for binning.
-#' @param equal_bins  Logical, generates initial breaks for equal frequency binning.
+#' @param equal_bins  Logical, generates initial breaks for equal frequency or width binning.
+#' @param cut_bin A string, if equal_bins is TRUE, 'equal_depth' or 'equal_width', default is 'equal_depth'.
 #' @param g  Number of initial breakpoints for equal frequency binning.
 #' @param tree_control  Parameters of using Decision Tree to segment initial breaks. See detials: \code{\link{get_tree_breaks}}
 #' @param bins_control  Parameters  used to control binning.  See detials: \code{\link{select_best_class}}, \code{\link{select_best_breaks}}
@@ -824,7 +894,7 @@ get_bins_table <- function(dat, x, target = NULL, pos_flag = NULL, dat_test = NU
 #' @export
 
 get_psi_iv_all <- function(dat, dat_test = NULL, x_list = NULL, target, ex_cols = NULL, pos_flag = NULL,
-breaks_list = NULL, occur_time = NULL, oot_pct = 0.7, equal_bins = FALSE, tree_control = NULL, bins_control = NULL,
+breaks_list = NULL, occur_time = NULL, oot_pct = 0.7, equal_bins = FALSE,cut_bin = 'equal_depth', tree_control = NULL, bins_control = NULL,
 bins_total = FALSE, best = TRUE, g = 10, as_table = TRUE, note = FALSE, parallel = FALSE, bins_no = TRUE) {
     dat <- checking_data(dat = dat, target = target, pos_flag = pos_flag)
     opt = options(scipen = 200, stringsAsFactors = FALSE) #
@@ -845,7 +915,7 @@ bins_total = FALSE, best = TRUE, g = 10, as_table = TRUE, note = FALSE, parallel
         x_list <- gsub("_woe$|_pred$", "", x_list)
     }
     psi_iv_list = loop_function(func = get_psi_iv, x_list = x_list, args = list(dat = dat, dat_test = dat_test, breaks = NULL,
-    breaks_list = breaks_list, target = target, pos_flag = pos_flag, best = best, equal_bins = equal_bins, tree_control = tree_control,
+    breaks_list = breaks_list, target = target, pos_flag = pos_flag, best = best, equal_bins = equal_bins, cut_bin = cut_bin,tree_control = tree_control,
     oot_pct = oot_pct, occur_time = occur_time, bins_control = bins_control, g = g, note = note, bins_total = bins_total,
     as_table = as_table, bins_no = bins_no), bind = "rbind", parallel = parallel)
     return(psi_iv_list)
@@ -855,141 +925,143 @@ bins_total = FALSE, best = TRUE, g = 10, as_table = TRUE, note = FALSE, parallel
 #' @rdname get_psi_iv_all
 #' @export
 
-get_psi_iv <- function(dat, dat_test = NULL, x, target, pos_flag = NULL, breaks = NULL, breaks_list = NULL, 
-                       occur_time = NULL, oot_pct = 0.7, equal_bins = FALSE, tree_control = NULL, bins_control = NULL,
-                       bins_total = FALSE, best = TRUE, g = 10, as_table = TRUE, note = FALSE, bins_no = TRUE) {
-  opt = options(scipen = 200, stringsAsFactors = FALSE) #
-  if (is.null(target)) {
-    stop("target is missing!")
-  }
-  if (is.null(breaks)) {
-    if (!is.null(breaks_list)) {
-      breaks = breaks_list[which(as.character(breaks_list[, "Feature"]) == names(dat[x])), "cuts"]
-    }
-    if (is.null(breaks)) {
-      breaks = get_breaks(dat = dat, x = x, target = target, pos_flag = pos_flag, bins_control = bins_control,
-                          occur_time = occur_time, oot_pct = oot_pct, equal_bins = equal_bins,
-                          best = best, tree_control = tree_control, g = g, note = FALSE)
-    }
-  }
-  if (all(unique(dat[, target]) != c("0", "1"))) {
-    if (!is.null(pos_flag)) {
-      dat$target = ifelse(dat[, target] %in% pos_flag, "1", "0")
-    } else {
-      pos_flag = list("1", 1, "bad", "positive")
-      dat$target = ifelse(dat[, target] %in% pos_flag, "1", "0")
-    }
-    if (length(unique(dat$target)) == 1) {
-      stop("pos_flag is missing.\n")
-    }
-  } else {
-    dat$target = dat[, target]
-  }
-  if (is.null(dat_test)) {
-    df_bins <- split_bins(dat = dat, x = x, breaks = breaks, bins_no = bins_no)
-    df_bins = as.data.frame(cbind(dat[occur_time], bins = df_bins, target = dat$target))
-    train_test = train_test_split(dat = df_bins, prop = oot_pct, split_type = "OOT",
-                                  occur_time = occur_time, save_data = FALSE, note = FALSE)
-    dfe <- train_test$train
-    dfa <- train_test$test
-    dfa$ae = "actual"
-    dfe$ae = "expected"
-    
-    df_ae = rbind(dfa, dfe)
-  } else {
-    if (all(unique(dat_test[, target]) != c("0", "1"))) {
-      if (!is.null(pos_flag)) {
-        dat_test$target = ifelse(dat_test[, target] %in% pos_flag, "1", "0")
-      } else {
-        pos_flag = list("1", 1, "bad", "positive")
-        dat_test$target = ifelse(dat_test[, target] %in% pos_flag, "1", "0")
-      }
-      if (length(unique(dat_test$target)) == 1) {
-        stop("pos_flag is missing.\n")
-      }
-    } else {
-      dat_test$target = as.character(dat_test[, target])
-    }
-    dfe_bins <- split_bins(dat = dat, x = x, breaks = breaks, bins_no = bins_no)
-    dfe = as.data.frame(cbind(bins = dfe_bins, target = dat$target))
-    dfa_bins <- split_bins(dat = dat_test, x = x, breaks = breaks, bins_no = bins_no)
-    dfa = as.data.frame(cbind(bins = dfa_bins, target = dat_test$target))
-    
-    dfa$ae = "actual"
-    dfe$ae = "expected"
-    df_ae = rbind(dfa, dfe)
-  }
- 
-  bins_psi_iv <- data.table::dcast(df_ae, bins ~ ae + target, fun.aggregate = length, value.var = "ae")
-  
-  
-  bins_psi_iv <- within(bins_psi_iv, {
-    cuts = breaks[1:nrow(bins_psi_iv)]
-    actual_0 = as.numeric(actual_0)
-    expected_0 = as.numeric(expected_0)
-    actual_1 = as.numeric(actual_1)
-    expected_1 = as.numeric(expected_1)
-    Feature = names(dat[x])
-    `#total` = actual_0 + expected_0 + actual_1 + expected_1
-    `%total` = round((actual_0 + expected_0 + actual_1 + expected_1) / sum(`#total`), 2)
-    `%total_1` = round((actual_1 + expected_1) / `#total`, 2)
-    total_0_pct = (actual_0 + expected_0) / sum(actual_0 + expected_0)
-    total_1_pct = (actual_1 + expected_1) / sum(actual_1 + expected_1)
-    `#actual` = actual_1 + actual_0
-    `%actual` = round((actual_1 + actual_0) / sum(`#actual`), 2)
-    `#expected` = expected_1 + expected_0
-    `%expected` = round((expected_1 + expected_0) / sum(`#expected`), 2)
-    actual_pct_1 = (actual_1) / sum(actual_1)
-    expected_pct_1 = (expected_1) / sum(expected_1)
-    `%expected_1` = ifelse(`#expected` > 0,round(expected_1 / (expected_1 + expected_0), 2),0)
-    `%actual_1` = ifelse(`#actual` > 0 , round(actual_1 / (actual_1 + actual_0), 2),0)
-    odds_ratio = round(((actual_0 + expected_0) / ifelse(actual_1 + expected_1>0 , actual_1 + expected_1 , 1)) / 
-                         (sum(actual_0 + expected_0) / 
-                            sum(ifelse(actual_1 + expected_1 > 0 ,actual_1 + expected_1 , 1))), 3)
-    odds_rotio_e = (ifelse(expected_0 > 0,expected_0,1) / ifelse(expected_1 > 0,expected_1,1))/ (sum(ifelse(expected_0 > 0,expected_0,1)) / sum(ifelse(expected_1 > 0,expected_1,1)))
-    odds_rotio_a = (ifelse(actual_0 > 0,actual_0,1) / ifelse(actual_1 > 0,actual_1,1)) / (sum(ifelse(actual_0 > 0,actual_0,1))/ sum(ifelse(actual_1 > 0,actual_1,1)))
-    odds_ratio_s = round((odds_rotio_e -odds_rotio_a) * 
-                           log(odds_rotio_e/odds_rotio_a),3)
-    PSIi = round((ifelse(`#actual` > 0, `#actual`, 1) / sum(ifelse(`#actual` > 0, `#actual`, 1)) - ifelse(`#expected` > 0, `#expected`, 1) / sum(ifelse(`#expected` > 0, `#expected`, 1)))* 
-                   log((ifelse(`#actual` > 0, `#actual`, 1) / sum(ifelse(`#actual` > 0, `#actual`, 1))) / (ifelse(`#expected` > 0, `#expected`, 1) / sum(ifelse(`#expected` > 0, `#expected`, 1)))), 3)
-    WOEi = log(total_0_pct / ifelse(total_1_pct > 0, total_1_pct, 1))
-    IVi = round((total_0_pct - total_1_pct) *WOEi, 3)
-  })
-  if (as_table) {
-    df_psi_iv = bins_psi_iv[c("Feature", "bins", "cuts", "#total", "#expected", "expected_0", "expected_1",
-                              "#actual", "actual_0", "actual_1", "%total", "%expected", "%actual", "%total_1",
-                              "%expected_1", "%actual_1", "odds_ratio","odds_ratio_s", "PSIi", "IVi")]
-    if (bins_total) {
-      total <- c("Total",
-                 "--", "--",
-                 sum(bins_psi_iv$`#total`, na.rm = TRUE),
-                 sum(bins_psi_iv$`#expected`, na.rm = TRUE),
-                 sum(bins_psi_iv$expected_0, na.rm = TRUE),
-                 sum(bins_psi_iv$expected_1, na.rm = TRUE),
-                 sum(bins_psi_iv$`#actual`, na.rm = TRUE),
-                 sum(bins_psi_iv$actual_0, na.rm = TRUE),
-                 sum(bins_psi_iv$actual_1, na.rm = TRUE),
-                 1,1, 1,
-                 round(sum(bins_psi_iv$expected_1 + bins_psi_iv$actual_1) / sum(bins_psi_iv$`#total`), 2),
-                 round(sum(bins_psi_iv$expected_1) / sum(bins_psi_iv$`#expected`), 2),
-                 round(sum(bins_psi_iv$actual_1) / sum(bins_psi_iv$`#actual`), 2),
-                 1,
-                 sum(bins_psi_iv$odds_ratio_s),
-                 sum(bins_psi_iv$PSIi),
-                 sum(bins_psi_iv$IVi))
-      df_psi_iv = rbind(df_psi_iv, total)
-    }
-  } else {
-    df_psi_iv = data.frame(Feature = x, IV = as.numeric(sum(bins_psi_iv$IVi)), PSI = as.numeric(sum(bins_psi_iv$PSIi)))
-  }
-  if (note) {
-    cat_bullet(paste(x, "IV:", as.numeric(sum(bins_psi_iv$IVi)), "PSI: ", 
-	          as.numeric(sum(bins_psi_iv$PSIi)), sep = " "), col = "darkgrey")  
-  }
-  
-  return(df_psi_iv)
-  options(opt) # reset
+get_psi_iv <- function(dat, dat_test = NULL, x, target, pos_flag = NULL, breaks = NULL, breaks_list = NULL,
+					   occur_time = NULL, oot_pct = 0.7, equal_bins = FALSE, cut_bin = 'equal_depth', tree_control = NULL, bins_control = NULL,
+					   bins_total = FALSE, best = TRUE, g = 10, as_table = TRUE, note = FALSE, bins_no = TRUE) {
+	opt = options(scipen = 200, stringsAsFactors = FALSE, digits = 6) #
+	if (is.null(target)) {
+		stop("target is missing!")
+	}
+	if (is.null(breaks)) {
+		if (!is.null(breaks_list)) {
+			breaks = breaks_list[which(as.character(breaks_list[, "Feature"]) == names(dat[x])), "cuts"]
+		}
+		if (is.null(breaks)) {
+			breaks = get_breaks(dat = dat, x = x, target = target, pos_flag = pos_flag, bins_control = bins_control,
+						  occur_time = occur_time, oot_pct = oot_pct, equal_bins = equal_bins, cut_bin = cut_bin,
+						  best = best, tree_control = tree_control, g = g, note = FALSE)
+		}
+	}
+	if (all(unique(dat[, target]) != c("0", "1"))) {
+		if (!is.null(pos_flag)) {
+			dat$target = ifelse(dat[, target] %in% pos_flag, "1", "0")
+		} else {
+			pos_flag = list("1", 1, "bad", "positive")
+			dat$target = ifelse(dat[, target] %in% pos_flag, "1", "0")
+		}
+		if (length(unique(dat$target)) == 1) {
+			stop("pos_flag is missing.\n")
+		}
+	} else {
+		dat$target = dat[, target]
+	}
+	if (is.null(dat_test)) {
+		df_bins <- split_bins(dat = dat, x = x, breaks = breaks, bins_no = bins_no)
+		df_bins = as.data.frame(cbind(dat[occur_time], bins = df_bins, target = dat$target))
+		train_test = train_test_split(dat = df_bins, prop = oot_pct, split_type = "OOT",
+								  occur_time = occur_time, save_data = FALSE, note = FALSE)
+		dfe <- train_test$train
+		dfa <- train_test$test
+		dfa$ae = "actual"
+		dfe$ae = "expected"
+
+		df_ae = rbind(dfa, dfe)
+	} else {
+		if (all(unique(dat_test[, target]) != c("0", "1"))) {
+			if (!is.null(pos_flag)) {
+				dat_test$target = ifelse(dat_test[, target] %in% pos_flag, "1", "0")
+			} else {
+				pos_flag = list("1", 1, "bad", "positive")
+				dat_test$target = ifelse(dat_test[, target] %in% pos_flag, "1", "0")
+			}
+			if (length(unique(dat_test$target)) == 1) {
+				stop("pos_flag is missing.\n")
+			}
+		} else {
+			dat_test$target = as.character(dat_test[, target])
+		}
+		dfe_bins <- split_bins(dat = dat, x = x, breaks = breaks, bins_no = bins_no)
+		dfe = as.data.frame(cbind(bins = dfe_bins, target = dat$target))
+		dfa_bins <- split_bins(dat = dat_test, x = x, breaks = breaks, bins_no = bins_no)
+		dfa = as.data.frame(cbind(bins = dfa_bins, target = dat_test$target))
+
+		dfa$ae = "actual"
+		dfe$ae = "expected"
+		df_ae = rbind(dfa, dfe)
+	}
+	df_ae = as.data.table(df_ae)
+	bins_psi_iv = data.table::dcast(df_ae, bins ~ ae + target, fun.aggregate = length, value.var = "ae")
+	bins_psi_iv = quick_as_df(bins_psi_iv)
+	bins = actual_1 = actual_0 = expected_0 = expected_1 = 0
+
+	bins_psi_iv <- within(bins_psi_iv, {
+		cuts = breaks[1:nrow(bins_psi_iv)]
+		actual_0 = as.numeric(actual_0)
+		expected_0 = as.numeric(expected_0)
+		actual_1 = as.numeric(actual_1)
+		expected_1 = as.numeric(expected_1)
+		Feature = names(dat[x])
+		`#total` = actual_0 + expected_0 + actual_1 + expected_1
+		`%total` = round((actual_0 + expected_0 + actual_1 + expected_1) / sum(`#total`), 2)
+		`%total_1` = round((actual_1 + expected_1) / `#total`, 2)
+		total_0_pct = (actual_0 + expected_0) / sum(actual_0 + expected_0)
+		total_1_pct = (actual_1 + expected_1) / sum(actual_1 + expected_1)
+		`#actual` = actual_1 + actual_0
+		`%actual` = round((actual_1 + actual_0) / sum(`#actual`), 2)
+		`#expected` = expected_1 + expected_0
+		`%expected` = round((expected_1 + expected_0) / sum(`#expected`), 2)
+		actual_pct_1 = (actual_1) / ifelse(sum(actual_1) == 0, 1, sum(actual_1))
+		expected_pct_1 = (expected_1) / ifelse(sum(expected_1) == 0, 1, sum(expected_1))
+		`%expected_1` = ifelse(`#expected` > 0, round(expected_1 / (expected_1 + expected_0), 2), 0)
+		`%actual_1` = ifelse(`#actual` > 0, round(actual_1 / (actual_1 + actual_0), 2), 0)
+		odds_ratio = round(((actual_0 + expected_0) / ifelse(actual_1 + expected_1 > 0, actual_1 + expected_1, 1)) /
+						 (sum(actual_0 + expected_0) /
+							sum(ifelse(actual_1 + expected_1 > 0, actual_1 + expected_1, 1))), 3)
+		odds_rotio_e = (ifelse(expected_0 > 0, expected_0, 1) / ifelse(expected_1 > 0, expected_1, 1)) / (sum(ifelse(expected_0 > 0, expected_0, 1)) / sum(ifelse(expected_1 > 0, expected_1, 1)))
+		odds_rotio_a = (ifelse(actual_0 > 0, actual_0, 1) / ifelse(actual_1 > 0, actual_1, 1)) / (sum(ifelse(actual_0 > 0, actual_0, 1)) / sum(ifelse(actual_1 > 0, actual_1, 1)))
+		odds_ratio_s = round((odds_rotio_e - odds_rotio_a) *
+						   log(odds_rotio_e / odds_rotio_a), 3)
+		PSIi = round((ifelse(`#actual` > 0, `#actual`, 1) / sum(ifelse(`#actual` > 0, `#actual`, 1)) - ifelse(`#expected` > 0, `#expected`, 1) / sum(ifelse(`#expected` > 0, `#expected`, 1))) *
+				   log((ifelse(`#actual` > 0, `#actual`, 1) / sum(ifelse(`#actual` > 0, `#actual`, 1))) / (ifelse(`#expected` > 0, `#expected`, 1) / sum(ifelse(`#expected` > 0, `#expected`, 1)))), 3)
+		WOEi = log(total_0_pct / ifelse(total_1_pct > 0, total_1_pct, 1))
+		IVi = round((total_0_pct - total_1_pct) * WOEi, 3)
+	})
+	if (as_table) {
+		df_psi_iv = bins_psi_iv[c("Feature", "bins", "cuts", "#total", "#expected", "expected_0", "expected_1",
+							  "#actual", "actual_0", "actual_1", "%total", "%expected", "%actual", "%total_1",
+							  "%expected_1", "%actual_1", "odds_ratio", "odds_ratio_s", "PSIi", "IVi")]
+		if (bins_total) {
+			total <- c("Total",
+				 "--", "--",
+				 sum(bins_psi_iv$`#total`, na.rm = TRUE),
+				 sum(bins_psi_iv$`#expected`, na.rm = TRUE),
+				 sum(bins_psi_iv$expected_0, na.rm = TRUE),
+				 sum(bins_psi_iv$expected_1, na.rm = TRUE),
+				 sum(bins_psi_iv$`#actual`, na.rm = TRUE),
+				 sum(bins_psi_iv$actual_0, na.rm = TRUE),
+				 sum(bins_psi_iv$actual_1, na.rm = TRUE),
+				 1, 1, 1,
+				 round(sum(bins_psi_iv$expected_1 + bins_psi_iv$actual_1) / sum(bins_psi_iv$`#total`), 2),
+				 round(sum(bins_psi_iv$expected_1) / sum(bins_psi_iv$`#expected`), 2),
+				 round(sum(bins_psi_iv$actual_1) / sum(bins_psi_iv$`#actual`), 2),
+				 1,
+				 sum(bins_psi_iv$odds_ratio_s),
+				 sum(bins_psi_iv$PSIi),
+				 sum(bins_psi_iv$IVi))
+			df_psi_iv = rbind(df_psi_iv, total)
+		}
+	} else {
+		df_psi_iv = data.frame(Feature = x, IV = as.numeric(sum(bins_psi_iv$IVi)), PSI = as.numeric(sum(bins_psi_iv$PSIi)))
+	}
+	if (note) {
+		cat_bullet(paste(x, "IV:", as.numeric(sum(bins_psi_iv$IVi)), "PSI: ",
+			  as.numeric(sum(bins_psi_iv$PSIi)), sep = " "), col = "darkgrey")
+	}
+
+	return(df_psi_iv)
+	options(opt) # reset
 }
+
 
 
 #' Calculate Information Value (IV)
@@ -1127,7 +1199,7 @@ get_iv <- function(dat, x, target = NULL, pos_flag = NULL, breaks = NULL, breaks
     })
     if (note) {
     cat_line(paste0("--",x), col = love_color("water_blue"))
-	cat_bullet(paste("IV:", iv_df$IV," --> ", iv_df$strength), col = "darkgrey")  
+	cat_bullet(paste("IV:", iv_df$IV," --> ", iv_df$strength), col = "darkgrey")
     }
 
     iv_df
@@ -1207,14 +1279,14 @@ get_psi_all <- function(dat, x_list = NULL,target = NULL, dat_test = NULL, break
       stop(paste(occur_time, "is not Date or Time"))
     }
   }
-  psi_list = loop_function(func = get_psi, x_list = x_list, 
+  psi_list = loop_function(func = get_psi, x_list = x_list,
                            args = list(dat = dat, dat_test = dat_test,
-                                       breaks = NULL, breaks_list = breaks_list, 
+                                       breaks = NULL, breaks_list = breaks_list,
                                        occur_time = occur_time, start_date = start_date,
-                                       cut_date = cut_date,oot_pct = oot_pct, 
-                                       target = target, pos_flag = pos_flag, 
+                                       cut_date = cut_date,oot_pct = oot_pct,
+                                       target = target, pos_flag = pos_flag,
                                        as_table = as_table, g = g, note = note,
-                                       bins_no = bins_no), bind = "rbind", 
+                                       bins_no = bins_no), bind = "rbind",
                            parallel = parallel)
   return(psi_list)
   options(opt) # reset
@@ -1235,7 +1307,7 @@ get_psi <- function(dat, x, target = NULL, dat_test = NULL, occur_time = NULL, s
   if (is.null(breaks)) {
     breaks = get_breaks(dat = dat, x = x,target = target, pos_flag = pos_flag, equal_bins = TRUE, best = FALSE, g = g, note = FALSE)
   }
-  
+
   if (is.null(dat_test)) {
     dat$bins = split_bins(dat = dat, x = x, breaks = breaks, bins_no = bins_no)
     if(!is.null(target)){
@@ -1259,16 +1331,17 @@ get_psi <- function(dat, x, target = NULL, dat_test = NULL, occur_time = NULL, s
     dat_test$bins = split_bins(dat = dat_test, x = x, breaks = breaks, bins_no = bins_no)
     dfe = dat[, c("ae", "bins",target)]
     dfa = dat_test[, c("ae", "bins",target)]
-    
+
     df_ae = rbind(dfa, dfe)
   }
-
+  df_ae = as.data.table(df_ae)
   if(!is.null(target)){
-    df_ae$target =df_ae[,target]
+    df_ae$target =df_ae[,target,with = FALSE]
     df_psi = data.table::dcast(df_ae, bins~ ae + target, fun.aggregate = length, value.var = "ae")
+	df_psi = quick_as_df(df_psi)
     df_psi = within(df_psi, {
       actual = actual_1 + actual_0
-      expected = expected_1 + expected_0 
+      expected = expected_1 + expected_0
       Ac_pct_1 = actual_1/ifelse(actual > 0, actual, 1)
       Ex_pct_1 = expected_1/ifelse(expected > 0,expected, 1)
       cos_s = round(cos_sim(Ex_pct_1, Ac_pct_1, cos_margin = 2 ),3)
@@ -1276,14 +1349,14 @@ get_psi <- function(dat, x, target = NULL, dat_test = NULL, occur_time = NULL, s
       Ex_pct = expected/ sum(expected, na.rm = TRUE)
       PSI_i = round((Ac_pct - Ex_pct) * log(Ac_pct / Ex_pct), 3)
     })
-    
+
     if (as_table) {
-      dat_psi = data.frame(Feature = x, Bins = df_psi$bins, 
+      dat_psi = data.frame(Feature = x, Bins = df_psi$bins,
                            actual = df_psi$actual,
                            expected = df_psi$expected,
                            Ac_pct = as_percent(df_psi$Ac_pct, digits = 3),
                            Ex_pct = as_percent(df_psi$Ex_pct, digits = 3),
-                           PSI_i = df_psi$PSI_i, 
+                           PSI_i = df_psi$PSI_i,
                            PSI = as.numeric(sum(df_psi$PSI_i,na.rm = TRUE)),
                            COS = df_psi$cos_s )
     } else {
@@ -1300,10 +1373,11 @@ get_psi <- function(dat, x, target = NULL, dat_test = NULL, occur_time = NULL, s
     })
     if (note) {
 	 cat_line(paste0("--",x), col = love_color("water_blue"))
-     cat_bullet(paste("PSI:", as.numeric(dt_psi$PSI[1]), " --> ", dt_psi$stability[1]), col = "darkgrey")  
+     cat_bullet(paste("PSI:", as.numeric(dt_psi$PSI[1]), " --> ", dt_psi$stability[1]), col = "darkgrey")
     }
   }else{
     df_psi = data.table::dcast(df_ae, bins~ ae, fun.aggregate = length, value.var = "ae")
+	df_psi = quick_as_df(df_psi)
     df_psi = within(df_psi, {
       Ac_pct = ifelse(actual > 0, actual, 1) / sum(actual)
       Ex_pct = ifelse(expected > 0,expected, 1) / sum(expected)
@@ -1326,10 +1400,124 @@ get_psi <- function(dat, x, target = NULL, dat_test = NULL, occur_time = NULL, s
     })
     if (note) {
 	cat_line(paste0("--",x), col = love_color("water_blue"))
-     cat_bullet(paste("PSI:", as.numeric(dt_psi$PSI[1]), " --> ", dt_psi$stability[1]), col = "darkgrey")  
+     cat_bullet(paste("PSI:", as.numeric(dt_psi$PSI[1]), " --> ", dt_psi$stability[1]), col = "darkgrey")
     }
   }
-  
+
   rm(df_psi, dt_psi)
   return(dat_psi)
 }
+
+
+#' cross_table
+#'
+#' \code{cross_table} is  for cross table analysis.
+#' @param dat A data.frame with independent variables.
+#' @param cross_x Names of variables to cross.
+#' @param target The name of target variable.
+#' @param value The name of the variable to sum. When this parameter is NULL, the default statistics is to sum frequency.
+#' @param cross_type Output form of the result of crosstable. Provide these four forms: "total_sum","total_pct","bad_sum","bad_pct" .
+#' @return  A cross table.
+#' @examples
+#' cross_table(dat = UCICreditCard, cross_x = c("SEX", "AGE"),
+#'  target = "default.payment.next.month", cross_type = "bad_pct",value = "LIMIT_BAL")
+#' cross_table(dat = UCICreditCard, cross_x = c("SEX","MARRIAGE","AGE"),
+#'  target = "default.payment.next.month", cross_type = "bad_pct",value = NULL)
+#' @importFrom data.table setDT .N := dcast merge.data.table as.data.table
+#' @export
+
+cross_table <- function(dat,cross_x, target = NULL, value = NULL, cross_type = 'total_sum') {
+  dat = checking_data(dat)
+  dat = process_nas(dat)
+  if (is.null(value)) {
+    dat$value = 1
+  } else {
+    dat$value = dat[, value]
+  }
+  crs_x = c("x","y","z","a","b","c")
+  len_crs_x = length(cross_x)
+  if(len_crs_x > 1 & len_crs_x <= 6 ){
+    crs_x = crs_x[1:len_crs_x]
+    dat[,crs_x] =   dat[,cross_x]
+  }else{
+    if(len_crs_x < 2){
+      stop("corss_x must have at least 2 variables.")
+    }else{
+      stop("corss_x must have less than or equal to 6 variables.")
+    }
+  }
+  
+  x.Formula = as.formula(paste(paste(crs_x[-len_crs_x], collapse = ' + '),crs_x[len_crs_x], 
+                               sep = ' ~ '))
+  
+  x_list = crs_x[which(sapply(dat[,crs_x],is.numeric))]
+  dat = split_bins_all(dat = dat,x_list = x_list)
+  dat = as.data.table(dat)
+  
+  . = NULL
+  value_dt = dat[, .(value = sum(value)), by = crs_x]
+  total_sum = data.table::dcast(value_dt, x.Formula, fun.aggregate = sum, value.var = "value")
+  
+  sum_y = apply(total_sum[, -crs_x[-len_crs_x],with=FALSE], 1, sum)
+  total_sum = cbind(total_sum, sum_y)
+  sum_x = apply(total_sum[, -crs_x[-len_crs_x],with=FALSE], 2, sum)
+  total_sum = rbind(total_sum, cbind(t(sum_x)), use.names = TRUE,fill = TRUE)
+  total_sum[nrow(total_sum),crs_x[-len_crs_x]] = "sum_x"
+  total_value = sum(dat$value)
+  total_pct = sapply(total_sum[, -crs_x[-len_crs_x],with=FALSE] / total_value, function(x) as_percent(x, 4))
+  if(len_crs_x > 2){
+    names(total_sum)[1:(len_crs_x-1)] = c(cross_x[1:(len_crs_x-2)], paste(cross_x[(len_crs_x-1)], cross_x[len_crs_x], 
+                                                                          sep = "/")) 
+  }else{
+    names(total_sum)[1:(len_crs_x-1)] = c(paste(cross_x[(len_crs_x-1)], cross_x[len_crs_x], 
+                                                sep = "/")) 
+  }
+  
+  total_pct = cbind(total_sum[, 1:(len_crs_x-1)], total_pct)
+  if (!is.null(target)) {
+    dat$target = dat[, target, with = FALSE]
+    value_dt = dat[, .(value = sum(value, na.rm = TRUE) ), by = c(crs_x, "target")]
+    value_dt_n = dat[, .N,crs_x]
+    value_dt_1 = value_dt[target == 1]
+    value_dt_1 = merge(value_dt_n, value_dt_1, all.x = TRUE)
+    value_dt_1[is.na(value_dt_1)] = 0
+    bad_sum = data.table::dcast(value_dt_1, x.Formula, fun.aggregate = sum, value.var = "value")
+    
+    sum_y = apply(bad_sum[,-crs_x[-len_crs_x],with=FALSE], 1, sum)
+    bad_sum = cbind(bad_sum, sum_y)
+    
+    sum_x = apply(bad_sum[, -crs_x[-len_crs_x],with=FALSE], 2, sum)
+    bad_sum = rbind(bad_sum, cbind( t(sum_x)), use.names = TRUE,fill = TRUE)
+    bad_sum[nrow(bad_sum),crs_x[-len_crs_x]] = "sum_x"
+    bad_pct = bad_sum[, -crs_x[-len_crs_x],with=FALSE] / total_sum[, -names(total_sum)[1:(len_crs_x-1)],with=FALSE]
+    bad_pct[is.na(bad_pct)] = 0
+    bad_pct = sapply(bad_pct, function(x) as_percent(x, 4))
+    if(len_crs_x > 2){
+      names(bad_sum)[1:(len_crs_x-1)]  = c(cross_x[1:(len_crs_x-2)], paste(cross_x[(len_crs_x-1)], cross_x[len_crs_x], 
+                                                                           sep = "/"))
+    }else{
+      names(bad_sum)[1:(len_crs_x-1)]  = c(paste(cross_x[(len_crs_x-1)], cross_x[len_crs_x], 
+                                                 sep = "/"))
+    }
+    bad_pct = cbind(bad_sum[, 1:(len_crs_x-1)], bad_pct)
+  }
+  if (cross_type == "total_sum") {
+    cross_dt = total_sum
+  } else {
+    if (cross_type == "total_pct") {
+      cross_dt = total_pct
+    } else {
+      if (cross_type == "bad_sum" & !is.null(target)) {
+        cross_dt = bad_sum
+      } else {
+        if (cross_type == "bad_pct" & !is.null(target)) {
+          cross_dt = bad_pct
+        } else {
+          cross_dt = total_sum
+        }
+      }
+    }
+  }
+  return(quick_as_df(cross_dt))
+}
+

@@ -12,7 +12,7 @@ de_one_hot_encoding(dat_one_hot, cat_vars = NULL, na_act = TRUE,
 
 \item{cat_vars}{variables to be recovery processed, default is null, if null, find these variables through regular expressions .}
 
-\item{na_act}{Logical,If true, the missing value is  assigned as "Missing", if FALSE missing value is omitted, the default is TRUE.}
+\item{na_act}{Logical,If true, the missing value is  assigned as "missing", if FALSE missing value is omitted, the default is TRUE.}
 
 \item{note}{Logical.Outputs info.Default is TRUE.}
 }

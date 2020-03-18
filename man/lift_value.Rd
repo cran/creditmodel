@@ -9,11 +9,11 @@ lift_value(target, prob)
 \arguments{
 \item{target}{Vector of target.}
 
-\item{prob}{A list of redict probability or score.}
+\item{prob}{A list of predict probability or score.}
 }
 \value{
 Max lift value
 }
 \description{
-\code{lift_value} is for get max lift value for a prob or score.
+\code{lift_value} is for getting max lift value for a prob or score.
 }

@@ -59,7 +59,7 @@ The folloiwing is the list of Reference Principles
      \item 2.Maximum 10 intervals for a single variable.
      \item 3.Each interval should cover more than 2% of the model development samples.
      \item 4.Each interval needs at least 30 or 1% positive samples. .
-     \item 5.Combining the values of blank, missing or other special value into the same interval called Missing.
+     \item 5.Combining the values of blank, missing or other special value into the same interval called missing.
      \item 6.The difference of Chi effect size between intervals should be at least 0.02 or more.
      \item 7.The difference of absolute odds ratio between intervals should be at least 0.1 or more.
      \item 8.The difference of positive rate between intervals should be at least 1/10 of the total positive rate.

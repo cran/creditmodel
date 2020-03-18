@@ -3,7 +3,7 @@
 \name{re_code}
 \alias{re_code}
 \title{re_code
-#' \code{re_code} search for matches to argument pattern within each element of a character vector:}
+\code{re_code} search for matches to argument pattern within each element of a character vector:}
 \usage{
 re_code(x, codes)
 }
@@ -14,7 +14,7 @@ re_code(x, codes)
 }
 \description{
 re_code
-#' \code{re_code} search for matches to argument pattern within each element of a character vector:
+\code{re_code} search for matches to argument pattern within each element of a character vector:
 }
 \examples{
 SEX  = sample(c("F","M"),1000,replace = TRUE)

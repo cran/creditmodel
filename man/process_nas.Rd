@@ -3,34 +3,32 @@
 \name{process_nas}
 \alias{process_nas}
 \alias{process_nas_var}
-\title{Missing Treatment}
+\title{missing Treatment}
 \usage{
-process_nas(dat, x_list = NULL, default_miss = TRUE,
-  class_var = FALSE, miss_values = NULL, parallel = FALSE,
-  ex_cols = NULL, method = "median", note = FALSE,
-  save_data = FALSE, file_name = NULL, dir_path = tempdir(), ...)
-
-process_nas_var(dat = dat, x, default_miss = TRUE, nas_rate = NULL,
-  mat_nas_shadow = NULL, dt_nas_random = NULL, missing_type = NULL,
+process_nas(dat, x_list = NULL, class_var = FALSE,
+  miss_values = NULL, parallel = FALSE, ex_cols = NULL,
   method = "median", note = FALSE, save_data = FALSE,
   file_name = NULL, dir_path = tempdir(), ...)
+
+process_nas_var(dat = dat, x, nas_rate = NULL, mat_nas_shadow = NULL,
+  dt_nas_random = NULL, missing_type = NULL, method = "median",
+  note = FALSE, save_data = FALSE, file_name = NULL,
+  dir_path = tempdir(), ...)
 }
 \arguments{
 \item{dat}{A data.frame with independent variables.}
 
 \item{x_list}{Names of independent variables.}
 
-\item{default_miss}{Logical. If TRUE, assigning the missing values to -1 or "Missing", otherwise ,processing the missing values according to the results of missing analysis.}
-
 \item{class_var}{Logical, nas analysis of the nominal variables. Default is TRUE.}
 
-\item{miss_values}{Other extreme value might be used to represent missing values, e.g: -9999, -9998. These miss_values will be encoded to -1 or "Missing".}
+\item{miss_values}{Other extreme value might be used to represent missing values, e.g:-1, -9999, -9998. These miss_values will be encoded to NA.}
 
 \item{parallel}{Logical, parallel computing. Default is FALSE.}
 
 \item{ex_cols}{A list of excluded variables. Regular expressions can also be used to match variable names. Default is NULL.}
 
-\item{method}{The methods of imputation by knn."median" is knn imputation by k neighbors median.}
+\item{method}{The methods of imputation by knn. If "median", then Nas imputation with k neighbors median. If "avg_dist", the distance weighted average method is applied to determine the NAs imputation with k neighbors. If "default", assigning the missing values to -1 or "missing", otherwise ,processing the missing values according to the results of missing analysis.}
 
 \item{note}{Logical, outputs info. Default is TRUE.}
 
@@ -60,8 +58,7 @@ A dat frame with no NAs.
 \code{process_nas} is a simpler wrapper for \code{process_nas_var}.
 }
 \examples{
-dat_na = process_nas(dat = UCICreditCard[1:1000,], default_miss = FALSE,
-target = "default.payment.next.month",
-parallel = FALSE,ex_cols = "ID$" ,method = "median")
+dat_na = process_nas(dat = UCICreditCard[1:1000,],
+parallel = FALSE,ex_cols = "ID$", method = "median")
 
 }

@@ -4,8 +4,7 @@
 \alias{merge_category}
 \title{Merge Category}
 \usage{
-merge_category(dat, ex_cols = "date$|id$|time$|DATA$|ID$|TIME$",
-  p = 0.01, m = 10, note = TRUE)
+merge_category(dat, ex_cols = NULL, p = 0.01, m = 10, note = TRUE)
 }
 \arguments{
 \item{dat}{A data frame with x and target.}

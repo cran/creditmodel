@@ -14,7 +14,7 @@ pred_xgb(xgb_model = NULL, dat, x_list = NULL, miss_values = NULL,
 
 \item{x_list}{Into the model variables.}
 
-\item{miss_values}{Missing values.}
+\item{miss_values}{missing values.}
 
 \item{model_name}{Name of model}
 

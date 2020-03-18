@@ -9,7 +9,7 @@ null_blank_na(dat, miss_values = NULL, note = FALSE)
 \arguments{
 \item{dat}{A data frame with x and target.}
 
-\item{miss_values}{Other extreme value might be used to represent missing values, e.g: -9999, -9998. These miss_values will be encoded to -1 or "Missing".}
+\item{miss_values}{Other extreme value might be used to represent missing values, e.g: -9999, -9998. These miss_values will be encoded to -1 or "missing".}
 
 \item{note}{Logical.Outputs info.Default is TRUE.}
 }

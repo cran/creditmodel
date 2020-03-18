@@ -10,9 +10,11 @@
 #' @param ex_cols A list of excluded variables. Regular expressions can also be used to match variable names. Default is NULL.
 #' @param pos_flag Value of positive class, Default is "1".
 #' @param breaks_list A table containing a list of splitting points for each independent variable. Default is NULL.
+#' @param breaks Splitting points for an independent variable. Default is NULL.
 #' @param g_width  The width of graphs.
 #' @param best  Logical, merge initial breaks to get optimal breaks for binning.
-#' @param equal_bins  Logical, generates initial breaks for equal frequency binning.
+#' @param equal_bins  Logical, generates initial breaks for equal frequency or width binning.
+#' @param cut_bin A string, if equal_bins is TRUE, 'equal_depth' or 'equal_width', default is 'equal_depth'.
 #' @param g  Number of initial breakpoints for equal frequency binning.
 #' @param tree_control  Parameters of using Decision Tree to segment initial breaks. See detials: \code{\link{get_tree_breaks}}
 #' @param bins_control  Parameters  used to control binning.  See detials: \code{\link{select_best_class}}, \code{\link{select_best_breaks}}
@@ -35,330 +37,335 @@
 
 
 get_plots <- function(dat_train, dat_test = NULL, x_list = NULL,
-                      target = NULL, ex_cols = NULL, breaks_list = NULL,
-                      pos_flag = NULL, equal_bins = FALSE, best = TRUE,
-                      g = 20, tree_control = NULL, bins_control = NULL, plot_show = TRUE,
-                      save_data = FALSE, file_name = NULL,
-                      parallel = FALSE, g_width = 8, dir_path = tempdir()) {
+					  target = NULL, ex_cols = NULL, breaks_list = NULL,
+					  pos_flag = NULL, equal_bins = FALSE, cut_bin = 'equal_depth', best = TRUE,
+					  g = 20, tree_control = NULL, bins_control = NULL, plot_show = TRUE,
+					  save_data = FALSE, file_name = NULL,
+					  parallel = FALSE, g_width = 8, dir_path = tempdir()) {
 
-    opt = options('warn' = -1,scipen = 200, stringsAsFactors = FALSE) #
-    if (save_data) {
-        dir_path = paste0(dir_path, "/variable_plot/")
-        if (!dir.exists(dir_path)) dir.create(dir_path)
-        if (dir.exists(dir_path)) { file.remove(list.files(dir_path, recursive = TRUE, full.names = TRUE)) }
-        }
-    dat_train = checking_data(dat = dat_train, target = target, pos_flag = pos_flag)
-    if (is.null(x_list)) {
-        if (is.null(x_list)) {
-            if (!is.null(breaks_list)) {
-                x_list = unique(as.character(breaks_list[, "Feature"]))
-            }
-                x_list = get_x_list(x_list = x_list,
-                                    dat_train = dat_train,
-                                    dat_test = dat_test,
-                                    ex_cols = ex_cols)
-        }
-    } else {
-	    x_list = get_x_list(x_list = x_list,
-                                    dat_train = dat_train,
-                                    dat_test = dat_test,
-                                    ex_cols = ex_cols)
-    }
-    if (!is.null(dat_test)) {
-        dat_test = checking_data(dat = dat_test, target = target, pos_flag = pos_flag)
-        x_list = get_x_list(x_list = x_list, dat_train = dat_train, dat_test = dat_test,
-                            ex_cols = c(target, ex_cols))
-        com_list = unique(c(target, x_list))
-        dat_train = dat_train[, com_list]
-        dat_test = dat_test[, com_list]
-        dat_ts = rbind(dat_train, dat_test)
-        if (all(unique(dat_ts[, target]) != c("0", "1"))) {
-            if (!is.null(pos_flag)) {
-                dat_ts$target = ifelse(dat_ts[, target] %in% pos_flag, "1", "0")
-            } else {
-                pos_flag = list("1", 1, "bad", "positive")
-                dat_ts$target = ifelse(dat_ts[, target] %in% pos_flag, "1", "0")
-            }
-            if (length(unique(dat_ts$target)) == 1) {
-                stop("The value of target is unique.\n")
-            }
-        } else {
-            dat_ts$target = as.character(dat_ts[, target])
-        }
-        nr = nrow(dat_train)
-        train_test = train_test_split(dat_ts, split_type = "byRow", prop = nr / nrow(dat_ts),
-           seed = 46, save_data = FALSE, note = FALSE)
-        dat_train = train_test$train
-        dat_test = train_test$test
-    } else {
-        if (all(unique(dat_train[, target]) != c("0", "1"))) {
-            if (!is.null(pos_flag)) {
-                dat_train$target = ifelse(dat_train[, target] %in% pos_flag, "1", "0")
-            } else {
-                pos_flag = list("1", 1, "bad", "positive")
-                dat_train$target = ifelse(dat_train[, target] %in% pos_flag, "1", "0")
-            }
-            if (length(unique(dat_train$target)) == 1) {
-                stop("The value of target is unique.\n")
-            }
-        } else {
-            dat_train$target = as.character(dat_train[, target])
-        }
-    }
+	opt = options('warn' = -1, scipen = 200, stringsAsFactors = FALSE) #
+	if (save_data) {
+		dir_path = paste0(dir_path, "/variable_plot/")
+		if (!dir.exists(dir_path)) dir.create(dir_path)
+		if (dir.exists(dir_path)) { file.remove(list.files(dir_path, recursive = TRUE, full.names = TRUE)) }
+		}
+	dat_train = checking_data(dat = dat_train, target = target, pos_flag = pos_flag)
+	if (is.null(x_list)) {
+		if (is.null(x_list)) {
+			if (!is.null(breaks_list)) {
+				x_list = unique(as.character(breaks_list[, "Feature"]))
+			}
+			x_list = get_x_list(x_list = x_list,
+									dat_train = dat_train,
+									dat_test = dat_test,
+									ex_cols = ex_cols)
+		}
+	} else {
+		x_list = get_x_list(x_list = x_list,
+									dat_train = dat_train,
+									dat_test = dat_test,
+									ex_cols = ex_cols)
+	}
+	if (!is.null(dat_test)) {
+		dat_test = checking_data(dat = dat_test, target = target, pos_flag = pos_flag)
+		x_list = get_x_list(x_list = x_list, dat_train = dat_train, dat_test = dat_test,
+							ex_cols = c(target, ex_cols))
+		com_list = unique(c(target, x_list))
+		dat_train = dat_train[, com_list]
+		dat_test = dat_test[, com_list]
+		dat_ts = rbind(dat_train, dat_test)
+		if (all(unique(dat_ts[, target]) != c("0", "1"))) {
+			if (!is.null(pos_flag)) {
+				dat_ts$target = ifelse(dat_ts[, target] %in% pos_flag, "1", "0")
+			} else {
+				pos_flag = list("1", 1, "bad", "positive")
+				dat_ts$target = ifelse(dat_ts[, target] %in% pos_flag, "1", "0")
+			}
+			if (length(unique(dat_ts$target)) == 1) {
+				stop("The value of target is unique.\n")
+			}
+		} else {
+			dat_ts$target = as.character(dat_ts[, target])
+		}
+		nr = nrow(dat_train)
+		train_test = train_test_split(dat_ts, split_type = "byRow", prop = nr / nrow(dat_ts),
+		   seed = 46, save_data = FALSE, note = FALSE)
+		dat_train = train_test$train
+		dat_test = train_test$test
+	} else {
+		if (all(unique(dat_train[, target]) != c("0", "1"))) {
+			if (!is.null(pos_flag)) {
+				dat_train$target = ifelse(dat_train[, target] %in% pos_flag, "1", "0")
+			} else {
+				pos_flag = list("1", 1, "bad", "positive")
+				dat_train$target = ifelse(dat_train[, target] %in% pos_flag, "1", "0")
+			}
+			if (length(unique(dat_train$target)) == 1) {
+				stop("The value of target is unique.\n")
+			}
+		} else {
+			dat_train$target = as.character(dat_train[, target])
+		}
+	}
 
-    df_ae_list = loop_function(func = plot_vars, x_list = x_list,
-                               args = list(dat_train = dat_train, dat_test = dat_test,
-                                           target = target, breaks_list = breaks_list,
-                                           pos_flag = pos_flag,
+	df_ae_list = loop_function(func = plot_vars, x_list = x_list,
+							   args = list(dat_train = dat_train, dat_test = dat_test,
+										   target = target, breaks_list = breaks_list,
+										   pos_flag = pos_flag,
+										   equal_bins = equal_bins,
+										   cut_bin = cut_bin,
+										   best = best, g = g,
+										   tree_control = tree_control,
+										   bins_control = bins_control,
+										   plot_show = plot_show,
+										   g_width = g_width, dir_path = dir_path, save_data = save_data),
+							   bind = "rbind", parallel = parallel, as_list = FALSE)
 
-                                           equal_bins = equal_bins, best = best, g = g,
-                                           tree_control = tree_control,
-                                           bins_control = bins_control,
-                                           plot_show = plot_show,
-                                           g_width = g_width, dir_path = dir_path, save_data = save_data),
-                               bind = "rbind", parallel = parallel, as_list = FALSE)
-
-    if (save_data) {
-        save_data(df_ae_list, dir_path = dir_path, file_name = ifelse(is.null(file_name), "plot_table", paste(file_name, "plot_table", sep = ".")), append = FALSE, note = FALSE)
-    }
-    return(df_ae_list)
+	if (save_data) {
+		save_data(df_ae_list, dir_path = dir_path, file_name = ifelse(is.null(file_name), "plot_table", paste(file_name, "plot_table", sep = ".")), append = FALSE, note = FALSE)
+	}
+	return(df_ae_list)
 	options(opt) # reset
 }
 
 
-
 #' @rdname get_plots
 #' @export
-plot_vars <- function(dat_train, x, target,dat_test = NULL,
-                      g_width = 8,breaks_list = NULL,
-                      pos_flag = list("1", 1, "bad", "positive"),
-                      equal_bins = TRUE, best = FALSE,
-                      g = 10, tree_control = NULL,
-                      bins_control = NULL,
-                      plot_show = TRUE,
-                      save_data = FALSE,
-                      dir_path = tempdir()) {
 
-  digits_x = ifelse(is.numeric(dat_train[, x]), digits_num(dat_train[, x]),4)
+plot_vars <- function(dat_train, x, target, dat_test = NULL,
+					  g_width = 8, breaks_list = NULL,breaks = NULL,
+					  pos_flag = list("1", 1, "bad", "positive"),
+					  equal_bins = TRUE, cut_bin = 'equal_depth', best = FALSE,
+					  g = 10, tree_control = NULL,
+					  bins_control = NULL,
+					  plot_show = TRUE,
+					  save_data = FALSE,
+					  dir_path = tempdir()) {
 
-  opt = options('warn' = -1,scipen = 200, stringsAsFactors = FALSE, digits = digits_x + 1) #
+	digits_x = ifelse(is.numeric(dat_train[, x]), digits_num(dat_train[, x]), 4)
 
-
-  dat_train$target =  as.character(dat_train[,target])
-  xn = NULL
-  if (class(dat_train[, x]) %in% c("numeric", "double","integer") && length(unique(dat_train[,x]))>10) {
-
-    med <- dat_train %>%
-      dplyr::mutate(xn = dat_train[, x]) %>%
-      dplyr::group_by(target) %>%
-      dplyr::summarise(grp.mean = quantile(xn, 0.5, na.rm = TRUE, type = 3))
-    none_na_num <- sum(!is.na(dat_train[, x]))
-    tbl_x <- table(dat_train[, x])
-    x_unique_value <- as.double(names(tbl_x))
-    cum_sum <- cumsum(tbl_x)
-    cuts_sum <- approx(cum_sum, x_unique_value, xout = (1:100) * none_na_num / 100,
-                       method = "constant", rule = 2, f = 1)$y
-					   
-        dat_train_sub = dat_train
-        if (length(unique(cuts_sum)) > 10) {
-            x_cuts <- cuts_sum[length(cuts_sum) - 1]
-            dat_train_sub <- subset(dat_train, dat_train[, x] <= x_cuts)
-        }
-        #desity plot
-        plot_1 <- ggplot(dat_train_sub, aes(x = dat_train_sub[, x])) +
-        geom_density(aes(fill = dat_train_sub$target), alpha = 0.3) +
-        stat_density(geom = "line", position = "identity", size = 0.6,
-                   aes(color = dat_train_sub$target)) +
-        scale_fill_manual(values = c('1' = love_color("shallow_red"),
-                                   '0' = love_color("sky_blue"))) +
-        scale_color_manual(values = c('1' = love_color("shallow_red"),
-                                    '0' = love_color("sky_blue"))) +
-        geom_vline(data = med, linetype = "dashed", size = 0.7,
-                 aes(xintercept = med$grp.mean, color = med$target)) +
-        xlab(x) +
-        ggtitle(paste("Density of", x)) +
-        plot_theme(legend.position = c(.9, .9), title_size = 9,
-                 axis_title_size = 8)
-
-  } else {
-    #relative frequency histogram
-    data1 <- dat_train %>%
-      dplyr::mutate(xn = dat_train[, x]) %>%
-      dplyr::filter(target %in% c("0", "1")) %>%
-      dplyr::group_by(xn) %>% dplyr::count(xn, target) %>%
-      dplyr::mutate(percent = n / sum(n))
-
-    plot_1 <- ggplot(data1,aes(x = data1$xn, y = data1$percent, fill = reorder(data1$target, n))) +
-      geom_bar(stat = "identity", position = position_stack()) +
-      geom_text(aes(label = paste(as_percent(data1$percent, digits = 3))),
-                size = ifelse(length(data1$xn) > 10, 2.1,
-                              ifelse(length(data1$xn)  > 5, 2.5,
-                                     ifelse(length(data1$xn)  > 3, 3, 3.3))), vjust = 1, colour = 'white', position = position_stack()) +
-      guides(fill = guide_legend(reverse = F)) +
-      ggtitle(paste("Relative Frequency of", x)) +
-      ylab("Percent") + xlab(x) +
-      scale_fill_manual(values = c('0' = love_color("shallow_cyan"),
-                                   '1' = love_color("deep_grey"))) +
-      plot_theme(legend.position = "top", title_size = 9,
-                 axis_title_size = 8)
-  }
-  if (!is.null(dat_test) || length(dat_test) > 1){
-    df_ae <- get_psi_iv(dat = dat_train, dat_test = dat_test,
-                        x = x, target = target, pos_flag = pos_flag,
-                        breaks_list = breaks_list,
-                        equal_bins = equal_bins,
-                        tree_control = tree_control,
-                        bins_control = bins_control,
-                        bins_total = FALSE,
-                        best = best, g = g, as_table = TRUE,
-                        note = FALSE, bins_no = TRUE)
-    ae_total <- data.table::melt(df_ae[c("bins", "%actual", "%expected")],
-                                 id.vars = c("bins"),
-                                 variable.name = "actual_expected",
-                                 value.name = "value")
-    ae_1 <- data.table::melt(df_ae[c("bins", "%actual_1", "%expected_1")],
-                             id.vars = c("bins"),
-                             variable.name = "actual_expected",
-                             value.name = "value")
-
-    plot_2 <- ggplot(ae_total, aes(x = ae_total$bins,
-                                   y = ae_total$value,
-                                   fill = ae_total$actual_expected)) +
-      geom_bar(stat = "identity", position = position_dodge(width = 0.7)) +
-      geom_text(aes(y = ae_total$value,
-                    label = paste(as_percent(ae_total$value, digits = 3))),
-                position = position_dodge(width = 0.7),
-                size = ifelse(nrow(ae_total) > 10, 2.6,
-                              ifelse(nrow(ae_total) > 5, 2.8,
-                                     ifelse(nrow(ae_total) > 3, 3, 3.2))), vjust = 1, hjust = 0.3, colour = "white") +
-      geom_line(aes(x = factor(ae_1[[1]]),
-                    y = as.numeric(ae_1$value) * max(ae_total$value) * 4,
-                    color = ae_1$actual_expected,
-                    linetype = ae_1$actual_expected,
-                    group = ae_1$actual_expected),
-                position = position_dodge(width = 0.5),size = 1) +
-      geom_point(aes(y = as.numeric(ae_1$value) * max(ae_total$value) * 4,
-                     color = ae_1$actual_expected,
-                     group = ae_1$actual_expected),
-                 position = position_dodge(width = 0.5),
-                 fill = 'white', color = love_color("deep_red"), size = 2, shape = 21) +
-      geom_text(aes( y = as.numeric(ae_1$value) * max(ae_total$value) * 4,
-                     label = paste(as_percent(ae_1$value, digits = 3))),
-                position = position_dodge(width = 0.5),
-                colour = 'black',
-                size = ifelse(nrow(ae_total) > 10, 2.6,
-                              ifelse(nrow(ae_total) > 5, 2.8,
-                                     ifelse(nrow(ae_total) > 3, 3, 3.2))), vjust = -0.1) +
-      annotate(geom = 'text',
-               x = dim(ae_total)[1] / 3,
-               y = max(c(ae_total$value, as.numeric(ae_1$value) * max(ae_total$value) * 4)) + 0.09,
-               label = paste(paste("IV:", sum(df_ae$IVi)), paste('PSI:',sum(df_ae$PSIi)), sep = "   ")) +
-      scale_fill_manual(values = c('%actual' = love_color("deep_grey"),
-                                   '%expected' = love_color("light_yellow"))) +
-      scale_color_manual(values = c('%actual_1' = love_color("shallow_red"),
-                                    '%expected_1' = love_color("sky_blue"))) +
-      ylim(c(-0.01, max(c(ae_total$value, as.numeric(ae_1$value) * max(ae_total$value) * 4)) + 0.1)) +
-      xlab(x) + ylab("Total Percent") +
-      ggtitle(paste(x," Distribution of Train/Expected and Test/Actual")) +
-      plot_theme(legend.position = "top",
-                 title_size = 9,
-                 axis_title_size = 8,
-                 angle = ifelse(nrow(ae_total) > 10, 60,
-                                ifelse(nrow(ae_total) > 5, 40,
-                                       ifelse(nrow(ae_total) > 3, 20, 10))),
-                 axis_size_x = ifelse(max(nchar(ae_total$bins)) > 30, 5,
-                                      ifelse(max(nchar(ae_total$bins)) > 20, 6,
-                                             ifelse(max(nchar(ae_total$bins)) > 10, 7 ,8))))
+	opt = options('warn' = -1, scipen = 200,  digits = digits_x + 1) #
 
 
+	dat_train$target = as.character(dat_train[, target])
+	xn = NULL
+	if (class(dat_train[, x]) %in% c("numeric", "double", "integer") && length(unique(dat_train[, x])) > 10) {
 
-  }else{
+		med <- dat_train %>%
+  	  dplyr::mutate(xn = dat_train[, x]) %>%
+  	  dplyr::group_by(target) %>%
+  	  dplyr::summarise(grp.mean = quantile(xn, 0.5, na.rm = TRUE, type = 3))
+		none_na_num <- sum(!is.na(dat_train[, x]))
+		tbl_x <- table(dat_train[, x])
+		x_unique_value <- as.double(names(tbl_x))
+		cum_sum <- cumsum(tbl_x)
+		cuts_sum <- approx(cum_sum, x_unique_value, xout = (1:100) * none_na_num / 100,
+					   method = "constant", rule = 2, f = 1)$y
 
-    if(is.null(breaks_list)){
-      breaks = get_breaks( dat = dat_train, dat_test = dat_test,
-                           x = x, target = target, pos_flag = pos_flag,
-                           breaks_list = breaks_list,
-                           equal_bins = equal_bins,
-                           tree_control = tree_control,
-                           bins_control = bins_control,
-                           bins_total = FALSE,
-                           best = best, g = g, as_table = TRUE,
-                           note = FALSE, bins_no = TRUE)
+		dat_train_sub = dat_train
+		if (length(unique(cuts_sum)) > 10) {
+			x_cuts <- cuts_sum[length(cuts_sum) - 1]
+			dat_train_sub <- subset(dat_train, dat_train[, x] <= x_cuts)
+		}
+		#desity plot
+		plot_1 <- ggplot(dat_train_sub, aes(x = dat_train_sub[, x])) +
+		geom_density(aes(fill = dat_train_sub$target), alpha = 0.3) +
+		stat_density(geom = "line", position = "identity", size = 0.6,
+				   aes(color = dat_train_sub$target)) +
+		scale_fill_manual(values = c('1' = love_color("shallow_red"),
+								   '0' = love_color("sky_blue"))) +
+		scale_color_manual(values = c('1' = love_color("shallow_red"),
+									'0' = love_color("sky_blue"))) +
+		geom_vline(data = med, linetype = "dashed", size = 0.7,
+				 aes(xintercept = med$grp.mean, color = med$target)) +
+		xlab(x) +
+		ggtitle(paste("Density of", x)) +
+		plot_theme(legend.position = c(.9, .9), title_size = 9,
+				 axis_title_size = 8)
 
-    }
-    df_ae <- get_bins_table(dat = dat_train,
-                            x = x, target = target, pos_flag = pos_flag,
-                            breaks_list  = breaks_list,
-                            breaks = breaks,
-                            bins_total = FALSE,
-                            note = FALSE)
+	} else {
+		#relative frequency histogram
+	  dat_train[, x] = as.character(dat_train[, x])
+	  data1 <- dat_train %>%
+  	  dplyr::mutate(xn = dat_train[, x]) %>%
+  	  dplyr::filter(target %in% c("0", "1")) %>%
+  	  dplyr::group_by(xn) %>% dplyr::count(xn, target) %>%
+  	  dplyr::mutate(percent = n / sum(n))
 
-    plot_2 <- ggplot(df_ae, aes(x = df_ae$bins,
-                                y = de_percent(df_ae$`%total`,3)
-    )) +
-      geom_bar( aes(fill = "%total"), stat = "identity", position = position_dodge(width = 0.7)) +
-      geom_text(aes(y = de_percent(df_ae$`%total`,3),
-                    label = paste(df_ae$`%total`)),
-                position = position_dodge(width = 0.7),
-                size = ifelse(nrow(df_ae) > 10, 2.6,
-                              ifelse(nrow(df_ae) > 5, 2.8,
-                                     ifelse(nrow(df_ae) > 3, 3, 3.2))), vjust = 1, hjust = 0.3, colour = "white") +
-      geom_line(aes(x = factor(df_ae[['bins']]),
-                    y = de_percent(df_ae$bad_rate,3) * max(de_percent(df_ae$`%total`,3)) * 4,
-                    ,color = "%flag_1"
-      ),
-      linetype =1,
-      group = "%total",
-      position = position_dodge(width = 0.5),size = 1) +
-      geom_point(aes(y =de_percent(df_ae$bad_rate,3) * max(de_percent(df_ae$`%total`,3)) * 4
-      ),
-      color =love_color("deep_orange"),
-      group = 1,
-      position = position_dodge(width = 0.5),
-      fill = 'white', color = love_color("deep_red"), size = 2, shape = 21) +
-      geom_text(aes( y = de_percent(df_ae$bad_rate,3) * max(de_percent(df_ae$`%total`,3)) * 4,
-                     label = paste(df_ae$bad_rate)),
-                position = position_dodge(width = 0.5),
-                colour = 'black',
-                size = ifelse(nrow(df_ae) > 10, 2.6,
-                              ifelse(nrow(df_ae) > 5, 2.8,
-                                     ifelse(nrow(df_ae) > 3, 3, 3.2))), vjust = -0.1) +
-      annotate(geom = 'text',
-               x = dim(df_ae)[1] / 3,
-               y = max(c(de_percent(df_ae$`%total`,3),
-                         de_percent(df_ae$bad_rate,3) * max(de_percent(df_ae$`%total`,3)) * 4))+ 0.09,
-               label = paste(paste("IV:", sum(df_ae$iv,na.rm = TRUE)))) +
-      scale_fill_manual(values = c("%total" = love_color("light_cyan"))) +
-      scale_color_manual(values = c("%flag_1" = love_color("deep_orange"))) +
-      ylim(c(-0.01, max(c(de_percent(df_ae$`%total`,3),
-                          de_percent(df_ae$bad_rate,3) * max(de_percent(df_ae$`%total`,3)) * 4))+ 0.05)) +
+		plot_1 <- ggplot(data1, aes(x = data1$xn, y = data1$percent, fill = reorder(data1$target, n))) +
+  	  geom_bar(stat = "identity", position = position_stack()) +
+  	  geom_text(aes(label = paste(as_percent(data1$percent, digits = 3))),
+				size = ifelse(length(data1$xn) > 10, 2.1,
+							  ifelse(length(data1$xn) > 5, 2.5,
+									 ifelse(length(data1$xn) > 3, 3, 3.3))), vjust = 1, colour = 'white', position = position_stack()) +
+  	  guides(fill = guide_legend(reverse = F)) +
+  	  ggtitle(paste("Relative Frequency of", x)) +
+  	  ylab("Percent") + xlab(x) +
+  	  scale_fill_manual(values = c('0' = love_color("shallow_cyan"),
+								   '1' = love_color("deep_grey"))) +
+  	  plot_theme(legend.position = "top", title_size = 9,
+				 axis_title_size = 8)
+	}
+	if (!is.null(dat_test) || length(dat_test) > 1) {
+		df_ae <- get_psi_iv(dat = dat_train, dat_test = dat_test,
+						x = x, target = target, pos_flag = pos_flag,
+						breaks_list = breaks_list,
+		                breaks = breaks,
+						equal_bins = equal_bins,
+						cut_bin = cut_bin,
+						tree_control = tree_control,
+						bins_control = bins_control,
+						bins_total = FALSE,
+						best = best, g = g, as_table = TRUE,
+						note = FALSE, bins_no = TRUE)
+		ae_total <- data.table::melt(as.data.table(df_ae[c("bins", "%actual", "%expected")]),
+								 id.vars = c("bins"),
+								 variable.name = "actual_expected",
+								 value.name = "value")
+		ae_1 <- data.table::melt(as.data.table(df_ae[c("bins", "%actual_1", "%expected_1")]),
+							 id.vars = c("bins"),
+							 variable.name = "actual_expected",
+							 value.name = "value")
 
-      guides(fill=guide_legend(title=NULL))+
-      xlab(x) + ylab("percent") +
-      ggtitle(paste(x," Distribution")) +
-      plot_theme(legend.position = "top",
-                 title_size = 9,
-                 axis_title_size = 8,
-                 angle = ifelse(nrow(df_ae) > 10, 60,
-                                ifelse(nrow(df_ae) > 5, 40,
-                                       ifelse(nrow(df_ae) > 3, 20, 10))),
-                 axis_size_x = ifelse(max(nchar(df_ae$bins)) > 30, 5,
-                                      ifelse(max(nchar(df_ae$bins)) > 20, 6,
-                                             ifelse(max(nchar(df_ae$bins)) > 10, 7 ,8))))
+		plot_2 <- ggplot(ae_total, aes(x = ae_total$bins,
+								   y = ae_total$value,
+								   fill = ae_total$actual_expected)) +
+  	  geom_bar(stat = "identity", position = position_dodge(width = 0.7)) +
+  	  geom_text(aes(y = ae_total$value,
+					label = paste(as_percent(ae_total$value, digits = 3))),
+				position = position_dodge(width = 0.7),
+				size = ifelse(nrow(ae_total) > 10, 2.6,
+							  ifelse(nrow(ae_total) > 5, 2.8,
+									 ifelse(nrow(ae_total) > 3, 3, 3.2))), vjust = 1, hjust = 0.3, colour = "white") +
+  	  geom_line(aes(x = factor(ae_1[[1]]),
+					y = as.numeric(ae_1$value) * max(ae_total$value) * 4,
+					color = ae_1$actual_expected,
+					linetype = ae_1$actual_expected,
+					group = ae_1$actual_expected),
+				position = position_dodge(width = 0.5), size = 1) +
+  	  geom_point(aes(y = as.numeric(ae_1$value) * max(ae_total$value) * 4,
+					 color = ae_1$actual_expected,
+					 group = ae_1$actual_expected),
+				 position = position_dodge(width = 0.5),
+				 fill = 'white', color = love_color("deep_red"), size = 2, shape = 21) +
+  	  geom_text(aes(y = as.numeric(ae_1$value) * max(ae_total$value) * 4,
+					 label = paste(as_percent(ae_1$value, digits = 3))),
+				position = position_dodge(width = 0.5),
+				colour = 'black',
+				size = ifelse(nrow(ae_total) > 10, 2.6,
+							  ifelse(nrow(ae_total) > 5, 2.8,
+									 ifelse(nrow(ae_total) > 3, 3, 3.2))), vjust = -0.1) +
+  	  annotate(geom = 'text',
+			   x = dim(ae_total)[1] / 3,
+			   y = max(c(ae_total$value, as.numeric(ae_1$value) * max(ae_total$value) * 4)) + 0.09,
+			   label = paste(paste("IV:", sum(df_ae$IVi)), paste('PSI:', sum(df_ae$PSIi)), sep = "   ")) +
+  	  scale_fill_manual(values = c('%actual' = love_color("deep_grey"),
+								   '%expected' = love_color("light_yellow"))) +
+  	  scale_color_manual(values = c('%actual_1' = love_color("shallow_red"),
+									'%expected_1' = love_color("sky_blue"))) +
+  	  ylim(c(-0.01, max(c(ae_total$value, as.numeric(ae_1$value) * max(ae_total$value) * 4)) + 0.1)) +
+  	  xlab(x) + ylab("Total Percent") +
+  	  ggtitle(paste(x, "Distribution of Train/Expected and Test/Actual")) +
+  	  plot_theme(legend.position = "top",
+				 title_size = 9,
+				 axis_title_size = 8,
+				 angle = ifelse(nrow(ae_total) > 10, 60,
+								ifelse(nrow(ae_total) > 5, 40,
+									   ifelse(nrow(ae_total) > 3, 20, 10))),
+				 axis_size_x = ifelse(max(nchar(ae_total$bins)) > 30, 5,
+									  ifelse(max(nchar(ae_total$bins)) > 20, 6,
+											 ifelse(max(nchar(ae_total$bins)) > 10, 7, 8))))
 
 
-  }
-  if (save_data) {
-    ggsave(paste0(dir_path, paste(x, "png", sep = '.')),
-           plot = multi_grid(grobs = list(plot_1, plot_2), ncol = 2, nrow = 1),
-           width = g_width, height = g_width / 2, dpi = "retina")
-  }
-  if (plot_show) {
-    plot(multi_grid(grobs = list(plot_1, plot_2), ncol = 2, nrow = 1))
-  }
-  return(df_ae)
-  options(opt) # reset
+
+	} else {
+
+		if (is.null(breaks) & is.null(breaks_list)) {
+			breaks = get_breaks(dat = dat_train, dat_test = dat_test,
+						   x = x, target = target, pos_flag = pos_flag,
+						   equal_bins = equal_bins,
+						   cut_bin = cut_bin,
+						   tree_control = tree_control,
+						   bins_control = bins_control,
+						   bins_total = FALSE,
+						   best = best, g = g, as_table = FALSE,
+						   note = FALSE, bins_no = TRUE)
+
+		}
+		df_ae <- get_bins_table(dat = dat_train,
+							x = x, target = target, pos_flag = pos_flag,
+							breaks_list = breaks_list,
+							breaks = breaks,
+							bins_total = FALSE,
+							note = FALSE)
+
+		plot_2 <- ggplot(df_ae, aes(x = df_ae$bins,
+								y = de_percent(df_ae$`%total`, 3)
+	)) +
+  	  geom_bar(aes(fill = "%total"), stat = "identity", position = position_dodge(width = 0.7)) +
+  	  geom_text(aes(y = de_percent(df_ae$`%total`, 3),
+					label = paste(df_ae$`%total`)),
+				position = position_dodge(width = 0.7),
+				size = ifelse(nrow(df_ae) > 10, 2.6,
+							  ifelse(nrow(df_ae) > 5, 2.8,
+									 ifelse(nrow(df_ae) > 3, 3, 3.2))), vjust = 1, hjust = 0.3, colour = "white") +
+  	  geom_line(aes(x = factor(df_ae[['bins']]),
+					y = de_percent(df_ae$bad_rate, 3) * max(de_percent(df_ae$`%total`, 3)) * 4,
+					color = "%flag_1"
+	  ),
+	  linetype = 1,
+	  group = "%total",
+	  position = position_dodge(width = 0.5), size = 1) +
+  	  geom_point(aes(y = de_percent(df_ae$bad_rate, 3) * max(de_percent(df_ae$`%total`, 3)) * 4
+	  ),
+	  color = love_color("deep_orange"),
+	  group = 1,
+	  position = position_dodge(width = 0.5),
+	  fill = 'white', color = love_color("deep_red"), size = 2, shape = 21) +
+  	  geom_text(aes(y = de_percent(df_ae$bad_rate, 3) * max(de_percent(df_ae$`%total`, 3)) * 4,
+					 label = paste(df_ae$bad_rate)),
+				position = position_dodge(width = 0.5),
+				colour = 'black',
+				size = ifelse(nrow(df_ae) > 10, 2.6,
+							  ifelse(nrow(df_ae) > 5, 2.8,
+									 ifelse(nrow(df_ae) > 3, 3, 3.2))), vjust = -0.1) +
+  	  annotate(geom = 'text',
+			   x = dim(df_ae)[1] / 3,
+			   y = max(c(de_percent(df_ae$`%total`, 3),
+						 de_percent(df_ae$bad_rate, 3) * max(de_percent(df_ae$`%total`, 3)) * 4)) + 0.09,
+			   label = paste(paste("IV:", sum(df_ae$iv, na.rm = TRUE)))) +
+  	  scale_fill_manual(values = c("%total" = love_color("light_cyan"))) +
+  	  scale_color_manual(values = c("%flag_1" = love_color("deep_orange"))) +
+  	  ylim(c(-0.01, max(c(de_percent(df_ae$`%total`, 3),
+						  de_percent(df_ae$bad_rate, 3) * max(de_percent(df_ae$`%total`, 3)) * 4)) + 0.05)) +
+
+  	  guides(fill = guide_legend(title = NULL)) +
+  	  xlab(x) + ylab("percent") +
+  	  ggtitle(paste(x, " Distribution")) +
+  	  plot_theme(legend.position = "top",
+				 title_size = 9,
+				 axis_title_size = 8,
+				 angle = ifelse(nrow(df_ae) > 10, 60,
+								ifelse(nrow(df_ae) > 5, 40,
+									   ifelse(nrow(df_ae) > 3, 20, 10))),
+				 axis_size_x = ifelse(max(nchar(df_ae$bins)) > 30, 5,
+									  ifelse(max(nchar(df_ae$bins)) > 20, 6,
+											 ifelse(max(nchar(df_ae$bins)) > 10, 7, 8))))
+
+
+	}
+	if (save_data) {
+		ggsave(paste0(dir_path, paste(x, "png", sep = '.')),
+		   plot = multi_grid(grobs = list(plot_1, plot_2), ncol = 2, nrow = 1),
+		   width = g_width, height = g_width / 2, dpi = "retina")
+	}
+	if (plot_show) {
+		plot(multi_grid(grobs = list(plot_1, plot_2), ncol = 2, nrow = 1))
+	}
+	return(df_ae)
+	options(opt) # reset
 }
+
 
 #' Plot PSI(Population Stability Index)
 #'
@@ -472,7 +479,7 @@ psi_plot <- function(dat_train, x, dat_test = NULL,occur_time = NULL,
                          g = g, as_table = TRUE,
                         note = FALSE, bins_no = TRUE)
     plot_1 = plot_table(grid_table = df_ae[,-1],theme = c("cyan"),tile.color = "grey80", title = paste("PSI of", x))
-    ae_total <- data.table::melt(df_ae[c("Bins", "Ac_pct", "Ex_pct")],
+    ae_total <- data.table::melt(as.data.table(df_ae[c("Bins", "Ac_pct", "Ex_pct")]),
                                  id.vars = c("Bins"),
                                  variable.name = "actual_expected",
                                  value.name = "value")
@@ -596,7 +603,7 @@ partial_dependence_plot <- function(model, x, x_train, n.trees = NULL) {
 
 
 
-get_partial_dependence_plots <- function(model, x_train, x_list, n.trees = NULL, 
+get_partial_dependence_plots <- function(model, x_train, x_list, n.trees = NULL,
            dir_path = getwd(),save_data =TRUE, plot_show = FALSE, parallel = FALSE) {
     if (!requireNamespace("pdp", quietly = TRUE)) {
         cat_rule("Package `pdp` needed for partial dependence plot. Use 'require_packages(pdp)' install and load it, .\n", col = love_color("deep_red"))
@@ -712,9 +719,10 @@ ks_table <- function(train_pred, test_pred = NULL, target = NULL, score = NULL,
       dplyr::group_by(bins) %>%
       dplyr::count(bins, target) %>%
       dplyr::mutate(percent = n / sum(n)) %>%
-      as.data.frame()
-    train_sum <- data.table::dcast(train_sum[c("bins", "target", "n")],
+      as.data.table()
+    train_sum <- data.table::dcast(train_sum[,c("bins", "target", "n"),with = FALSE],
                                      bins ~ target, value.var = "n")
+	train_sum = quick_as_df(train_sum)
     train_sum[is.na(train_sum)] <- 0
     train_ks <- transform(train_sum,
                      train_total = G + B,
@@ -747,10 +755,11 @@ ks_table <- function(train_pred, test_pred = NULL, target = NULL, score = NULL,
         dplyr::group_by(bins) %>%
         dplyr::count(bins, target) %>%
         dplyr::mutate(percent = n / sum(n)) %>%
-        as.data.frame()
+        as.data.table()
 
-        test_sum <- data.table::dcast(test_sum[c("bins", "target", "n")],
+        test_sum <- data.table::dcast(test_sum[,c("bins", "target", "n"),with = FALSE],
                                     bins ~ target, value.var = "n")
+		test_sum = quick_as_df(test_sum)
         test_sum[is.na(test_sum)] <- 0
 
         test_ks <- transform(test_sum,
@@ -784,7 +793,7 @@ ks_table <- function(train_pred, test_pred = NULL, target = NULL, score = NULL,
     }
 
     return(dt_ks)
-    options(opt) # reset	
+    options(opt) # reset
 }
 
 #' ks_table_plot
@@ -922,9 +931,9 @@ ks_psi_plot <- function(train_pred, test_pred, target = "target", score = "score
            title = paste(gtitle,"K-S : Train vs. Test" ))+
       plot_theme(legend.position = "top", angle = 0)
 
-    ts_total <- data.table::melt(tb_ks[c("bins", "%train", "%test")], id.vars = c("bins"),
+    ts_total <- data.table::melt(as.data.table(tb_ks[c("bins", "%train", "%test")]), id.vars = c("bins"),
                                  variable.name = "train_test", value.name = "value")
-    ts_1 <- data.table::melt(tb_ks[c("bins", "%train_B", "%test_B")], id.vars = c("bins"),
+    ts_1 <- data.table::melt(as.data.table(tb_ks[c("bins", "%train_B", "%test_B")]), id.vars = c("bins"),
                                variable.name = "train_test", value.name = "value")
 
     psi_plot <- ggplot(ts_total, aes(x = bins, y = value, fill = train_test)) +
@@ -1112,31 +1121,33 @@ model_key_index <- function(tb_pred) {
 #' @import ggplot2
 #' @export
 
-
 love_color <- function(color =NULL, type = NULL,all = FALSE) {
   color_board <- c(
     dark_cyan = rgb(20, 78, 100, maxColorValue = 255),
     deep_cyan = rgb(0, 93, 125, maxColorValue = 255),
     light_cyan = rgb(34, 116, 135, maxColorValue = 255),
-	green_cyan = rgb(34, 116, 135, maxColorValue = 255),
+    green_cyan = rgb(34, 116, 135, maxColorValue = 255),
     shallow_cyan = rgb(60, 140, 190, maxColorValue = 255),
     pale_cyan = rgb(0, 147, 198, maxColorValue = 255),
-    dark_green=  rgb(0, 100, 50, maxColorValue = 255),
-    deep_green = rgb(10, 149, 136, maxColorValue = 255),
-    light_green =  rgb(84, 169, 84, maxColorValue = 255),
-    shallow_green =rgb(66, 192, 46, maxColorValue = 255),
-    pale_green = rgb(180, 202, 198, maxColorValue = 255),
-    dark_grey = rgb(102, 102, 102, maxColorValue = 255),
-    deep_grey = rgb(128, 129, 128, maxColorValue = 255),
-    light_grey = rgb(169, 169, 169, maxColorValue = 255),
-    shallow_grey = rgb(191, 192, 191, maxColorValue = 255),
-    pale_grey = rgb(240, 240, 240, maxColorValue = 255),
     dark_red= rgb(181, 0, 0, maxColorValue = 255),
     deep_red  = rgb(154, 42, 42, maxColorValue = 255),
     light_red = rgb(174, 61, 63, maxColorValue = 255),
     shallow_red = rgb(252, 74, 42, maxColorValue = 255),
     pale_red = rgb(220, 63, 56, maxColorValue = 255),
     shallow_red2 = rgb(220, 63, 56, maxColorValue = 255),
+    dark_green=  rgb(0, 100, 50, maxColorValue = 255),
+    deep_green = rgb(10, 149, 136, maxColorValue = 255),
+    light_green =  rgb(84, 169, 84, maxColorValue = 255),
+    shallow_green =rgb(66, 192, 46, maxColorValue = 255),
+    pale_green = rgb(180, 202, 198, maxColorValue = 255),
+	deep_orange = rgb(255, 140, 0, maxColorValue = 255),
+    light_orange = rgb(241, 156, 0, maxColorValue = 255),
+    shallow_orange = rgb(241, 121, 0, maxColorValue = 255),
+    dark_grey = rgb(102, 102, 102, maxColorValue = 255),
+    deep_grey = rgb(128, 129, 128, maxColorValue = 255),
+    light_grey = rgb(169, 169, 169, maxColorValue = 255),
+    shallow_grey = rgb(191, 192, 191, maxColorValue = 255),
+    pale_grey = rgb(240, 240, 240, maxColorValue = 255),
     dark_blue = rgb(33, 71, 117, maxColorValue = 255),
     deep_blue = rgb(32, 81, 139, maxColorValue = 255),
     deep_blue = rgb(80, 99, 139, maxColorValue = 255),
@@ -1144,16 +1155,17 @@ love_color <- function(color =NULL, type = NULL,all = FALSE) {
     shallow_blue = rgb(0, 142, 213, maxColorValue = 255),
     sky_blue = rgb(0, 142, 213, maxColorValue = 255),
     pale_blue = rgb(144, 190, 216, maxColorValue = 255),
-      water_blue = rgb(144, 190, 216, maxColorValue = 255),
-    dark_purple = rgb(120, 78, 100, maxColorValue = 255),
+    water_blue = rgb(144, 190, 216, maxColorValue = 255),
+   dark_purple = rgb(120, 78, 100, maxColorValue = 255),
     deep_purple = rgb(170, 44, 105, maxColorValue = 255),
     light_purple = rgb(212, 137, 168, maxColorValue = 255),
-    deep_orange = rgb(255, 140, 0, maxColorValue = 255),
+    dark_purple2 = rgb(71, 0, 123, maxColorValue = 255),
     gold_yellow = rgb(255, 215, 0, maxColorValue = 255),
     light_yellow = rgb(207, 177, 81, maxColorValue = 255),
-    dark_purple2 = rgb(71, 0, 123, maxColorValue = 255),
-    light_orange = rgb(241, 156, 0, maxColorValue = 255),
-    shallow_orange = rgb(241, 121, 0, maxColorValue = 255)
+	 red_line = rgb(232, 49 ,50 , maxColorValue = 255 ),
+	 orange_line = rgb(236, 146, 23  , maxColorValue = 255 ),
+	green_line = rgb(16, 174, 181 , maxColorValue = 255 ),
+	grey_line = rgb(77 ,80, 84  , maxColorValue = 255 )
   )
   if(!is.null(color)&& all(is.element(color, names(color_board)))){
     colors = color_board[[color]]
@@ -1171,6 +1183,7 @@ love_color <- function(color =NULL, type = NULL,all = FALSE) {
   }
   return(colors)
 }
+
 
 
 #' plot_theme
@@ -1228,6 +1241,8 @@ plot_theme <- function(legend.position = "top", angle = 30,
 #' @param target The name of target variable.
 #' @param score The name of prob or score variable.
 #' @param g Number of breaks for prob or score.
+#' @param cut_bin A string, if equal_bins is TRUE, 'equal_depth' or 'equal_width', default is 'equal_depth'.
+#' @param perf_tb Performance table.
 #' @param gtitle The title of the graph & The name for periodically saved graphic file.
 #' @param breaks Splitting points of prob or score.
 #' @param pos_flag The value of positive class of target variable, default: "1".
@@ -1270,18 +1285,19 @@ plot_theme <- function(legend.position = "top", angle = 30,
 
 
 model_result_plot <- function(train_pred , score, target ,test_pred= NULL, gtitle = NULL,perf_dir_path = NULL,
-                             save_data = FALSE,plot_show = TRUE,total = TRUE,g = 10 ){
+                             save_data = FALSE,plot_show = TRUE,total = TRUE,g = 10,cut_bin = 'equal_depth' ){
 
   opt = options('warn' = -1,scipen = 200, stringsAsFactors = FALSE, digits = 6) #
   train_pred = checking_data(dat = train_pred, target = target)
-  train_pred <- train_pred[which(complete.cases(train_pred[, score])),]
+  train_pred = train_pred[which(complete.cases(train_pred[, score])),]
   if(!is.null(test_pred)){
     test_pred = checking_data(dat = test_pred, target = target)
-	test_pred <- test_pred[which(complete.cases(test_pred[, score])),]
+	test_pred = test_pred[which(complete.cases(test_pred[, score])),]
   }
 
-  perf_tb = perf_table(train_pred = train_pred, test_pred = test_pred, target = target, score = score, total = total,
-                       g = g)
+  perf_tb = perf_table(train_pred = train_pred, test_pred = test_pred, target = target,
+                       score = score, total = total,
+                       g = g,cut_bin = cut_bin)
 
   tb_ks =  plot_table(grid_table = perf_tb, theme = c("cyan"),
                      title= paste0(gtitle, ".performance_table"),title.size = 12,title.color = 'black',
@@ -1293,12 +1309,15 @@ model_result_plot <- function(train_pred , score, target ,test_pred= NULL, gtitl
                      colname.fill.color =love_color("dark_cyan"),
                      text.size = 3,text.color =love_color("dark_grey"),
                      text.face = 'plain', text.fill.color = c('white',love_color("pale_grey")))
+  perf_tb = perf_table(train_pred = train_pred, test_pred = test_pred, target = target,
+                       score = score, total = FALSE,
+                       g = g,cut_bin = cut_bin)
   dis_pl = score_distribution_plot(train_pred = train_pred, test_pred = test_pred,
-           target = target, score =score, gtitle = gtitle,g = g)
+           target = target, score =score, gtitle = gtitle,g = g,perf_tb = perf_tb)
 
-  ks_pl = ks_plot(train_pred = train_pred, test_pred = test_pred, target = target, score = score, gtitle = gtitle, g = g)
+  ks_pl = ks_plot(train_pred = train_pred, test_pred = test_pred, target = target, score = score, gtitle = gtitle, g = g, perf_tb = perf_tb)
   roc_pl = roc_plot(train_pred = train_pred, test_pred = test_pred, target = target, score = score, gtitle = gtitle)
-  lift_pl = lift_plot(train_pred = train_pred, test_pred = test_pred, target = target, score = score, gtitle = gtitle,g = g)
+  lift_pl = lift_plot(train_pred = train_pred, test_pred = test_pred, target = target, score = score, gtitle = gtitle,g = g,perf_tb = perf_tb)
 
   if(save_data){
     perf_dir_path = ifelse(is.null(perf_dir_path), tempdir(), perf_dir_path)
@@ -1330,148 +1349,166 @@ model_result_plot <- function(train_pred , score, target ,test_pred= NULL, gtitl
 #' @export
 
 perf_table <- function(train_pred, test_pred = NULL, target = NULL, score = NULL,
-                     g = 10, breaks = NULL, pos_flag = list("1", "1", "Bad", 1),total = FALSE) {
-    opt = options('warn' = -1,scipen = 200, stringsAsFactors = FALSE, digits = 6) #
-    `train_GB_index` = `test_GB_index` = `G` = `bins` = `B` = `%train` = `%test` = `#train` = `#test` = NULL
-	`%test_B` = `%test_cumB` = `%test_cumG` = `%train_B` = `%train_cumB` = `%train_cumG` = NULL
+                       g = 10, cut_bin = 'equal_depth', breaks = NULL,
+                       pos_flag = list("1", "1", "Bad", 1),total = FALSE) {
+  opt = options('warn' = -1,scipen = 200, stringsAsFactors = FALSE, digits = 6) #
+  `train_GB_index` = `test_GB_index` = `G` = `bins` = `B` = `%train` = `%test` = `#train` = `#test` = NULL
+  `%test_B` = `%test_cumB` = `%test_cumG` = `%train_B` = `%train_cumB` = `%train_cumG` = NULL
 
-   	train_pred <- train_pred[which(complete.cases(train_pred[, score])),]
-   if (is.null(target)) { stop("target is missing!\n") }
-    if (is.null(score)) { stop("score is missing!\n") }
-    if (is.null(breaks)) {
-        breaks = get_breaks(dat = train_pred, x = score,
-                            target = target, equal_bins = TRUE,
-                            best = FALSE, g = g, note = FALSE)
-    }
-    train_pred$bins = split_bins(dat = train_pred, x = score, breaks = breaks, bins_no = TRUE)
+  train_pred <- train_pred[which(complete.cases(train_pred[, score])),]
+  if (is.null(target)) { stop("target is missing!\n") }
+  if (is.null(score)) { stop("score is missing!\n") }
+  if (is.null(breaks)) {
+    breaks = get_breaks(dat = train_pred, x = score,
+                        target = target, equal_bins = TRUE,
+                        cut_bin = cut_bin,
+                        best = FALSE, g = g, note = FALSE)
+  }
+  train_pred$bins = split_bins(dat = train_pred, x = score, breaks = breaks, bins_no = TRUE)
 
-    if (!is.null(target)) {
-        if (length(unique(train_pred[, target])) > 1) {
-            if (is.null(pos_flag)) {
-                train_pred$target = ifelse(train_pred[, target] %in% list("1", "1", "Bad", 1), "B", "G")
-            } else {
-                train_pred$target = ifelse(train_pred[, target] %in% pos_flag, "B", "G")
-                if (length(unique(train_pred$target)) == 1) {
-                    stop(paste("The value in pos_flag is not one of the value of train_pred's target.\n"))
-                }
-            }
-        } else {
-            stop(paste("The value of train_pred's target is unique.\n"))
+  if (!is.null(target)) {
+    if (length(unique(train_pred[, target])) > 1) {
+      if (is.null(pos_flag)) {
+        train_pred$target = ifelse(train_pred[, target] %in% list("1", "1", "Bad", 1), "B", "G")
+      } else {
+        train_pred$target = ifelse(train_pred[, target] %in% pos_flag, "B", "G")
+        if (length(unique(train_pred$target)) == 1) {
+          stop(paste("The value in pos_flag is not one of the value of train_pred's target.\n"))
         }
+      }
     } else {
-        stop(paste("The target variable is missing.\n"))
+      stop(paste("The value of train_pred's target is unique.\n"))
+    }
+  } else {
+    stop(paste("The target variable is missing.\n"))
+  }
+
+  train_sum = train_pred %>%
+    dplyr::filter(train_pred$target %in% c("B", "G")) %>%
+    dplyr::group_by(bins) %>%
+    dplyr::count(bins, target) %>%
+    dplyr::mutate(percent = n / sum(n)) %>%
+    as.data.table()
+  train_sum = data.table::dcast(train_sum[,c("bins", "target", "n"),with = FALSE],
+                                 bins ~ target, value.var = "n")
+   train_sum = quick_as_df(train_sum)
+  train_sum[is.na(train_sum)] <- 0
+  f_bad = sum(train_sum[1:floor(nrow(train_sum)/2), "B"],na.rm = TRUE)
+  f_good = sum(train_sum[1:floor(nrow(train_sum)/2), "G"],na.rm = TRUE)
+  l_bad = sum(train_sum[(floor(nrow(train_sum)/2)+1):nrow(train_sum), "B"],na.rm = TRUE)
+  l_good = sum(train_sum[(floor(nrow(train_sum)/2)+1):nrow(train_sum), "G"],na.rm = TRUE)
+  f_bad_rate = f_bad /(f_bad + f_good)
+  l_bad_rate = l_bad /(l_bad + l_good)
+  if (f_bad_rate < l_bad_rate) {
+    train_sum_lift = train_sum[order(train_sum$bins, decreasing = TRUE),]
+    train_Lift = round((cumsum(train_sum_lift$B) / cumsum(train_sum_lift$G + train_sum_lift$B)) / (sum(train_sum_lift$B) / sum(train_sum_lift$G + train_sum_lift$B)), 2)
+    train_Lift = sort(train_Lift)
+  } else {
+    train_Lift = round((cumsum(train_sum$B) / cumsum(train_sum$G + train_sum$B)) / (sum(train_sum$B) / sum(train_sum$G + train_sum$B)), 2)
+    train_Lift = sort(train_Lift, decreasing = TRUE)
+  }
+
+  train_ks <- transform(train_sum,
+                        train_total = G + B,
+                        `%train_total` = round((G + B) / sum(G + B), 2),
+                        `%train_B` = round(B / (G + B), 3),
+                        `%train_cumG` = round(cumsum(G) / sum(G), 2),
+                        `%train_cumB` = round(cumsum(B) / sum(B), 2),
+                        `train_K-S` = abs(round((cumsum(B) / sum(B)) - (cumsum(G) / sum(G)), 2)),
+                        train_Lift = train_Lift
+  )
+  if (!is.null(test_pred) || length(test_pred) > 1) {
+    test_pred <- test_pred[which(complete.cases(test_pred[, score])),]
+    test_pred$bins = split_bins(dat = test_pred, x = score, breaks = breaks, bins_no = TRUE)
+    if (!is.null(target)) {
+      if (length(unique(test_pred[, target])) > 1) {
+        if (is.null(pos_flag)) {
+          test_pred$target = ifelse(test_pred[, target] %in% list("1", "1", "Bad", 1), "B", "G")
+        } else {
+          test_pred$target = ifelse(test_pred[, target] %in% pos_flag, "B", "G")
+          if (length(unique(test_pred$target)) == 1) {
+            stop(paste("The value in pos_flag is not one of the value of test_pred's target.\n"))
+          }
+        }
+      } else {
+        stop(paste("The value of test_pred's target is unique.\n"))
+      }
+    } else {
+      stop(paste("The target variable is missing.\n"))
     }
 
-    train_sum <- train_pred %>%
-      dplyr::filter(train_pred$target %in% c("B", "G")) %>%
+    test_sum <- test_pred %>%
+      dplyr::filter(test_pred$target %in% c("B", "G")) %>%
       dplyr::group_by(bins) %>%
       dplyr::count(bins, target) %>%
       dplyr::mutate(percent = n / sum(n)) %>%
-      as.data.frame()
-    train_sum <- data.table::dcast(train_sum[c("bins", "target", "n")],
-                                     bins ~ target, value.var = "n")
-    train_sum[is.na(train_sum)] <- 0
-    if (train_sum[1, "B"] < train_sum[nrow(train_sum), "B"]) {
-        train_sum_lift = train_sum[order(train_sum$bins, decreasing = TRUE),]
-        train_Lift = round((cumsum(train_sum_lift$B) / cumsum(train_sum_lift$G + train_sum_lift$B)) / (sum(train_sum_lift$B) / sum(train_sum_lift$G + train_sum_lift$B)), 2)
-        train_Lift = sort(train_Lift)
+      as.data.table()
+
+    test_sum <- data.table::dcast(test_sum[,c("bins", "target", "n"),with = FALSE],
+                                  bins ~ target, value.var = "n")
+	test_sum = quick_as_df(test_sum)
+    test_sum[is.na(test_sum)] <- 0
+    f_t_bad = sum(test_sum[1:floor(nrow(test_sum)/2), "B"],na.rm = TRUE)
+    f_t_good = sum(test_sum[1:floor(nrow(test_sum)/2), "G"],na.rm = TRUE)
+    l_t_bad = sum(test_sum[(floor(nrow(test_sum)/2)+1):nrow(test_sum), "B"],na.rm = TRUE)
+    l_t_good = sum(test_sum[(floor(nrow(test_sum)/2)+1):nrow(test_sum), "G"],na.rm = TRUE)
+    f_t_bad_rate = f_t_bad /(f_t_bad + f_t_good)
+    l_t_bad_rate = l_t_bad /(l_t_bad + l_t_good)
+    if (f_t_bad_rate < l_t_bad_rate) {
+      test_sum_lift = test_sum[order(test_sum$bins, decreasing = TRUE),]
+      test_Lift = round((cumsum(test_sum_lift$B) / cumsum(test_sum_lift$G + test_sum_lift$B)) / (sum(test_sum_lift$B) / sum(test_sum_lift$G + test_sum_lift$B)), 2)
+      test_Lift = sort(test_Lift)
     } else {
-        train_Lift = round((cumsum(train_sum$B) / cumsum(train_sum$G + train_sum$B)) / (sum(train_sum$B) / sum(train_sum$G + train_sum$B)), 2)
-        train_Lift = sort(train_Lift, decreasing = TRUE)
+      test_Lift = round((cumsum(test_sum$B) / cumsum(test_sum$G + test_sum$B)) / (sum(test_sum$B) / sum(test_sum$G + test_sum$B)), 2)
+      test_Lift = sort(test_Lift, decreasing = TRUE)
     }
 
-    train_ks <- transform(train_sum,
-                     train_total = G + B,
-                     `%train_total` = round((G + B) / sum(G + B), 2),
-                     `%train_B` = round(B / (G + B), 3),
-                     `%train_cumG` = round(cumsum(G) / sum(G), 2),
-                     `%train_cumB` = round(cumsum(B) / sum(B), 2),
-                     `train_K-S` = abs(round((cumsum(B) / sum(B)) - (cumsum(G) / sum(G)), 2)),
-                     train_Lift = train_Lift
-                     )
-    if (!is.null(test_pred) || length(test_pred) > 1) {
-		test_pred <- test_pred[which(complete.cases(test_pred[, score])),]
-        test_pred$bins = split_bins(dat = test_pred, x = score, breaks = breaks, bins_no = TRUE)
-        if (!is.null(target)) {
-            if (length(unique(test_pred[, target])) > 1) {
-                if (is.null(pos_flag)) {
-                    test_pred$target = ifelse(test_pred[, target] %in% list("1", "1", "Bad", 1), "B", "G")
-                } else {
-                    test_pred$target = ifelse(test_pred[, target] %in% pos_flag, "B", "G")
-                    if (length(unique(test_pred$target)) == 1) {
-                        stop(paste("The value in pos_flag is not one of the value of test_pred's target.\n"))
-                    }
-                }
-            } else {
-                stop(paste("The value of test_pred's target is unique.\n"))
-            }
-        } else {
-            stop(paste("The target variable is missing.\n"))
-        }
 
-        test_sum <- test_pred %>%
-        dplyr::filter(test_pred$target %in% c("B", "G")) %>%
-        dplyr::group_by(bins) %>%
-        dplyr::count(bins, target) %>%
-        dplyr::mutate(percent = n / sum(n)) %>%
-        as.data.frame()
+    test_ks <- transform(test_sum,
+                         test_total = G + B,
+                         `%test_total` = round((G + B) / (sum(G + B)), 2),
+                         `%test_B` = round(B / (G + B), 3),
+                         `%test_cumG` = round(cumsum(G) / sum(G), 2),
+                         `%test_cumB` = round(cumsum(B) / sum(B), 2),
+                         `test_K-S` = abs(round((cumsum(B) / sum(B)) - (cumsum(G) / sum(G)), 2)),
+                         test_Lift = test_Lift
+    )
 
-        test_sum <- data.table::dcast(test_sum[c("bins", "target", "n")],
-                                    bins ~ target, value.var = "n")
-        test_sum[is.na(test_sum)] <- 0
-        if (test_sum[1, "B"] < test_sum[nrow(test_sum), "B"]) {
-            test_sum_lift = test_sum[order(test_sum$bins, decreasing = TRUE),]
-            test_Lift = round((cumsum(test_sum_lift$B) / cumsum(test_sum_lift$G + test_sum_lift$B)) / (sum(test_sum_lift$B) / sum(test_sum_lift$G + test_sum_lift$B)), 2)
-            test_Lift = sort(test_Lift)
-        } else {
-            test_Lift = round((cumsum(test_sum$B) / cumsum(test_sum$G + test_sum$B)) / (sum(test_sum$B) / sum(test_sum$G + test_sum$B)), 2)
-           test_Lift = sort(test_Lift, decreasing = TRUE)
-        }
-
-
-        test_ks <- transform(test_sum,
-                     test_total = G + B,
-                     `%test_total` = round((G + B) / (sum(G + B)), 2),
-                     `%test_B` = round(B / (G + B), 3),
-                     `%test_cumG` = round(cumsum(G) / sum(G), 2),
-                     `%test_cumB` = round(cumsum(B) / sum(B), 2),
-                     `test_K-S` = abs(round((cumsum(B) / sum(B)) - (cumsum(G) / sum(G)), 2)),
-                      test_Lift = test_Lift
-                     )
-
-        dt_ks = merge(train_ks[c(1, 4:10)], test_ks[c(1, 4:10)], all.x = TRUE)
-        dt_ks[is.na(dt_ks)] <- 0
-        names(dt_ks) = c("bins", "#train", "%train", "%train_B",
+    dt_ks = merge(train_ks[c(1, 4:10)], test_ks[c(1, 4:10)], all.x = TRUE)
+    dt_ks[is.na(dt_ks)] <- 0
+    names(dt_ks) = c("bins", "#train", "%train", "%train_B",
                      "%train_cumG", "%train_cumB", "train_K-S", "train_Lift",
                      "#test", "%test", "%test_B", "%test_cumG",
                      "%test_cumB", "test_K-S", "test_Lift")
-        dt_ks = dt_ks %>% dplyr::mutate(PSI = ifelse(`%train` == 0 | `%test` == 0, 1, round((`%train` - `%test`) * log(`%train` / `%test`), 3)), `#total` = `#train` + `#test`)
-        dt_ks = dt_ks[c("bins", "#total", "#train", "#test", "%train", "%test", "%train_B",
-                     "%test_B", "%train_cumG", "%train_cumB", "%test_cumG", "%test_cumB",
-                     "train_K-S", "test_K-S", "train_Lift", "test_Lift", "PSI")]
-        if (dt_ks[1, "train_Lift"] < dt_ks[nrow(dt_ks), "train_Lift"]) {
-            dt_ks = dt_ks[order(dt_ks$bins, decreasing = FALSE),]
-        }
-		if(total){
-		    total <- c("Total",
-               sum(dt_ks$`#total`,na.rm = TRUE),
-               sum(dt_ks$`#train`, na.rm = TRUE),
-               sum(dt_ks$`#test`, na.rm = TRUE),
-               as_percent(sum(dt_ks$`#train`, na.rm = TRUE) / sum(dt_ks$`#total`, na.rm = TRUE), 2),
-               as_percent(sum(dt_ks$`#test`, na.rm = TRUE) / sum(dt_ks$`#total` , na.rm = TRUE), 2),
-               as_percent(sum(dt_ks$`%train_B` * dt_ks$`#train`, na.rm = TRUE) / sum(dt_ks$`#train`,  na.rm = TRUE), 2),
-               as_percent(sum(dt_ks$`%test_B` * dt_ks$`#test`,na.rm = TRUE) / sum(dt_ks$`#test`, na.rm = TRUE), 2), "100%", "100%",
-             "100%", "100%",
-             max(dt_ks$`train_K-S`,na.rm = TRUE),
-             max(dt_ks$`test_K-S`, na.rm = TRUE),
-			 max(dt_ks$`train_Lift`,na.rm = TRUE),
-             max(dt_ks$`test_Lift`, na.rm = TRUE),
-            sum(dt_ks$PSI,na.rm = TRUE))
+    dt_ks = dt_ks %>% dplyr::mutate(PSI = ifelse(`%train` == 0 | `%test` == 0, 1, round((`%train` - `%test`) * log(`%train` / `%test`), 3)), `#total` = `#train` + `#test`)
+    dt_ks = dt_ks[c("bins", "#total", "#train", "#test", "%train", "%test", "%train_B",
+                    "%test_B", "%train_cumG", "%train_cumB", "%test_cumG", "%test_cumB",
+                    "train_K-S", "test_K-S", "train_Lift", "test_Lift", "PSI")]
 
-    dt_ks <- dt_ks[c("bins", "#total", "#train", "#test", "%train", "%test", "%train_B",
-                         "%test_B", "%train_cumG", "%train_cumB", "%test_cumG",
-                         "%test_cumB", "train_K-S", "test_K-S","train_Lift", "test_Lift", "PSI")]
-    dt_ks <- transform(dt_ks,
+    if (mean(dt_ks[1:floor(nrow(dt_ks)/2), "train_Lift"]) < mean(dt_ks[(floor(nrow(dt_ks)/2)+1):nrow(dt_ks), "train_Lift"])) {
+      dt_ks = dt_ks[order(dt_ks$bins, decreasing = TRUE),]
+    }
+
+    if(total){
+      total <- c("Total",
+                 sum(dt_ks$`#total`,na.rm = TRUE),
+                 sum(dt_ks$`#train`, na.rm = TRUE),
+                 sum(dt_ks$`#test`, na.rm = TRUE),
+                 as_percent(sum(dt_ks$`#train`, na.rm = TRUE) / sum(dt_ks$`#total`, na.rm = TRUE), 2),
+                 as_percent(sum(dt_ks$`#test`, na.rm = TRUE) / sum(dt_ks$`#total` , na.rm = TRUE), 2),
+                 as_percent(sum(dt_ks$`%train_B` * dt_ks$`#train`, na.rm = TRUE) / sum(dt_ks$`#train`,  na.rm = TRUE), 2),
+                 as_percent(sum(dt_ks$`%test_B` * dt_ks$`#test`,na.rm = TRUE) / sum(dt_ks$`#test`, na.rm = TRUE), 2), "100%", "100%",
+                 "100%", "100%",
+                 max(dt_ks$`train_K-S`,na.rm = TRUE),
+                 max(dt_ks$`test_K-S`, na.rm = TRUE),
+                 max(dt_ks$`train_Lift`,na.rm = TRUE),
+                 max(dt_ks$`test_Lift`, na.rm = TRUE),
+                 sum(dt_ks$PSI,na.rm = TRUE))
+
+      dt_ks <- dt_ks[c("bins", "#total", "#train", "#test", "%train", "%test", "%train_B",
+                       "%test_B", "%train_cumG", "%train_cumB", "%test_cumG",
+                       "%test_cumB", "train_K-S", "test_K-S","train_Lift", "test_Lift", "PSI")]
+      dt_ks <- transform(dt_ks,
                          `%train` = as_percent(`%train`, digits = 2),
                          `%test` = as_percent(`%test`, digits = 2),
                          `%train_B` = as_percent(`%train_B`, digits = 3),
@@ -1480,29 +1517,30 @@ perf_table <- function(train_pred, test_pred = NULL, target = NULL, score = NULL
                          `%train_cumB` = as_percent(`%train_cumB`, digits = 2),
                          `%test_cumG` = as_percent(`%test_cumG`, digits = 2),
                          `%test_cumB` = as_percent(`%test_cumB`, digits = 2)
-                         )
+      )
 
       dt_ks <- rbind(dt_ks, total)
-    names(dt_ks) = c("bins", "#total", "#train", "#test", "%train", "%test", "%train_B",
+      names(dt_ks) = c("bins", "#total", "#train", "#test", "%train", "%test", "%train_B",
                        "%test_B", "%train_cumG", "%train_cumB", "%test_cumG",
                        "%test_cumB", "train_K-S", "test_K-S","train_Lift", "test_Lift", "PSI")
-		}
+    }
 
-    } else {
-        dt_ks = train_ks[c(1, 4:10)]
-        dt_ks[is.na(dt_ks)] <- 0
-        names(dt_ks) = c("bins", "#Pop", "%Pct", "%Pct_1",
+  } else {
+    dt_ks = train_ks[c(1, 4:10)]
+    dt_ks[is.na(dt_ks)] <- 0
+    names(dt_ks) = c("bins", "#Pop", "%Pct", "%Pct_1",
                      "%Cumsum_0", "%Cumsum_1", "K-S", "Lift")
 
-        dt_ks = dt_ks[c("bins", "#Pop", "%Pct", "%Pct_1",
-                     "%Cumsum_0", "%Cumsum_1", "K-S", "Lift")]
-        if (dt_ks[1, "Lift"] < dt_ks[nrow(dt_ks), "Lift"]) {
-            dt_ks = dt_ks[order(dt_ks$bins, decreasing = FALSE),]
-        }
+    dt_ks = dt_ks[c("bins", "#Pop", "%Pct", "%Pct_1",
+                    "%Cumsum_0", "%Cumsum_1", "K-S", "Lift")]
+    if (mean(dt_ks[1:floor(nrow(dt_ks)/2), "Lift"]) < mean(dt_ks[(floor(nrow(dt_ks)/2)+1):nrow(dt_ks), "Lift"])) {
+      dt_ks = dt_ks[order(dt_ks$bins, decreasing = TRUE),]
     }
-    return(dt_ks)
-	options(opt) # reset
+  }
+  return(dt_ks)
+  options(opt) # reset
 }
+
 
 #' ks_plot
 #'
@@ -1510,15 +1548,19 @@ perf_table <- function(train_pred, test_pred = NULL, target = NULL, score = NULL
 #' @export
 
 ks_plot <- function(train_pred, test_pred = NULL, target = NULL, score =  NULL,
-                        gtitle = NULL, breaks = NULL, g = 10) {
+                        gtitle = NULL, breaks = NULL, g = 10,cut_bin = 'equal_depth',perf_tb = NULL) {
     opt = options('warn' = -1,scipen = 200, stringsAsFactors = FALSE, digits = 6) #
     `value` = `train_test` = `bins` = `%train_cumG` = `%train_cumB` = `%test_cumG` = `%test_cumB`= `%Cumsum_0`= `%Cumsum_1` = NULL
 	train_pred <- train_pred[which(complete.cases(train_pred[, score])),]
     if (is.null(gtitle)) { gtitle = paste0("Model") }
     if (is.null(target)) { stop("target is missing!\n")}
     if (is.null(score)) { stop("score is missing!\n")}
+    if(is.null(perf_tb)){
+	    tb_ks = perf_table(train_pred = train_pred, test_pred = test_pred, target = target, score = score, g = g, breaks = breaks,cut_bin = cut_bin)
+	}else{
+	tb_ks = perf_tb
+	}
 
-    tb_ks = perf_table(train_pred = train_pred, test_pred = test_pred, target = target, score = score, g = g, breaks = breaks)
 
     if (!is.null(test_pred) || length(test_pred) > 1) {
 	   	test_pred <- test_pred[which(complete.cases(test_pred[, score])),]
@@ -1617,53 +1659,55 @@ ks_plot <- function(train_pred, test_pred = NULL, target = NULL, score =  NULL,
 #' @export
 
 lift_plot <- function(train_pred, test_pred = NULL, target = NULL, score = NULL,
-                        gtitle = NULL,  breaks = NULL, g = 10) {
-    opt = options('warn' = -1,scipen = 200, stringsAsFactors = FALSE, digits = 6) #
-    `value` = `train_test` = `bins` = `%train_cumG` = `%train_cumB` = `%test_cumG` = `%test_cumB` = Lift = test_Lift = train_Lift= NULL
-    if (is.null(gtitle)) { gtitle = paste0("Model") }
-    if (is.null(target)) { stop("target is missing!\n") }
-    if (is.null(score)) { stop("score is missing!\n") }
+                      gtitle = NULL,  breaks = NULL, g = 10,cut_bin = 'equal_depth',perf_tb = NULL) {
+  opt = options('warn' = -1,scipen = 200, stringsAsFactors = FALSE, digits = 6) #
+  `value` = `train_test` = `bins` = `%train_cumG` = `%train_cumB` = `%test_cumG` = `%test_cumB` = Lift = test_Lift = train_Lift= NULL
+  if (is.null(gtitle)) { gtitle = paste0("Model") }
+  if (is.null(target)) { stop("target is missing!\n") }
+  if (is.null(score)) { stop("score is missing!\n") }
+  if(is.null(perf_tb)){
+    tb_ks = perf_table(train_pred = train_pred, test_pred = test_pred, target = target, score = score, g = g, breaks = breaks,cut_bin = cut_bin)
+  }else{
+    tb_ks = perf_tb
+  }
 
-    tb_ks = perf_table(train_pred = train_pred, test_pred = test_pred, target = target, score = score, g = g, breaks = breaks)
-
-    if (!is.null(test_pred) || length(test_pred) > 1) {
-        if (tb_ks[1, "train_Lift"] < tb_ks[nrow(tb_ks), "train_Lift"]) {
-            tb_ks = tb_ks[order(tb_ks$bins, decreasing = TRUE),]
-        }
-        lift_pl = ggplot(tb_ks, aes(x = reorder(as.factor(as_percent(round(cumsum(tb_ks$`%train`), 1))), cumsum(tb_ks$`%train`)))) +
-        geom_line(aes(y = train_Lift, color = 'train_Lift (Model)', group = 1), size = 1) +
-        geom_point(aes(y = train_Lift), size = 1.5, shape = 22, fill = 'white', color = '#ca3e1c') +
-        geom_line(aes(y = test_Lift, color = 'test_Lift (Model)', group = 1), size = 1) +
-        geom_point(aes(y = test_Lift), size = 1.5, shape = 22, fill = 'white', color = love_color("shallow_cyan")) +
-        geom_line(aes(y = rep(1, nrow(tb_ks)), group = 1, color = "Lift (Random)"), size = 1) +
-        scale_colour_manual(values = c("Lift (Random)" = "#085A9C", 'test_Lift (Model)' = love_color("green_cyan"), 'train_Lift (Model)' = '#ca3e1c')) +
-        geom_point(aes(y = rep(1, nrow(tb_ks))), size = 1.5, shape = 21, fill = 'white', color = "#085A9C") +
-        scale_y_continuous(limits = c(0, max(tb_ks$train_Lift) + 0.5)) +
-        geom_text(aes(y = train_Lift, label = round(train_Lift, 1)), vjust = -1, hjust = 0.5, size = 3, colour = "darkgrey") +
-        geom_text(aes(y = test_Lift, label = round(test_Lift, 1)), vjust = 1.3, hjust = 0.5, size = 3, colour = "darkgrey") +
-		labs(x = '%Total', y = 'Lift', title = paste(gtitle,"Lift Chart")) + theme_light() +
-		theme(legend.title = element_blank(), legend.position = "top",
-		   plot.title = element_text(face = "bold", size = 11, vjust = 0, hjust = 0))
-    } else {
-        if (tb_ks[1, "Lift"] < tb_ks[nrow(tb_ks), "Lift"]) {
-            tb_ks = tb_ks[order(tb_ks$bins, decreasing = TRUE),]
-        }
-       lift_pl =  ggplot(tb_ks, aes(x = reorder(as.factor(as_percent(round(cumsum(tb_ks$`%Pct`), 1))), cumsum(tb_ks$`%Pct`)))) +
-        geom_line(aes(y = Lift, linetype = 'Lift (Model)', group = 1), color = '#ca3e1c', size = 1) +
-        geom_point(aes(y = Lift), size = 1.5, shape = 22, fill = 'white', color = '#ca3e1c') +
-        geom_line(aes(y = rep(1, nrow(tb_ks)), group = 1, color = "Lift (Random)"), size = 1) +
-        scale_colour_manual(values = c("Lift (Random)" = "#085A9C")) +
-        geom_point(aes(y = rep(1, nrow(tb_ks))), size = 1.5, shape = 21, fill = 'white', color = "#085A9C") +
-        scale_y_continuous(limits = c(0, max(tb_ks$Lift) + 0.5)) +
-        geom_text(aes(y = Lift, label = round(Lift, 1)), vjust = -1, hjust = 0.5, size = 3, colour = "darkgrey") +
-        labs(x = '%Total', y = 'Lift', title = paste(gtitle,"Lift Chart")) + theme_light() +
-		theme(legend.title = element_blank(), legend.position = "top",
-		   plot.title = element_text(face = "bold", size = 11, vjust = 0, hjust = 0))
+  if (!is.null(test_pred) || length(test_pred) > 1) {
+    if (mean(tb_ks[1:floor(nrow(tb_ks)/2), "train_Lift"]) < mean(tb_ks[(floor(nrow(tb_ks)/2)+1):nrow(tb_ks), "train_Lift"])) {
+      tb_ks = tb_ks[order(tb_ks$bins, decreasing = TRUE),]
     }
-    return(lift_pl)
-	options(opt) # reset
+    lift_pl = ggplot(tb_ks, aes(x = reorder(as.factor(as_percent(round(cumsum(tb_ks$`%train`), 1))), cumsum(tb_ks$`%train`)))) +
+      geom_line(aes(y = train_Lift, color = 'train_Lift (Model)', group = 1), size = 1) +
+      geom_point(aes(y = train_Lift), size = 1.5, shape = 22, fill = 'white', color = '#ca3e1c') +
+      geom_line(aes(y = test_Lift, color = 'test_Lift (Model)', group = 1), size = 1) +
+      geom_point(aes(y = test_Lift), size = 1.5, shape = 22, fill = 'white', color = love_color("shallow_cyan")) +
+      geom_line(aes(y = rep(1, nrow(tb_ks)), group = 1, color = "Lift (Random)"), size = 1) +
+      scale_colour_manual(values = c("Lift (Random)" = "#085A9C", 'test_Lift (Model)' = love_color("green_cyan"), 'train_Lift (Model)' = '#ca3e1c')) +
+      geom_point(aes(y = rep(1, nrow(tb_ks))), size = 1.5, shape = 21, fill = 'white', color = "#085A9C") +
+      scale_y_continuous(limits = c(0, max(tb_ks$train_Lift) + 0.5)) +
+      geom_text(aes(y = train_Lift, label = round(train_Lift, 1)), vjust = -1, hjust = 0.5, size = 3, colour = "darkgrey") +
+      geom_text(aes(y = test_Lift, label = round(test_Lift, 1)), vjust = 1.3, hjust = 0.5, size = 3, colour = "darkgrey") +
+      labs(x = '%Total', y = 'Lift', title = paste(gtitle,"Lift Chart")) + theme_light() +
+      theme(legend.title = element_blank(), legend.position = "top",
+            plot.title = element_text(face = "bold", size = 11, vjust = 0, hjust = 0))
+  } else {
+    if (mean(tb_ks[1:floor(nrow(tb_ks)/2), "Lift"]) < mean(tb_ks[(floor(nrow(tb_ks)/2)+1):nrow(tb_ks), "Lift"])) {
+      tb_ks = tb_ks[order(tb_ks$bins, decreasing = TRUE),]
+    }
+    lift_pl =  ggplot(tb_ks, aes(x = reorder(as.factor(as_percent(round(cumsum(tb_ks$`%Pct`), 1))), cumsum(tb_ks$`%Pct`)))) +
+      geom_line(aes(y = Lift, linetype = 'Lift (Model)', group = 1), color = '#ca3e1c', size = 1) +
+      geom_point(aes(y = Lift), size = 1.5, shape = 22, fill = 'white', color = '#ca3e1c') +
+      geom_line(aes(y = rep(1, nrow(tb_ks)), group = 1, color = "Lift (Random)"), size = 1) +
+      scale_colour_manual(values = c("Lift (Random)" = "#085A9C")) +
+      geom_point(aes(y = rep(1, nrow(tb_ks))), size = 1.5, shape = 21, fill = 'white', color = "#085A9C") +
+      scale_y_continuous(limits = c(0, max(tb_ks$Lift) + 0.5)) +
+      geom_text(aes(y = Lift, label = round(Lift, 1)), vjust = -1, hjust = 0.5, size = 3, colour = "darkgrey") +
+      labs(x = '%Total', y = 'Lift', title = paste(gtitle,"Lift Chart")) + theme_light() +
+      theme(legend.title = element_blank(), legend.position = "top",
+            plot.title = element_text(face = "bold", size = 11, vjust = 0, hjust = 0))
+  }
+  return(lift_pl)
+  options(opt) # reset
 }
-
 
 #' roc_plot
 #'
@@ -1743,20 +1787,23 @@ roc_plot <- function(train_pred, test_pred = NULL, target = NULL, score = NULL, 
 
 
 score_distribution_plot <- function(train_pred, test_pred, target, score,
-                             gtitle = NULL, breaks = NULL, g = 10) {
+                             gtitle = NULL, breaks = NULL, g = 10,cut_bin = 'equal_depth',perf_tb = NULL ) {
    opt = options('warn' = -1,scipen = 200, stringsAsFactors = FALSE, digits = 6) #
   `value` = `train_test` = `bins` = `%train_cumG` = `%train_cumB` = `%test_cumG` = `%test_cumB` =
     `%Pct` = `%Pct_1` =  NULL
   if (is.null(gtitle)) { gtitle = paste0("Model") }
 
-  tb_ks = perf_table(train_pred = train_pred, test_pred = test_pred,
-                     target = target, score = score, g = g, breaks = breaks)
+     if(is.null(perf_tb)){
+	  tb_ks = perf_table(train_pred = train_pred, test_pred = test_pred, target = target, score = score, g = g, breaks = breaks,cut_bin = cut_bin)
+	}else{
+	  tb_ks = perf_tb
+	}
   if (!is.null(test_pred) || length(test_pred) > 1){
 
     names(tb_ks)[7:8] =  c("%train_1", "%test_1")
-    ts_total = data.table::melt(tb_ks[c("bins", "%train", "%test")], id.vars = c("bins"),
+    ts_total = data.table::melt(as.data.table(tb_ks[c("bins", "%train", "%test")]), id.vars = c("bins"),
                                 variable.name = "train_test", value.name = "value")
-    ts_1 = data.table::melt(tb_ks[c("bins", "%train_1", "%test_1")], id.vars = c("bins"),
+    ts_1 = data.table::melt(as.data.table(tb_ks[c("bins", "%train_1", "%test_1")]), id.vars = c("bins"),
                             variable.name = "train_test", value.name = "value")
 
     dis_pl =  ggplot(ts_total, aes(x = bins, y = value,fill = train_test)) +
@@ -1833,6 +1880,172 @@ score_distribution_plot <- function(train_pred, test_pred, target, score,
   options(opt) # reset
 
 }
+
+
+#' plot_oot_perf
+#' \code{plot_oot_perf} is for ploting performance of cross time samples in the future
+#' @param dat_test A data frame of testing dataset with predicted prob or score.
+#' @param target The name of target variable.
+#' @param x The name of prob or score variable.
+#' @param occur_time The name of the variable that represents the time at which each observation takes place.
+#' @param best  Logical, merge initial breaks to get optimal breaks for binning.
+#' @param equal_bins  Logical, generates initial breaks for equal frequency or width binning.
+#' @param period OOT period, 'weekly' and 'month' are available.if NULL, use k equal frequency samples.
+#' @param k  If period is NULL, number of equal frequency samples.
+#' @param g Number of breaks for prob or score.
+#' @param gtitle The title of the graph & The name for periodically saved graphic file.
+#' @param breaks Splitting points of prob or score.
+#' @param cut_bin A string, if equal_bins is TRUE, 'equal_depth' or 'equal_width', default is 'equal_depth'.
+#' @param pl 'lift' is for lift chart plot,'rate' is for positive rate plot.
+#' @param plot_show Logical, show model performance in current graphic device. Default is TRUE.
+#' @param save_data Logical, save results in locally specified folder. Default is FALSE.
+#' @param perf_dir_path The path for periodically saved graphic files.
+#' @examples
+#' sub = cv_split(UCICreditCard, k = 30)[[1]]
+#' dat = UCICreditCard[sub,]
+#' dat = re_name(dat, "default.payment.next.month", "target")
+#' x_list = c("PAY_0", "LIMIT_BAL", "PAY_AMT5", "PAY_3", "PAY_2")
+#' dat = data_cleansing(dat, target = "target", obs_id = "ID",x_list = x_list,
+#' occur_time = "apply_date", miss_values = list("", -1))
+#' dat = process_nas(dat,default_miss = TRUE)
+#' train_test <- train_test_split(dat, split_type = "OOT", prop = 0.7,
+#'                                 occur_time = "apply_date")
+#' dat_train = train_test$train
+#' dat_test = train_test$test
+
+#' Formula = as.formula(paste("target", paste(x_list, collapse = ' + '), sep = ' ~ '))
+#' set.seed(46)
+#' lr_model = glm(Formula, data = dat_train[, c("target", x_list)], family = binomial(logit))
+#'
+#' dat_train$pred_LR = round(predict(lr_model, dat_train[, x_list], type = "response"), 5)
+#' dat_test$pred_LR = round(predict(lr_model, dat_test[, x_list], type = "response"), 5)
+#' plot_oot_perf(dat_test = dat_test, occur_time = "apply_date", target = "target", x = "pred_LR")
+#' @import ggplot2
+#' @importFrom data.table rbindlist
+#' @export
+
+plot_oot_perf = function(dat_test, x, occur_time, target, k = 3, g = 10, period = 'month',
+						 best = FALSE, equal_bins = TRUE, pl = 'rate', breaks = NULL,
+						 cut_bin = 'equal_depth', gtitle = NULL, perf_dir_path = NULL,
+						 save_data = FALSE, plot_show = TRUE) {
+	if (!(class(dat_test[, x]) %in% c("numeric", "double", "integer")) ||
+	     length(unique(dat_test[, x])) <= 10) {
+		dat_test[, x] = as.character(dat_test[, x])
+	}
+
+	if (!is.null(period) && period == "weekly") {
+		dat_test$cohort_group = cut(dat_test[, occur_time], breaks = "week")
+		unique_wk = sort(unique(dat_test$cohort_group))
+		test_cv = list()
+		for (w in 1:length(unique_wk)) {
+			test_cv[[w]] = which(dat_test$cohort_group == unique_wk[w])
+			if (length(unique(dat_test[test_cv[[w]], target])) == 1 |
+	  		  length(unique(dat_test[test_cv[[w]], occur_time])) < 3) {
+				test_cv[[w]] = NA
+			}
+		}
+	} else {
+		if (!is.null(period) && period == "month") {
+			dat_test$cohort_group = as.character(cut(dat_test[, occur_time], breaks = "month"))
+			unique_wk = sort(unique(dat_test$cohort_group))
+			test_cv = list()
+			for (w in 1:length(unique_wk)) {
+				test_cv[[w]] = which(dat_test$cohort_group == unique_wk[w])
+				if (length(unique(dat_test[test_cv[[w]], target])) == 1 |
+		 		   length(unique(dat_test[test_cv[[w]], occur_time])) < 3) {
+					test_cv[[w]] = NA
+				}
+			}
+		} else {
+			test_cv = cv_split(dat_test, k = k, occur_time = occur_time)
+		}
+
+	}
+
+	test_cv = test_cv[!is.na(test_cv)]
+	if (is.null(breaks)) {
+		ts_breaks = get_breaks(dat = dat_test, target = target, x = x,
+						   best = best, equal_bins = equal_bins, g = g, cut_bin = cut_bin)
+	}
+
+
+	cohort_group = c()
+	perf_list = list()
+	for (i in 1:length(test_cv)) {
+		max_time = gsub("-", "/", as.character(max(dat_test[test_cv[[i]],][,occur_time])))
+		min_time = gsub("-", "/", as.character(min(dat_test[test_cv[[i]],][, occur_time])))
+		cohort_group[i] = paste(min_time,
+							substring(max_time, nchar(max_time) - 4, nchar(max_time)), sep = "_")
+		perf_list[[i]] = cbind(cohort_group = cohort_group[i],
+						   perf_table(train_pred = dat_test[test_cv[[i]],],
+									  target = target, score = x,
+									  breaks = ts_breaks))
+
+	}
+
+	cohort_dat = rbindlist(perf_list)
+	bins_n = length(unique(as.character(cohort_group)))
+	if(bins_n <= 4 ){
+	  values = love_color(all = TRUE, type = "line")
+	}else{
+	  if (bins_n <= 7) {
+	    values = love_color(all = TRUE, type = "deep")
+	  } else {
+	    if (bins_n > 7 & bins_n <= 15) {
+	      values = love_color(all = TRUE, type = "deep|light")
+	    } else {
+	      if (bins_n > 15 & bins_n <= 21) {
+	        values = love_color(all = TRUE, type = "deep|light|pale")
+	      } else {
+	        if (bins_n > 21 & bins_n <= 27) {
+	          values = love_color(all = TRUE, type = "deep|light|shallow|pale")
+	        } else {
+	          values = love_color(all = TRUE)
+	        }
+	      }
+	    }
+	  }
+	}
+
+	Lift = bins = `%Pct_1` =NULL
+
+	if (pl == 'rate') {
+		p1 = ggplot(cohort_dat, aes(as.character(bins), `%Pct_1`)) +
+  	  geom_line(aes(group = as.character(cohort_group), colour = as.character(cohort_group)),
+  	            size = 1.2) +
+  	  geom_point(aes(x = as.character(bins),
+					 y = `%Pct_1`, color = as.character(cohort_group)),
+				 size = 1.3, shape = 21, fill = 'white') +
+  	  scale_x_discrete(breaks = as.character(cohort_dat$bins)) +
+  	  scale_colour_manual(values = values) +
+  	  plot_theme() + xlab(x) +
+  	  ylab("% Bad") + ggtitle(paste(gtitle, "% Bad of OOT samples"))
+	} else {
+		p1 = ggplot(cohort_dat, aes(as.character(bins), Lift)) +
+  	  geom_line(aes(group = as.character(cohort_group), colour = as.character(cohort_group)),
+  	            size = 1.2) +
+  	  geom_point(aes(x = as.character(bins),
+					 y = Lift, color = as.character(cohort_group)),
+				 size = 1.3, shape = 21, fill = 'white') +
+  	  scale_x_discrete(breaks = as.character(cohort_dat$bins)) +
+  	  scale_colour_manual(values = values) +
+  	  plot_theme() + xlab(x) +
+  	  ylab("Lift") + ggtitle(paste(gtitle, "Lift of OOT samples"))
+
+	}
+	if (save_data) {
+		perf_dir_path = ifelse(is.null(perf_dir_path), tempdir(), perf_dir_path)
+		if (!dir.exists(perf_dir_path)) dir.create(perf_dir_path)
+
+		ggsave(filename = paste0(perf_dir_path, "/", paste(paste0(gtitle, "_oot", "_", pl), "png", sep = '.')), device = "png",
+		   plot = p1, dpi = "retina", width = 5, height = 4.5)
+	}
+	if (plot_show) {
+		plot(p1)
+	}
+	return(p1)
+}
+
 
 
 
@@ -1919,7 +2132,7 @@ cohort_plot <- function(cohort_dat){
 #'                          target = "default.payment.next.month", ex_cols = "ID|apply_date")
 #' iv_dt =get_psi_iv(UCICreditCard, x = "PAY_3",
 #'                   target = "default.payment.next.month", bins_total = TRUE)
-#' 
+#'
 #' plot_table(iv_dt)
 #' @export
 
@@ -1936,7 +2149,9 @@ plot_table <- function(grid_table,theme = c("cyan","grey","green","red","blue","
   opt = options('warn' = -1,scipen = 200, stringsAsFactors = FALSE, digits = 6) #
   grid_table = rbind(colnames(grid_table),as.data.frame(grid_table))
   grid_table = cbind(rows = rownames(grid_table),as.data.frame(grid_table))
-  table_1 = data.table::melt(setDT(grid_table), id=1, measure=2:ncol(grid_table), value.factor=TRUE)
+  grid_table = as.data.table(grid_table)
+  table_1 = data.table::melt(grid_table, id=1, measure=2:ncol(grid_table), value.factor=TRUE)
+  grid_table = quick_as_df(grid_table)
   table_1 = data.frame(table_1,ind =paste0("x",1:nrow(table_1)))
 
   table_theme = check_table_theme(theme = theme)
@@ -1975,7 +2190,7 @@ plot_table <- function(grid_table,theme = c("cyan","grey","green","red","blue","
                                    hjust = ifelse(subtitle.position == 'middle',0.5,
                                                   ifelse(subtitle.position == 'right', 1,0)),vjust = 0),
       rect = element_blank())
-	return(pl_tb)  
+	return(pl_tb)
 	 options(opt)
 
 }

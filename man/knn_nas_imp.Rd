@@ -22,7 +22,7 @@ knn_nas_imp(dat, x, nas_rate = NULL, mat_nas_shadow = NULL,
 
 \item{scale}{Logical.Standardization of variable.}
 
-\item{method}{The methods of imputation by knn."median" is knn imputation by k neighbors median.}
+\item{method}{The methods of imputation by knn. "median" is knn imputation with k neighbors median, "avg_dist" is knn imputation with k neighbors of distance weighted mean.}
 }
 \description{
 This function is not intended to be used by end user.

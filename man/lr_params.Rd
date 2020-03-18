@@ -41,7 +41,7 @@ lr_params_search(method = "random_search", dat_train, target,
 
 \item{score_card}{Logical, transfer woe to a standard scorecard. If TRUE, Output scorecard, and score prediction, otherwise output probability. Default is TRUE.}
 
-\item{sp_values}{Vaules will be in separate bins.e.g. list(-1, "Missing")  means that -1 & Missing as special values.Default is NULL.}
+\item{sp_values}{Vaules will be in separate bins.e.g. list(-1, "missing")  means that -1 & missing as special values.Default is NULL.}
 
 \item{forced_in}{Names of forced input variables. Default is NULL.}
 

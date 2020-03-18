@@ -8,15 +8,16 @@
 get_psi_iv_all(dat, dat_test = NULL, x_list = NULL, target,
   ex_cols = NULL, pos_flag = NULL, breaks_list = NULL,
   occur_time = NULL, oot_pct = 0.7, equal_bins = FALSE,
-  tree_control = NULL, bins_control = NULL, bins_total = FALSE,
-  best = TRUE, g = 10, as_table = TRUE, note = FALSE,
-  parallel = FALSE, bins_no = TRUE)
+  cut_bin = "equal_depth", tree_control = NULL, bins_control = NULL,
+  bins_total = FALSE, best = TRUE, g = 10, as_table = TRUE,
+  note = FALSE, parallel = FALSE, bins_no = TRUE)
 
 get_psi_iv(dat, dat_test = NULL, x, target, pos_flag = NULL,
   breaks = NULL, breaks_list = NULL, occur_time = NULL,
-  oot_pct = 0.7, equal_bins = FALSE, tree_control = NULL,
-  bins_control = NULL, bins_total = FALSE, best = TRUE, g = 10,
-  as_table = TRUE, note = FALSE, bins_no = TRUE)
+  oot_pct = 0.7, equal_bins = FALSE, cut_bin = "equal_depth",
+  tree_control = NULL, bins_control = NULL, bins_total = FALSE,
+  best = TRUE, g = 10, as_table = TRUE, note = FALSE,
+  bins_no = TRUE)
 }
 \arguments{
 \item{dat}{A data.frame with independent variables and target variable.}
@@ -37,7 +38,9 @@ get_psi_iv(dat, dat_test = NULL, x, target, pos_flag = NULL,
 
 \item{oot_pct}{Percentage of observations retained for overtime test (especially to calculate PSI). Defualt is 0.7}
 
-\item{equal_bins}{Logical, generates initial breaks for equal frequency binning.}
+\item{equal_bins}{Logical, generates initial breaks for equal frequency or width binning.}
+
+\item{cut_bin}{A string, if equal_bins is TRUE, 'equal_depth' or 'equal_width', default is 'equal_depth'.}
 
 \item{tree_control}{Parameters of using Decision Tree to segment initial breaks. See detials: \code{\link{get_tree_breaks}}}
 

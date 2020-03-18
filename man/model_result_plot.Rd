@@ -17,23 +17,26 @@
 \usage{
 model_result_plot(train_pred, score, target, test_pred = NULL,
   gtitle = NULL, perf_dir_path = NULL, save_data = FALSE,
-  plot_show = TRUE, total = TRUE, g = 10)
+  plot_show = TRUE, total = TRUE, g = 10, cut_bin = "equal_depth")
 
 perf_table(train_pred, test_pred = NULL, target = NULL, score = NULL,
-  g = 10, breaks = NULL, pos_flag = list("1", "1", "Bad", 1),
-  total = FALSE)
+  g = 10, cut_bin = "equal_depth", breaks = NULL,
+  pos_flag = list("1", "1", "Bad", 1), total = FALSE)
 
 ks_plot(train_pred, test_pred = NULL, target = NULL, score = NULL,
-  gtitle = NULL, breaks = NULL, g = 10)
+  gtitle = NULL, breaks = NULL, g = 10, cut_bin = "equal_depth",
+  perf_tb = NULL)
 
 lift_plot(train_pred, test_pred = NULL, target = NULL, score = NULL,
-  gtitle = NULL, breaks = NULL, g = 10)
+  gtitle = NULL, breaks = NULL, g = 10, cut_bin = "equal_depth",
+  perf_tb = NULL)
 
 roc_plot(train_pred, test_pred = NULL, target = NULL, score = NULL,
   gtitle = NULL)
 
 score_distribution_plot(train_pred, test_pred, target, score,
-  gtitle = NULL, breaks = NULL, g = 10)
+  gtitle = NULL, breaks = NULL, g = 10, cut_bin = "equal_depth",
+  perf_tb = NULL)
 }
 \arguments{
 \item{train_pred}{A data frame of training with predicted prob or score.}
@@ -56,9 +59,13 @@ score_distribution_plot(train_pred, test_pred, target, score,
 
 \item{g}{Number of breaks for prob or score.}
 
+\item{cut_bin}{A string, if equal_bins is TRUE, 'equal_depth' or 'equal_width', default is 'equal_depth'.}
+
 \item{breaks}{Splitting points of prob or score.}
 
 \item{pos_flag}{The value of positive class of target variable, default: "1".}
+
+\item{perf_tb}{Performance table.}
 }
 \description{
 model result plots

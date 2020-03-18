@@ -2,7 +2,7 @@
 % Please edit documentation in R/outliers_missing_treatment.R
 \name{analysis_nas}
 \alias{analysis_nas}
-\title{Missing Analysis}
+\title{missing Analysis}
 \usage{
 analysis_nas(dat, class_var = FALSE, nas_rate = NULL, na_vars = NULL,
   mat_nas_shadow = NULL, dt_nas_random = NULL, ...)
@@ -28,8 +28,8 @@ A data.frame with outliers analysis for each variable.
 \description{
 #' \code{analysis_nas} is for understanding the reason for missing data and understand distribution of missing data so we can categorise it as: 
 \itemize{
-  \item Missing completely at random(MCAR)
-  \item MMissing at random(MAR), or
-  \item Missing not at random, also known as IM. 
+  \item missing completely at random(MCAR)
+  \item Mmissing at random(MAR), or
+  \item missing not at random, also known as IM. 
 }
 }

@@ -1,5 +1,23 @@
-# creditmodel1.1.6
+# creditmodel-1.1.8
+
 **In this version I have:**
+* New function `cross_table` is for cross table analysis.
+* Fixed some potential bugs in `data_cleansing`, `low_variance_filter`,`time_variable`,`plot_vars`.
+
+
+# creditmodel-1.1.7
+
+**In this version I have:**
+* New function `entropy_weight` for is for calculating Entropy Weight.
+* New function `term_tfidf` for computing tf-idf of documents.
+* New function `plot_oot_perf` for plotting performance of over time samples in the future.
+* Fixed some potential bugs in `get_breaks`, `lift_plot`,`perf_table`,`model_result_plot`.
+* Add a parameter **cut_bin** to `get_breaks` for cutting breaks equal depth or equal width.
+
+# creditmodel-1.1.6
+
+**In this version I have:**
+
 * Fixed some potential bugs in `split_bins`, `woe_transfer`
 
 # creditmodel-1.1.5
@@ -12,9 +30,9 @@
 # creditmodel-1.1.4
 * New function log_trans() is for logarithmic transformation
 * New function plot_table() make it possible to generate table graph.
-* New funciton multi_grid() for arranging list of plots into a grid.
+* New function multi_grid() for arranging list of plots into a grid.
 
-# creditmodel1.1.3
+# creditmodel-1.1.3
 **In this version I have:**
 
 * Fixed additional issues for the *last* version released on CRAN.
@@ -24,7 +42,7 @@
 * Provide a function `multi_left_jion`  for left jion a list of datasets fast.
 * Provide a function `read_data`  for loading csv or txt data fast.
 
-# creditmodel1.1.2
+# creditmodel-1.1.2
 **In this version I have:**
 
 * Fixed additional issues for the *last* version released on CRAN.
@@ -38,11 +56,11 @@
 
 
 
-# creditmodel1.1.1
+# creditmodel-1.1.1
 **In this version I have:**
 * Fixed some potential bugs in `get_names`, `digits_num`
 
-# creditmodel1.1.0
+# creditmodel-1.1.0
 
 **In this version I have:**
 

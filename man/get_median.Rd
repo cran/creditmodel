@@ -9,7 +9,7 @@ get_median(x, weight_avg = NULL)
 \arguments{
 \item{x}{A vector or list.}
 
-\item{weight_avg}{avarage weigth to calculate means.}
+\item{weight_avg}{avg weight to calculate means.}
 }
 \description{
 This function is not intended to be used by end user.

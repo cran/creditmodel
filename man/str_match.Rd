@@ -8,7 +8,7 @@
 str_match(pattern, str_r)
 }
 \arguments{
-\item{pattern}{character string containing a regular expression (or character string for fixed = TRUE) to be matched in the given character vector. Coerced by as.character to a character string if possible. If a character vector of length 2 or more is supplied, the first element is used with a warning. Missing values are allowed except for regexpr and gregexpr.}
+\item{pattern}{character string containing a regular expression (or character string for fixed = TRUE) to be matched in the given character vector. Coerced by as.character to a character string if possible. If a character vector of length 2 or more is supplied, the first element is used with a warning. missing values are allowed except for regexpr and gregexpr.}
 
 \item{str_r}{a character vector where matches are sought, or an object which can be coerced by as.character to a character vector. Long vectors are supported.}
 }
