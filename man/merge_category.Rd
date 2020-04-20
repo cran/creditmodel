@@ -4,14 +4,15 @@
 \alias{merge_category}
 \title{Merge Category}
 \usage{
-merge_category(dat, ex_cols = NULL, p = 0.01, m = 10, note = TRUE)
+merge_category(dat, char_list = NULL, ex_cols = NULL, m = 30,
+  note = TRUE)
 }
 \arguments{
 \item{dat}{A data frame with x and target.}
 
-\item{ex_cols}{A list of excluded variables. Default is NULL.}
+\item{char_list}{The list of charecteristic variables that need to merge categories, Default is NULL. In case of NULL,merge categories for all variables of string type.}
 
-\item{p}{The minimum percent of samples in a category to merge.}
+\item{ex_cols}{A list of excluded variables. Default is NULL.}
 
 \item{m}{The minimum number of categories.}
 

@@ -314,13 +314,16 @@ save_data <- function(..., files = list(...), file_name = as.character(substitut
 
 #' Read data
 #'
-#' \code{read_data} is for loading data.
+#' \code{read_data} is for loading data, formats like csv, txt,data and so on.
 #' @param path Path to file or file name in working directory & path to file.
 #' @param encoding Default is "unknown". Other possible options are "UTF-8" and "Latin-1".
 #' @param header Does the first data line contain column names?
 #' @param pattern An optional regular expression. Only file names which match the regular expression will be returned.
 #' @param sep The separator between columns.
 #' @param stringsAsFactors  Logical. Convert all character columns to factors?
+#' @param select  A vector of column names or numbers to keep, drop the rest. 
+#' @param drop A vector of column names or numbers to drop, keep the rest. 
+#' @param nrows The maximum number of rows to read.
 #' @importFrom data.table fwrite fread dcast melt
 #' @importFrom dplyr distinct
 #' @importFrom cli cat_rule cat_line cat_bullet
@@ -328,57 +331,58 @@ save_data <- function(..., files = list(...), file_name = as.character(substitut
 #' @export
 
 
-read_data <- function(path,pattern = NULL,encoding = "unknown", header = TRUE, sep = "auto", stringsAsFactors = FALSE){
-  file_names = sort(list.files(path, pattern = pattern))
-  numCores = parallel::detectCores()-1
-  if (length(file_names) > 0) {
-    file_names = file_names[grepl("[.]", file_names)]
 
-    file_format = c()
-    for (i in file_names) {
-      path_file = paste(path, i, sep = "/")
-      file_format[i] = check_data_format(path_file)
-    }
+read_data <- function(path, pattern = NULL, encoding = "unknown", header = TRUE, sep = "auto", stringsAsFactors = FALSE, select = NULL, drop = NULL, nrows = Inf) {
+	file_names = sort(list.files(path, pattern = pattern))
+	numCores = parallel::detectCores() - 1
+	if (length(file_names) > 0) {
+		file_names = file_names[grepl("[.]", file_names)]
 
-    file_format_tx = file_format[!is.na(file_format) && !grepl('xl\\S{1,2}$',file_format)]
+		file_format = c()
+		for (i in file_names) {
+			path_file = paste(path, i, sep = "/")
+			file_format[i] = check_data_format(path_file)
+		}
 
-    dt_list = list()
-    if(length(file_format_tx)>0){
-      for (file_name in names(file_format_tx)) {
-        file_n = gsub('.csv$|.txt$|.CSV$', "",file_name)
-        dt_list[[file_n]] = dplyr::distinct(data.table::fread(paste(path, file_name, sep = "/"),
-                                                                          encoding = encoding,
-                                                                          header = header,
-                                                                          sep = sep,
-																		  data.table=getOption("datatable.fread.datatable", FALSE),
-																		  integer64=getOption("datatable.integer64", "character" ),
-																		  nThread = numCores,
-																		  fill = TRUE,
-                                                                          stringsAsFactors = stringsAsFactors))
-      }
-    }
-    cat_line("-- Input files:", col = love_color("dark_green"))
-    cat_bullet(paste0(format(names(file_format_tx))), col = "darkgrey")
-    return(dt_list)
-  } else {
+		file_format_tx = file_format[!is.na(file_format) && !grepl('xl\\S{1,2}$', file_format)]
 
-    file_format = check_data_format(path)
-    file_format_tx = file_format[!is.na(file_format) && !grepl('xl\\S{1,2}$',file_format)]
-    #file_format_tc = file_format[!is.na(file_format)& file_format %alike% 'csv$|txt$|CSV$']
-    if (length(file_format_tx) > 0) {
-      data.table::fread(paste(path, sep = "/"),
-                                    encoding = encoding,
-                                    header = header,
-                                    sep = sep,
-									data.table=getOption("datatable.fread.datatable", FALSE),
-									integer64=getOption("datatable.integer64", "character"),
-									nThread = numCores,
-									fill = TRUE,
-                                    stringsAsFactors = stringsAsFactors)
-    } else {
-      stop(paste0("Cannot open file '", path, "'"))
-    }
-  }
+		dt_list = list()
+		if (length(file_format_tx) > 0) {
+			for (file_name in names(file_format_tx)) {
+				file_n = gsub('.csv$|.txt$|.CSV$', "", file_name)
+				dt_list[[file_n]] = dplyr::distinct(data.table::fread(paste(path, file_name, sep = "/"),
+																		  encoding = encoding,
+																		  header = header,
+																		  sep = sep,
+																		  data.table = getOption("datatable.fread.datatable", FALSE),
+																		  integer64 = getOption("datatable.integer64", "character"),
+																		  nThread = numCores, drop = drop,
+																		  fill = TRUE, select = select, nrows = nrows,
+																		  stringsAsFactors = stringsAsFactors))
+			}
+		}
+		cat_line("-- Input files:", col = love_color("dark_green"))
+		cat_bullet(paste0(format(names(file_format_tx))), col = "darkgrey")
+		return(dt_list)
+	} else {
+
+		file_format = check_data_format(path)
+		file_format_tx = file_format[!is.na(file_format) && !grepl('xl\\S{1,2}$', file_format)]
+		#file_format_tc = file_format[!is.na(file_format)& file_format %alike% 'csv$|txt$|CSV$']
+		if (length(file_format_tx) > 0) {
+			data.table::fread(paste(path, sep = "/"),
+									encoding = encoding,
+									header = header,
+									sep = sep,
+									data.table = getOption("datatable.fread.datatable", FALSE),
+									integer64 = getOption("datatable.integer64", "character"),
+									nThread = numCores, drop = drop,
+									fill = TRUE, select = select, nrows = nrows,
+									stringsAsFactors = stringsAsFactors)
+		} else {
+			stop(paste0("Cannot open file '", path, "'"))
+		}
+	}
 }
 
 #' @rdname read_data
@@ -1182,31 +1186,6 @@ max_min_norm <- function(x) {
 
 min_max_norm <- function(x) {
     ((x - min(x , na.rm = TRUE)) / (max(x, na.rm = TRUE) - min(x, na.rm = TRUE)))
-}
-
-#' Entropy
-#'
-#' This function is not intended to be used by end user.
-#' @param x  A numeric vector.
-#' @return  A numeric vector of entropy.
-
-p_ij <- function(x){
-    x = unlist(x)
-    x = x/sum(x,na.rm = TRUE)
-    return(x)
-}
-
-#' @rdname p_ij
-e_ij <- function(x) {
-    x = unlist(x)
-    for (i in 1:length(x)) {
-        if (is.na(x[i]) || x[i] == 0 ) {
-            x[i] = 0
-        } else {
-            x[i] = x[i] * log(x[i])
-        }
-    }
-    return(x)
 }
 
 

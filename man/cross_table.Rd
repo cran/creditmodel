@@ -4,13 +4,15 @@
 \alias{cross_table}
 \title{cross_table}
 \usage{
-cross_table(dat, cross_x, target = NULL, value = NULL,
+cross_table(dat, cross_x, cross_y, target = NULL, value = NULL,
   cross_type = "total_sum")
 }
 \arguments{
 \item{dat}{A data.frame with independent variables.}
 
 \item{cross_x}{Names of variables to cross.}
+
+\item{cross_y}{Names of variables to cross.}
 
 \item{target}{The name of target variable.}
 
@@ -25,8 +27,8 @@ A cross table.
 \code{cross_table} is  for cross table analysis.
 }
 \examples{
-cross_table(dat = UCICreditCard, cross_x = c("SEX", "AGE"),
+cross_table(dat = UCICreditCard, cross_x = "SEX",cross_y = "AGE",
  target = "default.payment.next.month", cross_type = "bad_pct",value = "LIMIT_BAL")
-cross_table(dat = UCICreditCard, cross_x = c("SEX","MARRIAGE","AGE"),
- target = "default.payment.next.month", cross_type = "bad_pct",value = NULL)
+cross_table(dat = UCICreditCard, cross_x = c("SEX", "MARRIAGE"), cross_y = "AGE",
+target = "default.payment.next.month", cross_type = "bad_pct",value = "LIMIT_BAL")
 }

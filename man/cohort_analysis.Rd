@@ -4,7 +4,7 @@
 \alias{cohort_analysis}
 \alias{cohort_table}
 \title{cohort_analysis
-\code{cohort_function} is for cohort(vintage) analysis.}
+\code{cohort_analysis} is for cohort(vintage) analysis.}
 \usage{
 cohort_analysis(dat, obs_id = NULL, occur_time = NULL, MOB = NULL,
   period = "monthly", status = NULL, amount = NULL, by_out = "cnt",
@@ -38,5 +38,8 @@ cohort_table(dat, obs_id = NULL, occur_time = NULL, MOB = NULL,
 \item{dead_status}{Status of dead observations.}
 }
 \description{
-This function is not intended to be used by end user.
+cohort_analysis
+\code{cohort_analysis} is for cohort(vintage) analysis.
+
+cohort_table
 }

@@ -6,7 +6,8 @@
 \title{Read data}
 \usage{
 read_data(path, pattern = NULL, encoding = "unknown", header = TRUE,
-  sep = "auto", stringsAsFactors = FALSE)
+  sep = "auto", stringsAsFactors = FALSE, select = NULL,
+  drop = NULL, nrows = Inf)
 
 check_data_format(path)
 }
@@ -22,7 +23,13 @@ check_data_format(path)
 \item{sep}{The separator between columns.}
 
 \item{stringsAsFactors}{Logical. Convert all character columns to factors?}
+
+\item{select}{A vector of column names or numbers to keep, drop the rest.}
+
+\item{drop}{A vector of column names or numbers to drop, keep the rest.}
+
+\item{nrows}{The maximum number of rows to read.}
 }
 \description{
-\code{read_data} is for loading data.
+\code{read_data} is for loading data, formats like csv, txt,data and so on.
 }

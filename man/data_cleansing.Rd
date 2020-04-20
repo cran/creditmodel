@@ -38,7 +38,7 @@ data_cleansing(dat, target = NULL, obs_id = NULL, occur_time = NULL,
 
 \item{missing_rate}{The maximum percent of missing values for recoding values to missing and non_missing.}
 
-\item{merge_cat}{The minimum number of categories or the minimum percent of samples in a category for merging categories of character variables.}
+\item{merge_cat}{The minimum number of categories for merging categories of character variables.}
 
 \item{note}{Logical. Outputs info. Default is TRUE.}
 

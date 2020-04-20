@@ -425,28 +425,53 @@ get_median <- function(x, weight_avg = NULL) {
 #'               pos_vars = -c(7,11),
 #'               neg_vars = c(7,11))
 #' @export
-entropy_weight = function(dat,ID = NULL,pos_vars,neg_vars){
-    dat = quick_as_df(dat)
-    if(!is.na(ID)){
-        dat[,ID] = NULL
-    }
-    x_list = get_names(dat,types = c("numeric","double","integer","integer64"))
 
-    if(length(x_list) < 2)stop("Number of numeric variables is less than 2.\n")
-    dat = dat[x_list]
-    dat_pos = apply(dat[,pos_vars], 2, min_max_norm)
-    dat_neg = apply(dat[,neg_vars], 2, max_min_norm)
-	dat_total = cbind(dat_pos,dat_neg)
-    dat_total = apply(dat_total,2,p_ij)
-    dat_total = apply(dat_total, 2, e_ij)
-    n_row = nrow(dat_total)
-    k = 1/log(n_row)
-    d = -k*colSums(dat_total)
-    d = 1 - d
-    w = d / sum(d)
-    w = data.frame(Feature = names(w),Weight = w,stringsAsFactors = FALSE,row.names = NULL)
-    return(w)
+entropy_weight = function(dat, ID = NULL, pos_vars, neg_vars) {
+	dat = quick_as_df(dat)
+	if (!is.na(ID)) {
+		dat[, ID] = NULL
+	}
+	x_list = get_names(dat, types = c("numeric", "double", "integer", "integer64"))
+
+	if (length(x_list) < 2) stop("Number of numeric variables is less than 2.\n")
+	dat = dat[x_list]
+	dat_pos = apply(dat[, pos_vars], 2, min_max_norm)
+	dat_neg = apply(dat[, neg_vars], 2, max_min_norm)
+	dat_total = cbind(dat_pos, dat_neg)
+	dat_total = apply(dat_total, 2, p_ij)
+	dat_total = apply(dat_total, 2, e_ij)
+	n_row = nrow(dat_total)
+	k = 1 / log(n_row)
+	d = -k * colSums(dat_total)
+	d = 1 - d
+	w = d / sum(d)
+	w = data.frame(Feature = names(w), Weight = w, stringsAsFactors = FALSE, row.names = NULL)
+	return(w)
 }
 
+#' Entropy
+#'
+#' This function is not intended to be used by end user.
+#' @param x  A numeric vector.
+#' @return  A numeric vector of entropy.
+
+p_ij <- function(x) {
+	x = unlist(x)
+	x = x / sum(x, na.rm = TRUE)
+	return(x)
+}
+
+#' @rdname p_ij
+e_ij <- function(x) {
+	x = unlist(x)
+	for (i in 1:length(x)) {
+		if (is.na(x[i]) || x[i] == 0) {
+			x[i] = 0
+		} else {
+			x[i] = x[i] * log(x[i])
+		}
+	}
+	return(x)
+}
 
 

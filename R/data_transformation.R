@@ -302,8 +302,8 @@ time_transfer <- function(dat, date_cols = NULL, ex_cols = NULL, note = FALSE) {
     date_cols2 = which(t_sample != 0 & t_sample != Inf)
 
     for (x in date_cols2) {
-
-      if(!is.numeric(df_date[[x]])){
+      if(!is.numeric(df_date[[x]]) & t_sample[[x]] > 10 & grepl(":", t_len[[x]]) &
+         length(gregexpr("\\.",t_len[[x]])[[1]]) == 1 & grepl("\\.", t_len[[x]])){
         df_date[[x]] = gsub("\\.0$", "", df_date[[x]])
         t_len[[x]] = gsub(" |\\.0$", "", t_len[[x]])
       }
@@ -396,140 +396,144 @@ time_transfer <- function(dat, date_cols = NULL, ex_cols = NULL, note = FALSE) {
 #' @export
 
 
-derived_ts_vars <- function(dat, grx = NULL, td = NULL, ID = NULL, ex_cols = NULL, x_list =NULL,
-                            der = c("cvs", "sums", "means", "maxs", "max_mins",
-                                    "time_intervals", "cnt_intervals", "total_pcts",
-                                    "cum_pcts", "partial_acfs"),
-                            parallel = TRUE, note = TRUE) {
-    if (note) cat_line(paste("--", "Derived variables of", paste(der), " .\n"), col = love_color("dark_green"))
+derived_ts_vars <- function(dat, grx = NULL, td = NULL, ID = NULL, ex_cols = NULL, x_list = NULL,
+							der = c("cvs", "sums", "means", "maxs", "max_mins",
+									"time_intervals", "cnt_intervals", "total_pcts",
+									"cum_pcts", "partial_acfs"),
+							parallel = TRUE, note = TRUE) {
+	if (note) cat_line(paste("--", "Derived variables of", paste(der), " .\n"), col = love_color("dark_green"))
 
-	dat = checking_data(dat,note = FALSE)
-    if (parallel) {
-        parallel <- start_parallel_computing(parallel)
-        stopCluster <- TRUE
-    } else {
-        parallel <- stopCluster <- FALSE
-    }
-    if (is.null(ID)) {
-        dat$ID = as.character(rownames(dat))
-        ID = 'ID'
-    }else{
-	    dat[,ID] = as.character(dat[,ID])
+	dat = checking_data(dat, note = FALSE)
+	if (parallel) {
+		parallel <- start_parallel_computing(parallel)
+		stopCluster <- TRUE
+	} else {
+		parallel <- stopCluster <- FALSE
+	}
+	if (is.null(ID)) {
+		dat$ID = as.character(rownames(dat))
+		ID = 'ID'
+	} else {
+		dat[, ID] = as.character(dat[, ID])
 	}
 	is_not_numeric = which(sapply(dat, function(x) is.element("integer64", class(x))))
-    dat[is_not_numeric] = sapply(dat[is_not_numeric], as.numeric)
-    on.exit(if (parallel & stopCluster) stop_parallel_computing(attr(parallel, "cluster")))
-    i. = j.= NULL
-    if (!parallel) {
-        df_cv_list <- lapply(unlist(grx), function(grx_x) derived_ts(dat, grx_x = grx_x, td = td,
-                                   ID = ID, ex_cols = ex_cols, x_list = x_list, der = der))
-        df_cv_list <- as.data.frame(Reduce("cbind", df_cv_list))
-    } else {
-        df_cv_list <- foreach(i. = unlist(grx),
-                              .errorhandling = c('pass')) %dopar% {
-                                  try(do.call(derived_ts, args = list(dat = dat, grx_x = i., td = td, ID = ID, ex_cols = ex_cols,x_list = x_list, der = der)), silent = TRUE)
-                              }
-        if (length(df_cv_list) > 1) {
-            df_cv_list = multi_left_join(df_list = df_cv_list, by = ID)
-        } else {
-            df_cv_list <- as.data.frame(df_cv_list)
-        }
-    }
-    return(df_cv_list)
+	dat[is_not_numeric] = sapply(dat[is_not_numeric], as.numeric)
+	on.exit(if (parallel & stopCluster) stop_parallel_computing(attr(parallel, "cluster")))
+	i. = j. = NULL
+	if (!parallel) {
+		df_cv_list <- lapply(unlist(grx), function(grx_x) derived_ts(dat, grx_x = grx_x, td = td,
+								   ID = ID, ex_cols = ex_cols, x_list = x_list, der = der))
+		if (length(df_cv_list) > 1) {
+			df_cv_list = multi_left_join(df_list = df_cv_list, by = ID)
+		} else {
+			df_cv_list <- as.data.frame(df_cv_list)
+		}
+	} else {
+		df_cv_list <- foreach(i. = unlist(grx),
+							  .errorhandling = c('pass')) %dopar% {
+								try(do.call(derived_ts, args = list(dat = dat, grx_x = i., td = td, ID = ID, ex_cols = ex_cols, x_list = x_list, der = der)), silent = TRUE)
+					  		}
+		if (length(df_cv_list) > 1) {
+			df_cv_list = multi_left_join(df_list = df_cv_list, by = ID)
+		} else {
+			df_cv_list <- as.data.frame(df_cv_list)
+		}
+	}
+	return(df_cv_list)
 }
 
 #' @rdname derived_ts_vars
 #' @export
 
 derived_ts <- function(dat, grx_x = NULL, x_list = NULL, td = NULL, ID = NULL, ex_cols = NULL,
-                       der = c("cvs", "sums", "means", "maxs", "max_mins",
-                               "time_intervals", "cnt_intervals", "total_pcts",
-                               "cum_pcts", "partial_acfs")) {
-    dat = checking_data(dat,note = FALSE)
+					   der = c("cvs", "sums", "means", "maxs", "max_mins",
+							   "time_intervals", "cnt_intervals", "total_pcts",
+							   "cum_pcts", "partial_acfs")) {
+	dat = checking_data(dat, note = FALSE)
 	if (is.null(ID)) {
-        dat$ID = rownames(dat)
-        ID = 'ID'
-    }
-    if (is.null(x_list)) {
-        num_x_list = get_names(dat = dat,
-                         types = c('numeric', 'integer', 'double'),
-                         ex_cols = c(ID, ex_cols), get_ex = FALSE)
-    } else {
-        num_x_list = x_list
-    }
+		dat$ID = rownames(dat)
+		ID = 'ID'
+	}
+	if (is.null(x_list)) {
+		num_x_list = get_names(dat = dat,
+						 types = c('numeric', 'integer', 'double'),
+						 ex_cols = c(ID, ex_cols), get_ex = FALSE)
+	} else {
+		num_x_list = x_list
+	}
 
-    if (!is.null(grx_x)) {
-        if (is.null(td)) {
-            cv_cols = num_x_list[grep(grx_x, paste(num_x_list))]
-        } else {
-            cv_cols = num_x_list[grep(grx_x, paste(num_x_list))[1:td]]
-        }
-    } else {
-        if (is.null(td) || td > length(num_x_list)) {
-            cv_cols = num_x_list
-        } else {
-            cv_cols = num_x_list[1:td]
+	if (!is.null(grx_x)) {
+		if (is.null(td)) {
+			cv_cols = num_x_list[grep(grx_x, paste(num_x_list))]
+		} else {
+			cv_cols = num_x_list[grep(grx_x, paste(num_x_list))[1:td]]
+		}
+	} else {
+		if (is.null(td) || td > length(num_x_list)) {
+			cv_cols = num_x_list
+		} else {
+			cv_cols = num_x_list[1:td]
 
-        }
-    }
-    cv_cols = cv_cols[!is.na(cv_cols)]
-    dat = dat[c(ID, cv_cols)]
-    if (length(cv_cols) > 0) {
-        dat = as.data.table(dat)
-        name_n = orignal_nam = sim_nam = str_num = c()
-        orignal_nam = names(dat[, cv_cols, with = FALSE])
-        str_num = as.numeric(str_match(str_r = orignal_nam, pattern = "\\d+"))
-        if (!any(is.na(str_num)) && !is.null(td) && length(str_num) == td) {
-            name_n = paste(min(str_num), max(str_num), sep = "to")
-        }
-        if (is.null(name_n)) {
-            name_n = "ts"
-        }
-        sim_nam = paste(unique(lapply(1:(length(orignal_nam) - 1),
-                                  function(x) sim_str(orignal_nam[x], orignal_nam[x + 1], sep = "_|[0-9]")))[[1]], collapse = "_")
-        if (any(der == "cvs")) {
-                  dat = dat[, paste(sim_nam, name_n, "cvs", sep = "_") := ifelse(rowAllnas(dat[, cv_cols, with = FALSE]), NA,
+		}
+	}
+	cv_cols = cv_cols[!is.na(cv_cols)]
+	dat = dat[c(ID, cv_cols)]
+	if (length(cv_cols) > 0) {
+		dat = as.data.table(dat)
+		name_n = orignal_nam = sim_nam = str_num = c()
+		orignal_nam = names(dat[, cv_cols, with = FALSE])
+		str_num = as.numeric(str_match(str_r = orignal_nam, pattern = "\\d+"))
+		if (!any(is.na(str_num)) && !is.null(td) && length(str_num) == td) {
+			name_n = paste(min(str_num), max(str_num), sep = "to")
+		}
+		if (is.null(name_n)) {
+			name_n = "ts"
+		}
+		sim_nam = paste(unique(lapply(1:(length(orignal_nam) - 1),
+								  function(x) sim_str(orignal_nam[x], orignal_nam[x + 1], sep = "_|[0-9]")))[[1]], collapse = "_")
+						  		if (any(der == "cvs")) {
+								dat = dat[, paste(sim_nam, name_n, "cvs", sep = "_") := ifelse(rowAllnas(dat[, cv_cols, with = FALSE]), NA,
 				  rowCVs(dat[, cv_cols, with = FALSE], na.rm = TRUE))]
-        }
-        if (any(der == "sums")) {
-            dat = dat[, paste(sim_nam, name_n, "sums", sep = "_") := ifelse(rowAllnas(dat[, cv_cols, with = FALSE]), NA,
-                                                                      rowSums(dat[, cv_cols, with = FALSE], na.rm = TRUE))]
-        }
-        if (any(der == "means")) {
-            dat = dat[, paste(sim_nam, name_n, "means", sep = "_") := ifelse(rowAllnas(dat[, cv_cols, with = FALSE]), NA,
-                                                                       rowMeans(dat[, cv_cols, with = FALSE], na.rm = TRUE))]
-        }
-        if (any(der == "maxs")) {
-            dat = dat[, paste(sim_nam, name_n, "maxs", sep = "_") := ifelse(rowAllnas(dat[, cv_cols, with = FALSE]), NA,
-                                                                      rowMaxs(dat[, cv_cols, with = FALSE]))]
-        }
+					  		}
+		if (any(der == "sums")) {
+			dat = dat[, paste(sim_nam, name_n, "sums", sep = "_") := ifelse(rowAllnas(dat[, cv_cols, with = FALSE]), NA,
+																	  rowSums(dat[, cv_cols, with = FALSE], na.rm = TRUE))]
+		}
+		if (any(der == "means")) {
+			dat = dat[, paste(sim_nam, name_n, "means", sep = "_") := ifelse(rowAllnas(dat[, cv_cols, with = FALSE]), NA,
+																	   rowMeans(dat[, cv_cols, with = FALSE], na.rm = TRUE))]
+		}
+		if (any(der == "maxs")) {
+			dat = dat[, paste(sim_nam, name_n, "maxs", sep = "_") := ifelse(rowAllnas(dat[, cv_cols, with = FALSE]), NA,
+																	  rowMaxs(dat[, cv_cols, with = FALSE]))]
+		}
 
-        if (any(der == "max_mins")) {
-            dat = dat[, paste(sim_nam, name_n, "max_mins", sep = "_") := ifelse(rowAllnas(dat[, cv_cols, with = FALSE]), NA,
-                                                                          rowMaxMins(dat[, cv_cols, with = FALSE], na.rm = TRUE))]
-        }
-        if (any(der == "partial_acfs")) {
-            dat = dat[, paste(sim_nam, name_n, "partial_acfs", sep = "_") := derived_partial_acf(dat[, cv_cols, with = FALSE])]
-        }
-        if (any(der == "time_intervals")) {
-            dat = dat[, paste(orignal_nam, "time_intervals", sep = "_") := derived_interval(dat[, cv_cols, with = FALSE],
-                                                                                      interval_type = "time_interval")]
-        }
-        if (any(der == "cnt_intervals")) {
-            dat = dat[, paste(orignal_nam, "cnt_intervals", sep = "_") := derived_interval(dat[, cv_cols, with = FALSE],
-                                                                                     interval_type = "cnt_interval")]
-        }
-        if (any(der == "total_pcts")) {
-            dat = dat[, paste(orignal_nam, "total_pcts", sep = "_") := derived_pct(dat[, cv_cols, with = FALSE],
-                                                                             pct_type = "total_pct")]
-        }
-        if (any(der == "cum_pcts")) {
-            dat = dat[, paste(orignal_nam, "cum_pcts", sep = "_") := derived_pct(dat[, cv_cols, with = FALSE],
-                                                                           pct_type = "cum_pct")]
-        }
-    }
-    dat = quick_as_df(dat)
-    return(dat)
+		if (any(der == "max_mins")) {
+			dat = dat[, paste(sim_nam, name_n, "max_mins", sep = "_") := ifelse(rowAllnas(dat[, cv_cols, with = FALSE]), NA,
+																		  rowMaxMins(dat[, cv_cols, with = FALSE], na.rm = TRUE))]
+		}
+		if (any(der == "partial_acfs")) {
+			dat = dat[, paste(sim_nam, name_n, "partial_acfs", sep = "_") := derived_partial_acf(dat[, cv_cols, with = FALSE])]
+		}
+		if (any(der == "time_intervals")) {
+			dat = dat[, paste(orignal_nam, "time_intervals", sep = "_") := derived_interval(dat[, cv_cols, with = FALSE],
+																					  interval_type = "time_interval")]
+		}
+		if (any(der == "cnt_intervals")) {
+			dat = dat[, paste(orignal_nam, "cnt_intervals", sep = "_") := derived_interval(dat[, cv_cols, with = FALSE],
+																					 interval_type = "cnt_interval")]
+		}
+		if (any(der == "total_pcts")) {
+			dat = dat[, paste(orignal_nam, "total_pcts", sep = "_") := derived_pct(dat[, cv_cols, with = FALSE],
+																			 pct_type = "total_pct")]
+		}
+		if (any(der == "cum_pcts")) {
+			dat = dat[, paste(orignal_nam, "cum_pcts", sep = "_") := derived_pct(dat[, cv_cols, with = FALSE],
+																		   pct_type = "cum_pct")]
+		}
+	}
+	dat = quick_as_df(dat)
+	return(dat)
 }
 
 
@@ -583,6 +587,49 @@ time_series_proc <- function(dat, ID = NULL, group = NULL, time = NULL) {
   colnames(dat)[1] = ID
   quick_as_df(dat)
 }
+
+
+#' gather or aggregate data
+#'
+#' This function is used for gathering or aggregating data.
+#'
+#' @param dat  A data.frame contained only predict variables.
+#' @param x_list The names of variables to gather.
+#' @param ID  The name of ID of observations or key variable of data. Default is NULL.
+#' @param FUN The function of gathering method.
+#' @details  The key to creating a good model is not the power of a specific modelling technique, but the breadth and depth of derived variables that represent a higher level of knowledge about the phenomena under examination.
+#' @importFrom stats aggregate
+#' @examples
+#' dat = data.frame(id = c(1,1,1,2,2,3,3,3,4,4,4,4,4,5,5,6,7,7,
+#'                             8,8,8,9,9,9,10,10,11,11,11,11,11,11),
+#'                      terms = c('a','b','c','a','c','d','d','a',
+#'                                'b','c','a','c','d','a','c',
+#'                                   'd','a','e','f','b','c','f','b',
+#'                                'c','h','h','i','c','d','g','k','k'),
+#'                      time = c(8,3,1,9,6,1,4,9,1,3,4,8,2,7,1,
+#'                               3,4,1,8,7,2,5,7,8,8,2,1,5,7,2,7,3))
+#'
+#' gather_data(dat = dat, x_list = "time", ID = 'id', FUN = sum_x)
+#' @export
+
+gather_data = function(dat, x_list = NULL, ID = NULL, FUN = sum_x) {
+	dat = checking_data(dat)
+	if (is.null(x_list)) {
+		x_list = get_names(dat, types = c("numeric","double","integer"),ex_cols = ID)
+	}
+	if (!is.null(ID)) {
+		dat$ID = as.character(dat[[ID]])
+	} else {
+		dat$ID = as.character(rownames(dat))
+		ID = "ID"
+	}
+	dat_sum = stats::aggregate(dat[,x_list],
+		by = list(ID = dat$ID), FUN = FUN)
+	names(dat_sum)[1] = ID
+	return(dat_sum)
+}
+
+
 
 #' Process group numeric variables
 #'
@@ -941,26 +988,40 @@ variable_process <- function(add) {
 #' @export
 #' @importFrom data.table first
 derived_interval <- function(dat_s, interval_type = c("cnt_interval", "time_interval")) {
-    interval_list <- apply(dat_s, 1, function(m) {
-        if (interval_type == "time_interval") {
-            cnt_ind = inter_ind = which(!is.na(m) | m != 0)
-        } else {
-            cnt_ind = which(m >= 0)
-            inter_ind = unlist(m, use.names = FALSE)[c(cnt_ind)]
-        }
-        interval <- rep(NA, length(m))
-        if (length(cnt_ind) > 1) {
-            interval[cnt_ind] <- vapply(1:(length(inter_ind)), function(i) {
 
-                ifelse(i <= length(inter_ind), abs(inter_ind[i] - inter_ind[i + 1]), NA)
+	interval_list <- apply(dat_s, 1, function(m) {
+		if (interval_type == "time_interval") {
+			cnt_ind = inter_ind = which(!is.na(m) | m != 0)
+			interval <- rep(NA, length(m))
+			if (length(cnt_ind) > 1) {
 
-            }, FUN.VALUE = numeric(1))
-        }
-        interval = c(abs(1 - data.table::first(inter_ind)), interval[-length(interval)])
-        interval
-    })
-    interval_list = as.data.frame(t(interval_list))
-    interval_list
+
+				interval[cnt_ind] <- vapply(1:(length(inter_ind)), function(i) {
+
+					ifelse(i <= length(inter_ind), abs(inter_ind[i] - inter_ind[i + 1]), NA)
+
+				}, FUN.VALUE = numeric(1))
+			}
+			interval = c(abs(1 - data.table::first(inter_ind)), interval[-length(interval)])
+		} else {
+			cnt_ind = which(m >= 0)
+			inter_ind = unlist(m, use.names = FALSE)[c(cnt_ind)]
+			interval <- rep(NA, length(m))
+			if (length(cnt_ind) > 1) {
+
+
+				interval[cnt_ind] <- vapply(1:(length(inter_ind)), function(i) {
+
+					ifelse(i < length(inter_ind), abs(inter_ind[i] - inter_ind[i + 1]), inter_ind[i])
+
+				}, FUN.VALUE = numeric(1))
+			}
+		}
+
+		interval
+	})
+	interval_list = as.data.frame(t(interval_list))
+	interval_list
 }
 
 
@@ -993,8 +1054,8 @@ derived_pct <- function(dat_s, pct_type = "total_pct") {
 #' @export
 
 derived_partial_acf <- function(dat_s) {
-    dat_s[is.na(dat_s)] <- 0
-    p_acf <- apply(dat_s, 1, function(x) ifelse(length(unique(x)) > 2, mean(abs(ar(ts(x), FALSE,
+    dat_s[is.na(dat_s)] = 0
+    p_acf = apply(dat_s, 1, function(x) ifelse(length(unique(x)) > 2, mean(abs(ar(ts(x), FALSE,
     length(unique(x)) - 1, na.action = na.pass)$partialacf)), NA))
     p_acf
 }
@@ -1032,8 +1093,8 @@ de_percent <- function(x, digits = 2) {
 #'
 #' \code{merge_category} is  for merging   category of nominal variables which number of categories is more than m or percent of samples in any categories is less than p.
 #' @param dat A data frame with x and target.
+#' @param char_list The list of charecteristic variables that need to merge categories, Default is NULL. In case of NULL,merge categories for all variables of string type.
 #' @param ex_cols A list of excluded variables. Default is NULL.
-#' @param p The minimum percent of samples in a category to merge.
 #' @param m The minimum number of categories.
 #' @param note Logical, outputs info. Default is TRUE.
 #' @return  A data.frame with merged category variables.
@@ -1045,31 +1106,28 @@ de_percent <- function(x, digits = 2) {
 #' str(dat[,char_list])
 #' @export
 
-merge_category <- function(dat, ex_cols = NULL, p = 0.01, m = 10, note = TRUE) {
-    opt = options(scipen = 200, stringsAsFactors = FALSE, "warn" = -1)
-    if (note)cat_line(paste0("-- Merging categories..."), col = love_color("dark_green"))
 
-
-    char_list = get_names(dat = dat,
-                          types = c('factor', 'character'),
-                          ex_cols = ex_cols, get_ex = FALSE)
-
-    for (x in char_list) {
-        dt_x = table(as.character(dat[, x]), useNA = "no")
-        merge_cat = which(dt_x < nrow(dat) * p)
-        over_vars = order(abs(dt_x), decreasing = TRUE)[m:length(dt_x)]
-        char_num = tryCatch({ as.numeric(names(dt_x)) },
-                            error = function(e) { cat("ERROR :", conditionMessage(e), "\n") },
-                            warning = function(w) { as.numeric(names(dt_x)) })
-        char_num_ind = which(!is.na(char_num))
-        if ((length(merge_cat) > 0 & length(over_vars) > 0) &&
-            round(length(char_num_ind) / length(dt_x), 2) < 0.8) {
-            max_class = unique(c(over_vars, merge_cat))
-            dat[which(dat[, x] %in% names(dt_x[max_class])), x] = "other"
-        }
-    }
-
-    return(dat)
+merge_category <- function(dat, char_list = NULL, ex_cols = NULL,  m = 30, note = TRUE) {
+	opt = options(scipen = 200, stringsAsFactors = FALSE, "warn" = -1)
+	if (note) cat_line(paste0("-- Merging categories..."), col = love_color("dark_green"))
+	dat = char_to_num(dat = dat, char_list = char_list, ex_cols = ex_cols, note = FALSE)
+	if (is.null(char_list)) {
+		char_list = get_names(dat = dat,
+						  types = c('factor', 'character'),
+						  ex_cols = ex_cols, get_ex = FALSE)
+	}
+	for (x in char_list) {
+		dt_x = table(as.character(dat[, x]), useNA = "no")
+		over_vars = NULL
+		if (length(dt_x) > m) {
+			over_vars = order(abs(dt_x), decreasing = TRUE)[m:length(dt_x)]
+		} 
+		if (length(over_vars) > 0) {
+			max_class = over_vars
+			dat[which(dat[, x] %in% names(dt_x[max_class])), x] = "other"
+		}
+	}
+	return(dat)
 	options(opt) # reset
 }
 
@@ -1078,6 +1136,7 @@ merge_category <- function(dat, ex_cols = NULL, p = 0.01, m = 10, note = TRUE) {
 #' \code{char_to_num} is  for transfering character variables which are actually numerical numbers containing strings  to numeric.
 #' @param dat A data frame
 #' @param ex_cols A list of excluded variables. Regular expressions can also be used to match variable names. Default is NULL.
+#' @param char_list The list of charecteristic variables that need to merge categories, Default is NULL. In case of NULL,merge categories for all variables of string type.
 #' @param note Logical, outputs info. Default is TRUE.
 #' @return  A data.frame
 #' @examples
@@ -1088,29 +1147,30 @@ merge_category <- function(dat, ex_cols = NULL, p = 0.01, m = 10, note = TRUE) {
 #' str(dat_sub)
 #' @export
 
-char_to_num <- function(dat, note = TRUE, ex_cols = "date$|id$|time$|DATA$|ID$|TIME$") {
-    opt = options(scipen = 200, "warn" = -1, stringsAsFactors = FALSE) # suppress warnings
-    if (note)cat_line(paste("-- Transfering character variables which are actually numerical to numeric"), col = love_color("dark_green"))
+char_to_num <- function(dat, char_list = NULL, note = TRUE, ex_cols = NULL) {
+	opt = options(scipen = 200, "warn" = -1, stringsAsFactors = FALSE) # suppress warnings
+	if (note) cat_line(paste("-- Transfering character variables which are actually numerical to numeric"), col = love_color("dark_green"))
+	if (is.null(char_list)) {
+		char_list = get_names(dat = dat,
+						  types = c('factor', 'character'),
+						  ex_cols = ex_cols, get_ex = FALSE)
+	}
 
-    char_list = get_names(dat = dat,
-                          types = c('factor', 'character'),
-                          ex_cols = ex_cols, get_ex = FALSE)
-
-    for (x in char_list) {
-        dt_x = table(as.character(dat[, x]), useNA = "no")
-        char_num = tryCatch({ as.numeric(names(dt_x)) },
-                            error = function(e) {
-                                cat("ERROR :", conditionMessage(e), "\n")
-                            },
-                            warning = function(w) {
-                                as.numeric(names(dt_x))
-                            })
-        char_num_ind = which(!is.na(char_num))
-        if (length(char_num_ind) > 0 && length(dt_x) > 1 && round(length(char_num_ind) / length(dt_x), 2) >= 0.8) {
-            dat[, x] = as.numeric(as.character(dat[, x]))
-        }
-    }
-    return(dat)
+	for (x in char_list) {
+		dt_x = table(as.character(dat[, x]), useNA = "no")
+		char_num = tryCatch({ as.numeric(names(dt_x)) },
+							error = function(e) {
+								cat("ERROR :", conditionMessage(e), "\n")
+							},
+							warning = function(w) {
+								as.numeric(names(dt_x))
+							})
+		char_num_ind = which(!is.na(char_num))
+		if (length(char_num_ind) > 0 && length(dt_x) > 1 && round(length(char_num_ind) / length(dt_x), 2) >= 0.8) {
+			dat[, x] = as.numeric(as.character(dat[, x]))
+		}
+	}
+	return(dat)
 	options(opt) # reset warnings
 }
 

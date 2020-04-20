@@ -132,240 +132,249 @@ get_plots <- function(dat_train, dat_test = NULL, x_list = NULL,
 #' @rdname get_plots
 #' @export
 
+
 plot_vars <- function(dat_train, x, target, dat_test = NULL,
-					  g_width = 8, breaks_list = NULL,breaks = NULL,
-					  pos_flag = list("1", 1, "bad", "positive"),
-					  equal_bins = TRUE, cut_bin = 'equal_depth', best = FALSE,
-					  g = 10, tree_control = NULL,
-					  bins_control = NULL,
-					  plot_show = TRUE,
-					  save_data = FALSE,
-					  dir_path = tempdir()) {
-
-	digits_x = ifelse(is.numeric(dat_train[, x]), digits_num(dat_train[, x]), 4)
-
-	opt = options('warn' = -1, scipen = 200,  digits = digits_x + 1) #
-
-
-	dat_train$target = as.character(dat_train[, target])
-	xn = NULL
-	if (class(dat_train[, x]) %in% c("numeric", "double", "integer") && length(unique(dat_train[, x])) > 10) {
-
-		med <- dat_train %>%
-  	  dplyr::mutate(xn = dat_train[, x]) %>%
-  	  dplyr::group_by(target) %>%
-  	  dplyr::summarise(grp.mean = quantile(xn, 0.5, na.rm = TRUE, type = 3))
-		none_na_num <- sum(!is.na(dat_train[, x]))
-		tbl_x <- table(dat_train[, x])
-		x_unique_value <- as.double(names(tbl_x))
-		cum_sum <- cumsum(tbl_x)
-		cuts_sum <- approx(cum_sum, x_unique_value, xout = (1:100) * none_na_num / 100,
-					   method = "constant", rule = 2, f = 1)$y
-
-		dat_train_sub = dat_train
-		if (length(unique(cuts_sum)) > 10) {
-			x_cuts <- cuts_sum[length(cuts_sum) - 1]
-			dat_train_sub <- subset(dat_train, dat_train[, x] <= x_cuts)
-		}
-		#desity plot
-		plot_1 <- ggplot(dat_train_sub, aes(x = dat_train_sub[, x])) +
-		geom_density(aes(fill = dat_train_sub$target), alpha = 0.3) +
-		stat_density(geom = "line", position = "identity", size = 0.6,
-				   aes(color = dat_train_sub$target)) +
-		scale_fill_manual(values = c('1' = love_color("shallow_red"),
-								   '0' = love_color("sky_blue"))) +
-		scale_color_manual(values = c('1' = love_color("shallow_red"),
-									'0' = love_color("sky_blue"))) +
-		geom_vline(data = med, linetype = "dashed", size = 0.7,
-				 aes(xintercept = med$grp.mean, color = med$target)) +
-		xlab(x) +
-		ggtitle(paste("Density of", x)) +
-		plot_theme(legend.position = c(.9, .9), title_size = 9,
-				 axis_title_size = 8)
-
-	} else {
-		#relative frequency histogram
-	  dat_train[, x] = as.character(dat_train[, x])
-	  data1 <- dat_train %>%
-  	  dplyr::mutate(xn = dat_train[, x]) %>%
-  	  dplyr::filter(target %in% c("0", "1")) %>%
-  	  dplyr::group_by(xn) %>% dplyr::count(xn, target) %>%
-  	  dplyr::mutate(percent = n / sum(n))
-
-		plot_1 <- ggplot(data1, aes(x = data1$xn, y = data1$percent, fill = reorder(data1$target, n))) +
-  	  geom_bar(stat = "identity", position = position_stack()) +
-  	  geom_text(aes(label = paste(as_percent(data1$percent, digits = 3))),
-				size = ifelse(length(data1$xn) > 10, 2.1,
-							  ifelse(length(data1$xn) > 5, 2.5,
-									 ifelse(length(data1$xn) > 3, 3, 3.3))), vjust = 1, colour = 'white', position = position_stack()) +
-  	  guides(fill = guide_legend(reverse = F)) +
-  	  ggtitle(paste("Relative Frequency of", x)) +
-  	  ylab("Percent") + xlab(x) +
-  	  scale_fill_manual(values = c('0' = love_color("shallow_cyan"),
-								   '1' = love_color("deep_grey"))) +
-  	  plot_theme(legend.position = "top", title_size = 9,
-				 axis_title_size = 8)
-	}
-	if (!is.null(dat_test) || length(dat_test) > 1) {
-		df_ae <- get_psi_iv(dat = dat_train, dat_test = dat_test,
-						x = x, target = target, pos_flag = pos_flag,
-						breaks_list = breaks_list,
-		                breaks = breaks,
-						equal_bins = equal_bins,
-						cut_bin = cut_bin,
-						tree_control = tree_control,
-						bins_control = bins_control,
-						bins_total = FALSE,
-						best = best, g = g, as_table = TRUE,
-						note = FALSE, bins_no = TRUE)
-		ae_total <- data.table::melt(as.data.table(df_ae[c("bins", "%actual", "%expected")]),
-								 id.vars = c("bins"),
-								 variable.name = "actual_expected",
-								 value.name = "value")
-		ae_1 <- data.table::melt(as.data.table(df_ae[c("bins", "%actual_1", "%expected_1")]),
-							 id.vars = c("bins"),
-							 variable.name = "actual_expected",
-							 value.name = "value")
-
-		plot_2 <- ggplot(ae_total, aes(x = ae_total$bins,
-								   y = ae_total$value,
-								   fill = ae_total$actual_expected)) +
-  	  geom_bar(stat = "identity", position = position_dodge(width = 0.7)) +
-  	  geom_text(aes(y = ae_total$value,
-					label = paste(as_percent(ae_total$value, digits = 3))),
-				position = position_dodge(width = 0.7),
-				size = ifelse(nrow(ae_total) > 10, 2.6,
-							  ifelse(nrow(ae_total) > 5, 2.8,
-									 ifelse(nrow(ae_total) > 3, 3, 3.2))), vjust = 1, hjust = 0.3, colour = "white") +
-  	  geom_line(aes(x = factor(ae_1[[1]]),
-					y = as.numeric(ae_1$value) * max(ae_total$value) * 4,
-					color = ae_1$actual_expected,
-					linetype = ae_1$actual_expected,
-					group = ae_1$actual_expected),
-				position = position_dodge(width = 0.5), size = 1) +
-  	  geom_point(aes(y = as.numeric(ae_1$value) * max(ae_total$value) * 4,
-					 color = ae_1$actual_expected,
-					 group = ae_1$actual_expected),
-				 position = position_dodge(width = 0.5),
-				 fill = 'white', color = love_color("deep_red"), size = 2, shape = 21) +
-  	  geom_text(aes(y = as.numeric(ae_1$value) * max(ae_total$value) * 4,
-					 label = paste(as_percent(ae_1$value, digits = 3))),
-				position = position_dodge(width = 0.5),
-				colour = 'black',
-				size = ifelse(nrow(ae_total) > 10, 2.6,
-							  ifelse(nrow(ae_total) > 5, 2.8,
-									 ifelse(nrow(ae_total) > 3, 3, 3.2))), vjust = -0.1) +
-  	  annotate(geom = 'text',
-			   x = dim(ae_total)[1] / 3,
-			   y = max(c(ae_total$value, as.numeric(ae_1$value) * max(ae_total$value) * 4)) + 0.09,
-			   label = paste(paste("IV:", sum(df_ae$IVi)), paste('PSI:', sum(df_ae$PSIi)), sep = "   ")) +
-  	  scale_fill_manual(values = c('%actual' = love_color("deep_grey"),
-								   '%expected' = love_color("light_yellow"))) +
-  	  scale_color_manual(values = c('%actual_1' = love_color("shallow_red"),
-									'%expected_1' = love_color("sky_blue"))) +
-  	  ylim(c(-0.01, max(c(ae_total$value, as.numeric(ae_1$value) * max(ae_total$value) * 4)) + 0.1)) +
-  	  xlab(x) + ylab("Total Percent") +
-  	  ggtitle(paste(x, "Distribution of Train/Expected and Test/Actual")) +
-  	  plot_theme(legend.position = "top",
-				 title_size = 9,
-				 axis_title_size = 8,
-				 angle = ifelse(nrow(ae_total) > 10, 60,
-								ifelse(nrow(ae_total) > 5, 40,
-									   ifelse(nrow(ae_total) > 3, 20, 10))),
-				 axis_size_x = ifelse(max(nchar(ae_total$bins)) > 30, 5,
-									  ifelse(max(nchar(ae_total$bins)) > 20, 6,
-											 ifelse(max(nchar(ae_total$bins)) > 10, 7, 8))))
-
-
-
-	} else {
-
-		if (is.null(breaks) & is.null(breaks_list)) {
-			breaks = get_breaks(dat = dat_train, dat_test = dat_test,
-						   x = x, target = target, pos_flag = pos_flag,
-						   equal_bins = equal_bins,
-						   cut_bin = cut_bin,
-						   tree_control = tree_control,
-						   bins_control = bins_control,
-						   bins_total = FALSE,
-						   best = best, g = g, as_table = FALSE,
-						   note = FALSE, bins_no = TRUE)
-
-		}
-		df_ae <- get_bins_table(dat = dat_train,
-							x = x, target = target, pos_flag = pos_flag,
-							breaks_list = breaks_list,
-							breaks = breaks,
-							bins_total = FALSE,
-							note = FALSE)
-
-		plot_2 <- ggplot(df_ae, aes(x = df_ae$bins,
-								y = de_percent(df_ae$`%total`, 3)
-	)) +
-  	  geom_bar(aes(fill = "%total"), stat = "identity", position = position_dodge(width = 0.7)) +
-  	  geom_text(aes(y = de_percent(df_ae$`%total`, 3),
-					label = paste(df_ae$`%total`)),
-				position = position_dodge(width = 0.7),
-				size = ifelse(nrow(df_ae) > 10, 2.6,
-							  ifelse(nrow(df_ae) > 5, 2.8,
-									 ifelse(nrow(df_ae) > 3, 3, 3.2))), vjust = 1, hjust = 0.3, colour = "white") +
-  	  geom_line(aes(x = factor(df_ae[['bins']]),
-					y = de_percent(df_ae$bad_rate, 3) * max(de_percent(df_ae$`%total`, 3)) * 4,
-					color = "%flag_1"
-	  ),
-	  linetype = 1,
-	  group = "%total",
-	  position = position_dodge(width = 0.5), size = 1) +
-  	  geom_point(aes(y = de_percent(df_ae$bad_rate, 3) * max(de_percent(df_ae$`%total`, 3)) * 4
-	  ),
-	  color = love_color("deep_orange"),
-	  group = 1,
-	  position = position_dodge(width = 0.5),
-	  fill = 'white', color = love_color("deep_red"), size = 2, shape = 21) +
-  	  geom_text(aes(y = de_percent(df_ae$bad_rate, 3) * max(de_percent(df_ae$`%total`, 3)) * 4,
-					 label = paste(df_ae$bad_rate)),
-				position = position_dodge(width = 0.5),
-				colour = 'black',
-				size = ifelse(nrow(df_ae) > 10, 2.6,
-							  ifelse(nrow(df_ae) > 5, 2.8,
-									 ifelse(nrow(df_ae) > 3, 3, 3.2))), vjust = -0.1) +
-  	  annotate(geom = 'text',
-			   x = dim(df_ae)[1] / 3,
-			   y = max(c(de_percent(df_ae$`%total`, 3),
-						 de_percent(df_ae$bad_rate, 3) * max(de_percent(df_ae$`%total`, 3)) * 4)) + 0.09,
-			   label = paste(paste("IV:", sum(df_ae$iv, na.rm = TRUE)))) +
-  	  scale_fill_manual(values = c("%total" = love_color("light_cyan"))) +
-  	  scale_color_manual(values = c("%flag_1" = love_color("deep_orange"))) +
-  	  ylim(c(-0.01, max(c(de_percent(df_ae$`%total`, 3),
-						  de_percent(df_ae$bad_rate, 3) * max(de_percent(df_ae$`%total`, 3)) * 4)) + 0.05)) +
-
-  	  guides(fill = guide_legend(title = NULL)) +
-  	  xlab(x) + ylab("percent") +
-  	  ggtitle(paste(x, " Distribution")) +
-  	  plot_theme(legend.position = "top",
-				 title_size = 9,
-				 axis_title_size = 8,
-				 angle = ifelse(nrow(df_ae) > 10, 60,
-								ifelse(nrow(df_ae) > 5, 40,
-									   ifelse(nrow(df_ae) > 3, 20, 10))),
-				 axis_size_x = ifelse(max(nchar(df_ae$bins)) > 30, 5,
-									  ifelse(max(nchar(df_ae$bins)) > 20, 6,
-											 ifelse(max(nchar(df_ae$bins)) > 10, 7, 8))))
-
-
-	}
-	if (save_data) {
-		ggsave(paste0(dir_path, paste(x, "png", sep = '.')),
-		   plot = multi_grid(grobs = list(plot_1, plot_2), ncol = 2, nrow = 1),
-		   width = g_width, height = g_width / 2, dpi = "retina")
-	}
-	if (plot_show) {
-		plot(multi_grid(grobs = list(plot_1, plot_2), ncol = 2, nrow = 1))
-	}
-	return(df_ae)
-	options(opt) # reset
+                      g_width = 8, breaks_list = NULL, breaks = NULL,
+                      pos_flag = list("1", 1, "bad", "positive"),
+                      equal_bins = TRUE, cut_bin = 'equal_depth', best = FALSE,
+                      g = 10, tree_control = NULL,
+                      bins_control = NULL,
+                      plot_show = TRUE,
+                      save_data = FALSE,
+                      dir_path = tempdir()) {
+  
+  dat_train = checking_data(dat = dat_train, target = target)
+  dat_train = char_to_num(dat_train, char_list = x, note = FALSE)
+  digits_x =min( ifelse(is.numeric(dat_train[, x]), digits_num(dat_train[, x]), 4),4,na.rm = FALSE)
+  opt = options('warn' = -1, scipen = 200, digits = digits_x + 1) #
+  
+  dat_train$target = as.character(dat_train[, target])
+  xn = NULL
+  if (class(dat_train[, x]) %in% c("numeric", "double", "integer") && length(unique(dat_train[, x])) > 5) {
+    
+    med <- dat_train %>%
+      dplyr::mutate(xn = dat_train[, x]) %>%
+      dplyr::group_by(target) %>%
+      dplyr::summarise(grp.mean = quantile(xn, 0.5, na.rm = TRUE, type = 3))
+    none_na_num <- sum(!is.na(dat_train[, x]))
+    tbl_x <- table(dat_train[, x])
+    x_unique_value <- as.double(names(tbl_x))
+    cum_sum <- cumsum(tbl_x)
+    cuts_sum <- approx(cum_sum, x_unique_value, xout = (1:100) * none_na_num / 100,
+                       method = "constant", rule = 2, f = 1)$y
+    
+    dat_train_sub = dat_train
+    if (length(unique(cuts_sum)) > 10) {
+      x_cuts <- cuts_sum[length(cuts_sum) - 1]
+      dat_train_sub <- subset(dat_train, dat_train[, x] <= x_cuts)
+    }
+    #desity plot
+    plot_1 <- ggplot(dat_train_sub, aes(x = dat_train_sub[, x])) +
+      geom_density(aes(fill = dat_train_sub$target), alpha = 0.3) +
+      stat_density(geom = "line", position = "identity", size = 0.6,
+                   aes(color = dat_train_sub$target)) +
+      scale_fill_manual(values = c('1' = love_color("shallow_red"),
+                                   '0' = love_color("sky_blue"))) +
+      scale_color_manual(values = c('1' = love_color("shallow_red"),
+                                    '0' = love_color("sky_blue"))) +
+      geom_vline(data = med, linetype = "dashed", size = 0.7,
+                 aes(xintercept = med$grp.mean, color = med$target)) +
+      xlab(x) +
+      ggtitle(paste("Density of", x)) +
+      plot_theme(legend.position = c(.9, .9), title_size = 9,
+                 axis_title_size = 8)
+    
+  } else {
+    #relative frequency histogram
+    dat_tr = dat_train
+    dat_tr[, x] = as.character(dat_tr[, x])
+    
+    #relative frequency histogram
+    dat_tr$target = as.character(dat_tr[, target])
+    data1 = dat_tr %>%
+      dplyr::mutate(xn = dat_tr[, x]) %>%
+      dplyr::group_by(target) %>% dplyr::count(target, xn) %>%
+      dplyr::mutate(percent = n / sum(n))
+    data1$xn = factor(data1$xn, levels = rev(unique(data1$xn)))
+    data1$target = factor(data1$target, levels = rev(unique(data1$target)))
+    plot_1 = ggplot(data1, aes(x = data1$target, y = data1$percent, fill = data1$xn)) +
+      geom_bar(stat = "identity", position = position_stack()) +
+      geom_text(aes(label = paste(as_percent(data1$percent, digits = 3))),
+                size = ifelse(length(data1$xn) > 10, 2.1,
+                              ifelse(length(data1$xn) > 5, 2.5,
+                                     ifelse(length(data1$xn) > 3, 3, 3.3))), vjust = 0, hjust = 1, colour = 'white', position = position_stack()) +
+      coord_flip(xlim = NULL, ylim = NULL, expand = FALSE, clip = "off") +
+      guides(fill = guide_legend(reverse = TRUE)) +
+      ggtitle(paste("Relative Frequency of", x)) +
+      ylab(x) + xlab(target) +
+      scale_fill_manual(values = c(love_color(type = "deep")[1:6], love_color(type = "light")[1:8])) +
+      plot_theme(legend.position = "right", title_size = 9, legend_size = 7,
+                 axis_title_size = 8)
+  }
+  
+  if (!is.null(dat_test) || length(dat_test) > 1) {
+    dat_test = char_to_num(dat_test,char_list = x, note = FALSE)
+    if(class(dat_test[,x])[1] != class(dat_train[,x])[1]){
+      warning("The types of x in dat_test and dat_train are different!")
+      
+    }
+    df_ae = get_psi_iv(dat = dat_train, dat_test = dat_test,
+                       x = x, target = target, pos_flag = pos_flag,
+                       breaks_list = breaks_list,
+                       breaks = breaks,
+                       equal_bins = equal_bins,
+                       cut_bin = cut_bin,
+                       tree_control = tree_control,
+                       bins_control = bins_control,
+                       bins_total = FALSE,
+                       best = best, g = g, as_table = TRUE,
+                       note = FALSE, bins_no = TRUE)
+    ae_total <- data.table::melt(as.data.table(df_ae[c("bins", "%actual", "%expected")]),
+                                 id.vars = c("bins"),
+                                 variable.name = "actual_expected",
+                                 value.name = "value")
+    ae_1 <- data.table::melt(as.data.table(df_ae[c("bins", "%actual_1", "%expected_1")]),
+                             id.vars = c("bins"),
+                             variable.name = "actual_expected",
+                             value.name = "value")
+    
+    plot_2 <- ggplot(ae_total, aes(x = ae_total$bins,
+                                   y = ae_total$value,
+                                   fill = ae_total$actual_expected)) +
+      geom_bar(stat = "identity", position = position_dodge(width = 0.7)) +
+      geom_text(aes(y = ae_total$value,
+                    label = paste(as_percent(ae_total$value, digits = 3))),
+                position = position_dodge(width = 0.7),
+                size = ifelse(nrow(ae_total) > 10, 2.6,
+                              ifelse(nrow(ae_total) > 5, 2.8,
+                                     ifelse(nrow(ae_total) > 3, 3, 3.2))), vjust = 1, hjust = 0.3, colour = "white") +
+      geom_line(aes(x = factor(ae_1[[1]]),
+                    y = as.numeric(ae_1$value) * max(ae_total$value) * 4,
+                    color = ae_1$actual_expected,
+                    linetype = ae_1$actual_expected,
+                    group = ae_1$actual_expected),
+                position = position_dodge(width = 0.5), size = 1) +
+      geom_point(aes(y = as.numeric(ae_1$value) * max(ae_total$value) * 4,
+                     color = ae_1$actual_expected,
+                     group = ae_1$actual_expected),
+                 position = position_dodge(width = 0.5),
+                 fill = 'white', color = love_color("deep_red"), size = 2, shape = 21) +
+      geom_text(aes(y = as.numeric(ae_1$value) * max(ae_total$value) * 4,
+                    label = paste(as_percent(ae_1$value, digits = 3))),
+                position = position_dodge(width = 0.5),
+                colour = 'black',
+                size = ifelse(nrow(ae_total) > 10, 2.6,
+                              ifelse(nrow(ae_total) > 5, 2.8,
+                                     ifelse(nrow(ae_total) > 3, 3, 3.2))), vjust = -0.1) +
+      annotate(geom = 'text',
+               x = dim(ae_total)[1] / 3,
+               y = max(c(ae_total$value, as.numeric(ae_1$value) * max(ae_total$value) * 4)) + 0.09,
+               label = paste(paste("IV:", sum(df_ae$IVi)), paste('PSI:', sum(df_ae$PSIi)), sep = "   ")) +
+      scale_fill_manual(values = c('%actual' = love_color("deep_grey"),
+                                   '%expected' = love_color("light_yellow"))) +
+      scale_color_manual(values = c('%actual_1' = love_color("shallow_red"),
+                                    '%expected_1' = love_color("sky_blue"))) +
+      ylim(c(-0.01, max(c(ae_total$value, as.numeric(ae_1$value) * max(ae_total$value) * 4)) + 0.1)) +
+      xlab(x) + ylab("Total Percent") +
+      ggtitle(paste(x, "Distribution of Train/Expected and Test/Actual")) +
+      plot_theme(legend.position = "top",
+                 title_size = 9,
+                 axis_title_size = 8,
+                 angle = ifelse(nrow(ae_total) > 10, 60,
+                                ifelse(nrow(ae_total) > 5, 40,
+                                       ifelse(nrow(ae_total) > 3, 20, 10))),
+                 axis_size_x = ifelse(max(nchar(ae_total$bins)) > 30, 5,
+                                      ifelse(max(nchar(ae_total$bins)) > 20, 6,
+                                             ifelse(max(nchar(ae_total$bins)) > 10, 7, 8))))
+    
+  } else {
+    
+    if (is.null(breaks) & is.null(breaks_list)) {
+      
+      breaks = get_breaks(dat = dat_train, dat_test = dat_test,
+                          x = x, target = target, pos_flag = pos_flag,
+                          equal_bins = equal_bins,
+                          cut_bin = cut_bin,
+                          tree_control = tree_control,
+                          bins_control = bins_control,
+                          bins_total = FALSE,
+                          best = best, g = g, as_table = FALSE,
+                          note = FALSE, bins_no = TRUE)
+      
+    }
+    df_ae <- get_bins_table(dat = dat_train,
+                            x = x, target = target, pos_flag = pos_flag,
+                            breaks_list = breaks_list,
+                            breaks = breaks,
+                            bins_total = FALSE,
+                            note = FALSE)
+    tar_var = paste0("%", target)
+    plot_2 <- ggplot(df_ae, aes(x = df_ae$bins,
+                                y = de_percent(df_ae$`%total`, 3)
+    )) +
+      geom_bar(aes(fill = "%total"), stat = "identity", position = position_dodge(width = 0.7)) +
+      geom_text(aes(y = de_percent(df_ae$`%total`, 3),
+                    label = paste(df_ae$`%total`)),
+                position = position_dodge(width = 0.7),
+                size = ifelse(nrow(df_ae) > 10, 2.6,
+                              ifelse(nrow(df_ae) > 5, 2.8,
+                                     ifelse(nrow(df_ae) > 3, 3, 3.2))), vjust = 1, hjust = 0.3, colour = "white") +
+      geom_line(aes(x = factor(df_ae[['bins']]),
+                    y = de_percent(df_ae$bad_rate, 3) * max(de_percent(df_ae$`%total`, 3)) * 4,
+                    color = tar_var
+      ),
+      linetype = 1,
+      group = "%total",
+      position = position_dodge(width = 0.5), size = 1) +
+      geom_point(aes(y = de_percent(df_ae$bad_rate, 3) * max(de_percent(df_ae$`%total`, 3)) * 4
+      ),
+      color = love_color("deep_orange"),
+      group = 1,
+      position = position_dodge(width = 0.5),
+      fill = 'white', color = love_color("deep_red"), size = 2, shape = 21) +
+      geom_text(aes(y = de_percent(df_ae$bad_rate, 3) * max(de_percent(df_ae$`%total`, 3)) * 4,
+                    label = paste(df_ae$bad_rate)),
+                position = position_dodge(width = 0.5),
+                colour = 'black',
+                size = ifelse(nrow(df_ae) > 10, 2.6,
+                              ifelse(nrow(df_ae) > 5, 2.8,
+                                     ifelse(nrow(df_ae) > 3, 3, 3.2))), vjust = -0.1) +
+      annotate(geom = 'text',
+               x = dim(df_ae)[1] / 3,
+               y = max(c(de_percent(df_ae$`%total`, 3),
+                         de_percent(df_ae$bad_rate, 3) * max(de_percent(df_ae$`%total`, 3)) * 4)) + 0.09,
+               label = paste(paste("IV:", sum(df_ae$iv, na.rm = TRUE)))) +
+      scale_fill_manual(values = c("%total" = love_color("light_cyan"))) +
+      scale_color_manual(values = c(love_color("deep_orange"))) +
+      ylim(c(-0.01, max(c(de_percent(df_ae$`%total`, 3),
+                          de_percent(df_ae$bad_rate, 3) * max(de_percent(df_ae$`%total`, 3)) * 4)) + 0.05)) +
+      
+      guides(fill = guide_legend(title = NULL)) +
+      xlab(x) + ylab("percent") +
+      ggtitle(paste(x, " Distribution")) +
+      plot_theme(legend.position = "top",
+                 title_size = 9,
+                 axis_title_size = 8,
+                 angle = ifelse(nrow(df_ae) > 10, 60,
+                                ifelse(nrow(df_ae) > 5, 40,
+                                       ifelse(nrow(df_ae) > 3, 20, 10))),
+                 axis_size_x = ifelse(max(nchar(df_ae$bins)) > 30, 5,
+                                      ifelse(max(nchar(df_ae$bins)) > 20, 6,
+                                             ifelse(max(nchar(df_ae$bins)) > 10, 7, 8))))
+    
+    
+  }
+  if (save_data) {
+    ggsave(paste0(dir_path, paste(x, "png", sep = '.')),
+           plot = multi_grid(grobs = list(plot_1, plot_2), ncol = 2, nrow = 1),
+           width = g_width, height = g_width / 2, dpi = "retina")
+  }
+  if (plot_show) {
+    plot(multi_grid(grobs = list(plot_1, plot_2), ncol = 2, nrow = 1))
+  }
+  return(df_ae)
+  options(opt) # reset
 }
-
 
 #' Plot PSI(Population Stability Index)
 #'
@@ -1929,30 +1938,32 @@ plot_oot_perf = function(dat_test, x, occur_time, target, k = 3, g = 10, period 
 						 cut_bin = 'equal_depth', gtitle = NULL, perf_dir_path = NULL,
 						 save_data = FALSE, plot_show = TRUE) {
 	if (!(class(dat_test[, x]) %in% c("numeric", "double", "integer")) ||
-	     length(unique(dat_test[, x])) <= 10) {
+		 length(unique(dat_test[, x])) <= 10) {
 		dat_test[, x] = as.character(dat_test[, x])
 	}
 
 	if (!is.null(period) && period == "weekly") {
-		dat_test$cohort_group = cut(dat_test[, occur_time], breaks = "week")
+		dat_test = time_transfer(dat_test, date_cols = "occur_time")
+		dat_test$cohort_group = cut(as.Date(dat_test[, occur_time]), breaks = "week")
 		unique_wk = sort(unique(dat_test$cohort_group))
 		test_cv = list()
 		for (w in 1:length(unique_wk)) {
 			test_cv[[w]] = which(dat_test$cohort_group == unique_wk[w])
 			if (length(unique(dat_test[test_cv[[w]], target])) == 1 |
-	  		  length(unique(dat_test[test_cv[[w]], occur_time])) < 3) {
+				length(unique(dat_test[test_cv[[w]], occur_time])) < 3) {
 				test_cv[[w]] = NA
 			}
 		}
 	} else {
 		if (!is.null(period) && period == "month") {
-			dat_test$cohort_group = as.character(cut(dat_test[, occur_time], breaks = "month"))
+			dat_test = time_transfer(dat_test, date_cols = "occur_time")
+			dat_test$cohort_group = as.character(cut(as.Date(dat_test[, occur_time]), breaks = "month"))
 			unique_wk = sort(unique(dat_test$cohort_group))
 			test_cv = list()
 			for (w in 1:length(unique_wk)) {
 				test_cv[[w]] = which(dat_test$cohort_group == unique_wk[w])
 				if (length(unique(dat_test[test_cv[[w]], target])) == 1 |
-		 		   length(unique(dat_test[test_cv[[w]], occur_time])) < 3) {
+  				  length(unique(dat_test[test_cv[[w]], occur_time])) < 3) {
 					test_cv[[w]] = NA
 				}
 			}
@@ -1972,7 +1983,7 @@ plot_oot_perf = function(dat_test, x, occur_time, target, k = 3, g = 10, period 
 	cohort_group = c()
 	perf_list = list()
 	for (i in 1:length(test_cv)) {
-		max_time = gsub("-", "/", as.character(max(dat_test[test_cv[[i]],][,occur_time])))
+		max_time = gsub("-", "/", as.character(max(dat_test[test_cv[[i]],][, occur_time])))
 		min_time = gsub("-", "/", as.character(min(dat_test[test_cv[[i]],][, occur_time])))
 		cohort_group[i] = paste(min_time,
 							substring(max_time, nchar(max_time) - 4, nchar(max_time)), sep = "_")
@@ -1985,34 +1996,34 @@ plot_oot_perf = function(dat_test, x, occur_time, target, k = 3, g = 10, period 
 
 	cohort_dat = rbindlist(perf_list)
 	bins_n = length(unique(as.character(cohort_group)))
-	if(bins_n <= 4 ){
-	  values = love_color(all = TRUE, type = "line")
-	}else{
-	  if (bins_n <= 7) {
-	    values = love_color(all = TRUE, type = "deep")
-	  } else {
-	    if (bins_n > 7 & bins_n <= 15) {
-	      values = love_color(all = TRUE, type = "deep|light")
-	    } else {
-	      if (bins_n > 15 & bins_n <= 21) {
-	        values = love_color(all = TRUE, type = "deep|light|pale")
-	      } else {
-	        if (bins_n > 21 & bins_n <= 27) {
-	          values = love_color(all = TRUE, type = "deep|light|shallow|pale")
-	        } else {
-	          values = love_color(all = TRUE)
-	        }
-	      }
-	    }
-	  }
+	if (bins_n <= 4) {
+		values = love_color(all = TRUE, type = "line")
+	} else {
+		if (bins_n <= 7) {
+			values = love_color(all = TRUE, type = "deep")
+		} else {
+			if (bins_n > 7 & bins_n <= 15) {
+				values = love_color(all = TRUE, type = "deep|light")
+			} else {
+				if (bins_n > 15 & bins_n <= 21) {
+					values = love_color(all = TRUE, type = "deep|light|pale")
+				} else {
+					if (bins_n > 21 & bins_n <= 27) {
+						values = love_color(all = TRUE, type = "deep|light|shallow|pale")
+					} else {
+						values = love_color(all = TRUE)
+					}
+				}
+			}
+		}
 	}
 
-	Lift = bins = `%Pct_1` =NULL
+	Lift = bins = `%Pct_1` = NULL
 
 	if (pl == 'rate') {
 		p1 = ggplot(cohort_dat, aes(as.character(bins), `%Pct_1`)) +
   	  geom_line(aes(group = as.character(cohort_group), colour = as.character(cohort_group)),
-  	            size = 1.2) +
+				size = 1.2) +
   	  geom_point(aes(x = as.character(bins),
 					 y = `%Pct_1`, color = as.character(cohort_group)),
 				 size = 1.3, shape = 21, fill = 'white') +
@@ -2023,7 +2034,7 @@ plot_oot_perf = function(dat_test, x, occur_time, target, k = 3, g = 10, period 
 	} else {
 		p1 = ggplot(cohort_dat, aes(as.character(bins), Lift)) +
   	  geom_line(aes(group = as.character(cohort_group), colour = as.character(cohort_group)),
-  	            size = 1.2) +
+				size = 1.2) +
   	  geom_point(aes(x = as.character(bins),
 					 y = Lift, color = as.character(cohort_group)),
 				 size = 1.3, shape = 21, fill = 'white') +
@@ -2047,8 +2058,6 @@ plot_oot_perf = function(dat_test, x, occur_time, target, k = 3, g = 10, period 
 }
 
 
-
-
 #' cohort_table_plot
 #' \code{cohort_table_plot} is for ploting cohort(vintage) analysis table.
 #'
@@ -2056,31 +2065,32 @@ plot_oot_perf = function(dat_test, x, occur_time, target, k = 3, g = 10, period 
 #'
 #' @param cohort_dat  A data.frame generated by \code{cohort_analysis}.
 #' @import ggplot2
-#' @importFrom dplyr group_by mutate summarize  summarise n  count %>% filter
-#' @importFrom data.table melt dcast
 #' @export
 
-cohort_table_plot <- function(cohort_dat){
-    opt = options('warn' = -1,scipen = 200, stringsAsFactors = FALSE, digits = 6) #
-   cohort_dat[is.na(cohort_dat)] = 0
-   Cohort_Group= Cohort_Period =Events= Events_rate= Opening_Total= Retention_Total =cohor_dat= final_Events =m_a= max_age=NULL
-   ggplot(cohort_dat ,aes( reorder(paste0(Cohort_Period),Cohort_Period),
-                         Cohort_Group,fill=Events_rate))+
-    geom_tile(colour='white') +
-    geom_text(aes(label = as_percent(Events_rate,4)),
-              size = 3) +
-    scale_fill_gradient2(limits=c(0,max(cohort_dat$Events_rate)),
-                         low = love_color('deep_red'), mid ='white',
-                         high= love_color(),
+
+cohort_table_plot = function(cohort_dat) {
+  opt = options('warn' = -1, scipen = 200, stringsAsFactors = FALSE, digits = 6) #
+  cohort_dat[is.na(cohort_dat)] = 0
+  Cohort_Group = Cohort_Period = Events = Events_rate = Opening_Total = Retention_Total = cohor_dat = final_Events = m_a = max_age = NULL
+  cohort_plot = ggplot(cohort_dat, aes(reorder(paste0(Cohort_Period), Cohort_Period),
+                                       Cohort_Group, fill = Events_rate)) +
+    geom_tile(colour = 'white') +
+    geom_text(aes(label = as_percent(Events_rate, 4)), size = 3) +
+    scale_fill_gradient2(limits = c(0, max(cohort_dat$Events_rate)),
+                         low = love_color('deep_red'), mid = 'white',
+                         high = love_color(),
                          midpoint = median(cohort_dat$Events_rate,
-                                           na.rm =TRUE), na.value = love_color('pale_grey') ) +
+                                           na.rm = TRUE), 
+                         na.value = love_color('pale_grey')) +
     scale_y_discrete(limits = rev(unique(cohort_dat$Cohort_Group))) +
-    scale_x_discrete( position = "top")+
-    labs(x = "Cohort_Period", title="Cohort Analysis") +
-    theme( text = element_text(size = 15),rect = element_blank() )+
-    plot_theme(legend.position = 'right',angle = 0)
-    options(opt)
+    scale_x_discrete(position = "top") +
+    labs(x = "Cohort_Period", title = "Cohort Analysis") +
+    theme(text = element_text(size = 15), rect = element_blank()) +
+    plot_theme(legend.position = 'right', angle = 0)
+  return(cohort_plot)
+  options(opt)
 }
+
 
 #' cohort_plot
 #'
@@ -2136,310 +2146,311 @@ cohort_plot <- function(cohort_dat){
 #' plot_table(iv_dt)
 #' @export
 
-plot_table <- function(grid_table,theme = c("cyan","grey","green","red","blue","purple"),
-                      title= NULL,title.size = 12,title.color = 'black',title.face = "bold", title.position='middle',
-                      subtitle= NULL,subtitle.size = 8,subtitle.color = 'black',subtitle.face = "plain",
-                      subtitle.position='middle',
-                      tile.color = 'white',tile.size = 1,
-                      colname.size = 3,colname.color = 'white',colname.face = 'bold',
-                      colname.fill.color =love_color("dark_cyan"),
-                      text.size = 3,text.color =love_color("dark_grey"),
-                      text.face = 'plain', text.fill.color = c('white',love_color("pale_grey"))
-){
-  opt = options('warn' = -1,scipen = 200, stringsAsFactors = FALSE, digits = 6) #
-  grid_table = rbind(colnames(grid_table),as.data.frame(grid_table))
-  grid_table = cbind(rows = rownames(grid_table),as.data.frame(grid_table))
-  grid_table = as.data.table(grid_table)
-  table_1 = data.table::melt(grid_table, id=1, measure=2:ncol(grid_table), value.factor=TRUE)
-  grid_table = quick_as_df(grid_table)
-  table_1 = data.frame(table_1,ind =paste0("x",1:nrow(table_1)))
+plot_table <- function(grid_table, theme = c("cyan", "grey", "green", "red", "blue", "purple"),
+					  title = NULL, title.size = 12, title.color = 'black', title.face = "bold", title.position = 'middle',
+					  subtitle = NULL, subtitle.size = 8, subtitle.color = 'black', subtitle.face = "plain",
+					  subtitle.position = 'middle',
+					  tile.color = 'white', tile.size = 1,
+					  colname.size = 3, colname.color = 'white', colname.face = 'bold',
+					  colname.fill.color = love_color("dark_cyan"),
+					  text.size = 3, text.color = love_color("dark_grey"),
+					  text.face = 'plain', text.fill.color = c('white', love_color("pale_grey"))
+) {
+	opt = options('warn' = -1, scipen = 200, stringsAsFactors = FALSE, digits = 6) #
+	grid_table = rbind(colnames(grid_table), as.data.frame(grid_table))
+	grid_table = cbind(rows = rownames(grid_table), as.data.frame(grid_table))
+	grid_table = as.data.table(grid_table)
+	table_1 = data.table::melt(grid_table, id = 1, measure = 2:ncol(grid_table), value.factor = TRUE)
+	grid_table = quick_as_df(grid_table)
+	table_1 = data.frame(table_1, ind = paste0("x", 1:nrow(table_1)))
 
-  table_theme = check_table_theme(theme = theme)
-  if(!is.null(table_theme$colname.fill.color)&&!is.null(table_theme$text.fill.color)){
-    colname.fill.color = table_theme$colname.fill.color
-    text.fill.color = table_theme$text.fill.color
-  }
-  plot_ele = get_plot_elements(table_1 = table_1,grid_table = grid_table,colname.fill.color = colname.fill.color,
-  text.fill.color = text.fill.color,colname.color = colname.color,text.color = text.color,
-  colname.face = colname.face,text.face = text.face,colname.size = colname.size,text.size = text.size)
-  fill_colors = plot_ele$fill_colors
-  text_colors = plot_ele$text_colors
-  fill_size = plot_ele$fill_size
-  fill_bold = plot_ele$fill_bold
-  value_width = plot_ele$value_width
-  nudge_y = plot_ele$nudge_y
-  table_2 = rearrange_table(table_1 = table_1,grid_table = grid_table,colname.face = colname.face,
+	table_theme = check_table_theme(theme = theme)
+	if (!is.null(table_theme$colname.fill.color) && !is.null(table_theme$text.fill.color)) {
+		colname.fill.color = table_theme$colname.fill.color
+		text.fill.color = table_theme$text.fill.color
+	}
+	plot_ele = get_plot_elements(table_1 = table_1, grid_table = grid_table, colname.fill.color = colname.fill.color,
+  text.fill.color = text.fill.color, colname.color = colname.color, text.color = text.color,
+  colname.face = colname.face, text.face = text.face, colname.size = colname.size, text.size = text.size)
+	fill_colors = plot_ele$fill_colors
+	text_colors = plot_ele$text_colors
+	fill_size = plot_ele$fill_size
+	fill_bold = plot_ele$fill_bold
+	value_width = plot_ele$value_width
+	nudge_y = plot_ele$nudge_y
+	table_2 = rearrange_table(table_1 = table_1, grid_table = grid_table, colname.face = colname.face,
   colname.size = colname.size, text.size = text.size)
-  pl_tb = ggplot(table_2,aes(x = table_2$n_cumsum ,y = table_2$rows ))+
-    geom_tile(aes(  fill = table_2$ind ,width = table_2$n_width ),height = value_width,
-              show.legend = FALSE,colour = tile.color, size = tile.size)+
-    geom_text(nudge_x = c(-(table_2$n_width[-c((nrow(table_2)- length(unique(table_2$rows))+1):nrow(table_2))]/4
-    ),table_2$n_width[c((nrow(table_2)- length(unique(table_2$rows))+1):nrow(table_2))]*0)
-    ,nudge_y = nudge_y, aes(label = table_2$value), size = fill_size,
-    colour =  text_colors,fontface = fill_bold)+
-    labs(title = title, subtitle = subtitle ,x = "",y = "") +
-    scale_fill_manual(limits = table_2$ind ,values = fill_colors )+
-    scale_x_discrete(limits = c(1:nrow(table_2)-1)) +
-    scale_y_discrete(limits = rev(unique(table_2$rows))) +
-    theme(
-      legend.position = 'none',axis.ticks = element_blank(),axis.text = element_blank(),
-      plot.title	= element_text(face =title.face,size = title.size,color = title.color,
-                                hjust = ifelse(title.position == 'middle',0.5,
-                                               ifelse(title.position == 'right', 1,0)), vjust = 0),
-      plot.subtitle	= element_text(face = subtitle.face,size = subtitle.size,color = subtitle.color,
-                                   hjust = ifelse(subtitle.position == 'middle',0.5,
-                                                  ifelse(subtitle.position == 'right', 1,0)),vjust = 0),
-      rect = element_blank())
+	pl_tb = ggplot(table_2, aes(x = table_2$n_cumsum, y = table_2$rows)) +
+	geom_tile(aes(fill = table_2$ind, width = table_2$n_width), height = value_width,
+			  show.legend = FALSE, colour = tile.color, size = tile.size) +
+	geom_text(nudge_x = c(-(table_2$n_width[-c((nrow(table_2) - length(unique(table_2$rows)) + 1):nrow(table_2))] / 4
+	), table_2$n_width[c((nrow(table_2) - length(unique(table_2$rows)) + 1):nrow(table_2))] * 0)
+	, nudge_y = nudge_y, aes(label = table_2$value), size = fill_size,
+	colour = text_colors, fontface = fill_bold) +
+	labs(title = title, subtitle = subtitle, x = "", y = "") +
+	scale_fill_manual(limits = table_2$ind, values = fill_colors) +
+	scale_x_discrete(limits = c(1:nrow(table_2) - 1)) +
+	scale_y_discrete(limits = rev(unique(table_2$rows))) +
+	theme(
+	  legend.position = 'none', axis.ticks = element_blank(), axis.text = element_blank(),
+	  plot.title = element_text(face = title.face, size = title.size, color = title.color,
+								hjust = ifelse(title.position == 'middle', 0.5,
+											   ifelse(title.position == 'right', 1, 0)), vjust = 0),
+	  plot.subtitle = element_text(face = subtitle.face, size = subtitle.size, color = subtitle.color,
+								   hjust = ifelse(subtitle.position == 'middle', 0.5,
+												  ifelse(subtitle.position == 'right', 1, 0)), vjust = 0),
+	  rect = element_blank())
 	return(pl_tb)
-	 options(opt)
+	options(opt)
 
 }
 
-rearrange_table <- function(table_1,grid_table,colname.face, colname.size , text.size){
-  variable = n_char =n_width = rows = NULL
-  table_1$value =  sapply(table_1$value,function(x){
-    if(!is.na(x) && !x %in% colnames(grid_table[1,-1])){
-      if( nrow(grid_table)> 10){
-        if(nchar(x) > 20 & nchar(x) <= 40){
-          x = paste(substr(x,1,20),substr(x, 21,nchar(x)),sep = "\n")
-        }else{
-          if(nchar(x) >40 & nchar(x) <= 60){
-            x = paste(substr(x,1,20),substr(x, 21,40),substr(x, 41,nchar(x)),sep = "\n")
-          }else{
-            if(nchar(x) > 60 & nchar(x) <= 80){
-              x = paste(substr(x,1,20),substr(x, 21,40),substr(x, 41,60),
-                        substr(x,61,nchar(x)),sep = "\n")
-            }else{
-              if(nchar(x) > 80 & nchar(x) <= 100){
-                x = paste(substr(x,1,20),substr(x,21,40),substr(x, 41,60),
-                          substr(x,61,80),substr(x,81,nchar(x)),sep = "\n")
-              }else{
-                if(nchar(x) > 100 & nchar(x) <= 120){
-                  x = paste(substr(x,1,20),substr(x, 21,40),substr(x, 41,60),
-                            substr(x,61,80),substr(x,81,100),substr(x,101,nchar(x)),sep = "\n")
-                }else{
-                  if(nchar(x) > 120 & nchar(x) <= 140){
-                    x = paste(substr(x,1,20),substr(x, 21,40),substr(x, 41,60),
-                              substr(x,61,80),substr(x,81,100),substr(x,101,120),
-                              substr(x,121,nchar(x)),sep = "\n")
-                  }else{
-                    if(nchar(x) > 140){
-                      x = paste(substr(x,1,20),substr(x, 21,40),substr(x, 41,60),
-                                substr(x,61,80),substr(x,81,100),substr(x,101,120),
-                                substr(x,121,140),substr(x,141,nchar(x)),sep = "\n")
-                    }else{
-                      x
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }else{
-        if(nchar(x) > 25 & nchar(x) <= 50){
-          x = paste(substr(x,1,25),substr(x, 26,nchar(x)),sep = "\n")
-        }else{
-          if(nchar(x) >50 & nchar(x) <= 75){
-            x = paste(substr(x,1,25),substr(x, 26,50),substr(x, 51,nchar(x)),sep = "\n")
-          }else{
-            if(nchar(x) > 75 & nchar(x) <= 100){
-              x = paste(substr(x,1,25),substr(x, 26,50),substr(x, 51,75),
-                        substr(x,76,nchar(x)),sep = "\n")
-            }else{
-              if(nchar(x) > 100 & nchar(x) <= 125){
-                x = paste(substr(x,1,25),substr(x,26,50),substr(x, 51,75),
-                          substr(x,76,100),substr(x,101,nchar(x)),sep = "\n")
-              }else{
-                if(nchar(x) > 125){
-                  x = paste(substr(x,1,25),substr(x, 26,50),substr(x, 51,75),
-                            substr(x,76,100),substr(x,101,125),substr(x,126,nchar(x)),sep = "\n")
-                }else{
-                  x
-                }
-              }
-            }
-          }
-        }
-      }
-    }else{
-      if(!is.na(x) &&nchar(x) > 10  & nchar(x) <= 15){
-        x = paste(substr(x,1,8),substr(x, 9,nchar(x)),sep = "\n")
-      }else{
-        if(!is.na(x) &&nchar(x) > 15 ){
-          x = paste(substr(x,1,12),substr(x,13,nchar(x)),sep = "\n")
-        }else{
-          x
 
-        }
-      }
-    }
+rearrange_table <- function(table_1, grid_table, colname.face, colname.size, text.size) {
+	variable = n_char = n_width = rows = NULL
 
-  })
-  table_2= table_1 %>%
-    dplyr::mutate(n_char = unlist(
-      sapply(table_1$value,
-	  function(x)ifelse( colname.face == 'bold' &
-	  x %in% colnames(grid_table[1,-1]) & colname.size - text.size ==0,
-	  nchar(strsplit(x,"\n")[[1]][1])+ 4 ,
-	  ifelse( colname.face == 'bold'&
-	  colname.size - text.size !=0 & x %in% colnames(grid_table[1,-1]),
-	  nchar(strsplit(x,"\n")[[1]][1])+4,
-	  ifelse(colname.face != 'bold' & colname.size - text.size !=0&
-	  x %in% colnames(grid_table[1,-1])
-	  ,nchar(strsplit(x,"\n")[[1]][1]) + 2,
+	table_1$value = sapply(table_1$value, function(x) {
+		if (!is.na(x) && x %in% colnames(grid_table[1, -1])) {
+			if (nrow(grid_table) > 10) {
+				if (nchar(x) > 20 & nchar(x) <= 40) {
+					x = paste(substr(x, 1, 20), substr(x, 21, nchar(x)), sep = "\n")
+				} else {
+					if (nchar(x) > 40 & nchar(x) <= 60) {
+						x = paste(substr(x, 1, 20), substr(x, 21, 40), substr(x, 41, nchar(x)), sep = "\n")
+					} else {
+						if (nchar(x) > 60 & nchar(x) <= 80) {
+							x = paste(substr(x, 1, 20), substr(x, 21, 40), substr(x, 41, 60),
+						substr(x, 61, nchar(x)), sep = "\n")
+						} else {
+							if (nchar(x) > 80 & nchar(x) <= 100) {
+								x = paste(substr(x, 1, 20), substr(x, 21, 40), substr(x, 41, 60),
+						  substr(x, 61, 80), substr(x, 81, nchar(x)), sep = "\n")
+							} else {
+								if (nchar(x) > 100 & nchar(x) <= 120) {
+									x = paste(substr(x, 1, 20), substr(x, 21, 40), substr(x, 41, 60),
+							substr(x, 61, 80), substr(x, 81, 100), substr(x, 101, nchar(x)), sep = "\n")
+								} else {
+									if (nchar(x) > 120 & nchar(x) <= 140) {
+										x = paste(substr(x, 1, 20), substr(x, 21, 40), substr(x, 41, 60),
+							  substr(x, 61, 80), substr(x, 81, 100), substr(x, 101, 120),
+							  substr(x, 121, nchar(x)), sep = "\n")
+									} else {
+										if (nchar(x) > 140) {
+											x = paste(substr(x, 1, 20), substr(x, 21, 40), substr(x, 41, 60),
+								substr(x, 61, 80), substr(x, 81, 100), substr(x, 101, 120),
+								substr(x, 121, 140), substr(x, 141, nchar(x)), sep = "\n")
+										} else {
+											x
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+			} else {
+				if (nchar(x) > 25 & nchar(x) <= 50) {
+					x = paste(substr(x, 1, 25), substr(x, 26, nchar(x)), sep = "\n")
+				} else {
+					if (nchar(x) > 50 & nchar(x) <= 75) {
+						x = paste(substr(x, 1, 25), substr(x, 26, 50), substr(x, 51, nchar(x)), sep = "\n")
+					} else {
+						if (nchar(x) > 75 & nchar(x) <= 100) {
+							x = paste(substr(x, 1, 25), substr(x, 26, 50), substr(x, 51, 75),
+						substr(x, 76, nchar(x)), sep = "\n")
+						} else {
+							if (nchar(x) > 100 & nchar(x) <= 125) {
+								x = paste(substr(x, 1, 25), substr(x, 26, 50), substr(x, 51, 75),
+						  substr(x, 76, 100), substr(x, 101, nchar(x)), sep = "\n")
+							} else {
+								if (nchar(x) > 125) {
+									x = paste(substr(x, 1, 25), substr(x, 26, 50), substr(x, 51, 75),
+							substr(x, 76, 100), substr(x, 101, 125), substr(x, 126, nchar(x)), sep = "\n")
+								} else {
+									x
+								}
+							}
+						}
+					}
+				}
+			}
+		} else {
+			if (!is.na(x) && nchar(x) > 10 & nchar(x) <= 15) {
+				x = paste(substr(x, 1, 8), substr(x, 9, nchar(x)), sep = "\n")
+			} else {
+				if (!is.na(x) && nchar(x) > 15) {
+					x = paste(substr(x, 1, 12), substr(x, 13, nchar(x)), sep = "\n")
+				} else {
+					x
+
+				}
+			}
+		}
+
+	})
+	table_2 = table_1 %>%
+	dplyr::mutate(n_char = unlist(
+	  sapply(table_1$value,
+	  function(x) ifelse(colname.face == 'bold' &
+	  x %in% colnames(grid_table[1, -1]) & colname.size - text.size == 0,
+	  nchar(strsplit(x, "\n")[[1]][1]) + 0,
 	  ifelse(colname.face == 'bold' &
-	  x %in% colnames(grid_table[1,-1]) & colname.size - text.size ==0 ,
-	  nchar(strsplit(x,"\n")[[1]][1])+2,
-	  ifelse(colname.face == 'bold'|colname.size - text.size !=0 ,
-	  nchar(strsplit(x,"\n")[[1]][1])+2,
-	  nchar(strsplit(x,"\n")[[1]][1]))))))))) %>%
-    dplyr::group_by(variable) %>%
-    dplyr::mutate(n_width = max(n_char,na.rm = TRUE)) %>%
-    dplyr::ungroup() %>%
-    dplyr::group_by(rows) %>%
-    dplyr::mutate(n_cumsum = base::cumsum(n_width/2))%>%
-    dplyr::ungroup()
-
- return(table_2)
+	  colname.size - text.size != 0 & x %in% colnames(grid_table[1, -1]),
+	  nchar(strsplit(x, "\n")[[1]][1]) + 0,
+	  ifelse(colname.face != 'bold' & colname.size - text.size != 0 &
+	  x %in% colnames(grid_table[1, -1])
+	  , nchar(strsplit(x, "\n")[[1]][1]) + 0,
+	  ifelse(colname.face == 'bold' &
+	  x %in% colnames(grid_table[1, -1]) & colname.size - text.size == 0,
+	  nchar(strsplit(x, "\n")[[1]][1]) + 0,
+	  ifelse(colname.face == 'bold' | colname.size - text.size != 0,
+	  nchar(strsplit(x, "\n")[[1]][1]) +0,
+	  nchar(strsplit(x, "\n")[[1]][1]))))))))) %>%
+  	dplyr::group_by(variable) %>%
+	dplyr::mutate(n_width = max(n_char, na.rm = TRUE)) %>%
+	dplyr::ungroup() %>%
+	dplyr::group_by(rows) %>%
+	dplyr::mutate(n_cumsum = base::cumsum(n_width)/2) %>%
+	dplyr::ungroup()
+	return(table_2)
 }
 
-check_table_theme <- function(theme = NULL){
-  colname.fill.color = text.fill.color = NULL
-  if(length(theme) >0 &&
-     any(sapply(theme,function(x)is.element(x,c("cyan","grey","green","red","blue","purple"))))){
-    if(theme[1] == 'cyan'){
-      dark_cyan = rgb(40, 70, 100, maxColorValue = 255)
-      shallow_cyan = rgb(200, 230, 245, maxColorValue = 255)
-      pale_cyan = rgb(220, 240, 255, maxColorValue = 255)
-      colname.fill.color = dark_cyan
-      text.fill.color = c(pale_cyan, shallow_cyan)
-    }else{
-      if(theme[1] == 'grey'){
-        dark_grey = rgb(102, 102, 102, maxColorValue = 255)
-        shallow_grey = rgb(225, 226, 225, maxColorValue = 255)
-        pale_grey = rgb(240, 240, 240, maxColorValue = 255)
-        colname.fill.color = dark_grey
-        text.fill.color = c(pale_grey,shallow_grey)
+check_table_theme <- function(theme = NULL) {
+	colname.fill.color = text.fill.color = NULL
+	if (length(theme) > 0 &&
+   	 any(sapply(theme, function(x) is.element(x, c("cyan", "grey", "green", "red", "blue", "purple"))))) {
+		if (theme[1] == 'cyan') {
+			dark_cyan = rgb(40, 70, 100, maxColorValue = 255)
+			shallow_cyan = rgb(200, 230, 245, maxColorValue = 255)
+			pale_cyan = rgb(220, 240, 255, maxColorValue = 255)
+			colname.fill.color = dark_cyan
+			text.fill.color = c(pale_cyan, shallow_cyan)
+		} else {
+			if (theme[1] == 'grey') {
+				dark_grey = rgb(102, 102, 102, maxColorValue = 255)
+				shallow_grey = rgb(225, 226, 225, maxColorValue = 255)
+				pale_grey = rgb(240, 240, 240, maxColorValue = 255)
+				colname.fill.color = dark_grey
+				text.fill.color = c(pale_grey, shallow_grey)
 
-      }else{
-        if(theme[1] == 'red'){
-          dark_red = rgb(180,40, 40, maxColorValue = 255)
-          shallow_red = rgb(255,230, 230, maxColorValue = 255)
-          pale_red =rgb(255,242, 242, maxColorValue = 255)
-          colname.fill.color = dark_red
-          text.fill.color = c(pale_red,shallow_red)
-        }else{
-          if(theme[1] == 'blue'){
-            deep_blue = rgb(80, 99, 139, maxColorValue = 255)
-            shallow_blue = rgb(210, 232, 255, maxColorValue = 255)
-            pale_blue = rgb(227,240, 255, maxColorValue = 255)
-            colname.fill.color = deep_blue
-            text.fill.color = c(pale_blue,shallow_blue)
-          }else{
-            if(theme[1] == 'green'){
-              deep_green = rgb(50, 150, 150, maxColorValue = 255)
-              shallow_green =rgb(200, 240, 240, maxColorValue = 255)
-              pale_green = rgb(225, 255, 255, maxColorValue = 255)
-              colname.fill.color = deep_green
-              text.fill.color = c(pale_green,shallow_green)
-            }else{
-              if(theme[1] == 'purple'){
-                dark_purple = rgb(180, 50, 105, maxColorValue = 255)
-                shallow_purple = rgb(245, 225, 245, maxColorValue = 255)
-                pale_purple = rgb(255, 240, 255, maxColorValue = 255)
-                colname.fill.color = dark_purple
-                text.fill.color = c(pale_purple,shallow_purple)
-              }
+			} else {
+				if (theme[1] == 'red') {
+					dark_red = rgb(180, 40, 40, maxColorValue = 255)
+					shallow_red = rgb(255, 230, 230, maxColorValue = 255)
+					pale_red = rgb(255, 242, 242, maxColorValue = 255)
+					colname.fill.color = dark_red
+					text.fill.color = c(pale_red, shallow_red)
+				} else {
+					if (theme[1] == 'blue') {
+						deep_blue = rgb(80, 99, 139, maxColorValue = 255)
+						shallow_blue = rgb(210, 232, 255, maxColorValue = 255)
+						pale_blue = rgb(227, 240, 255, maxColorValue = 255)
+						colname.fill.color = deep_blue
+						text.fill.color = c(pale_blue, shallow_blue)
+					} else {
+						if (theme[1] == 'green') {
+							deep_green = rgb(50, 150, 150, maxColorValue = 255)
+							shallow_green = rgb(200, 240, 240, maxColorValue = 255)
+							pale_green = rgb(225, 255, 255, maxColorValue = 255)
+							colname.fill.color = deep_green
+							text.fill.color = c(pale_green, shallow_green)
+						} else {
+							if (theme[1] == 'purple') {
+								dark_purple = rgb(180, 50, 105, maxColorValue = 255)
+								shallow_purple = rgb(245, 225, 245, maxColorValue = 255)
+								pale_purple = rgb(255, 240, 255, maxColorValue = 255)
+								colname.fill.color = dark_purple
+								text.fill.color = c(pale_purple, shallow_purple)
+							}
 
-            }
-          }
-        }
-      }
-    }
-  }
-  return(list(colname.fill.color = colname.fill.color,text.fill.color = text.fill.color))
+						}
+					}
+				}
+			}
+		}
+	}
+	return(list(colname.fill.color = colname.fill.color, text.fill.color = text.fill.color))
 }
 
-get_plot_elements <- function(table_1,grid_table,colname.fill.color,text.fill.color,
-       colname.color,text.color,colname.face,text.face,colname.size,text.size){
-  fill_colors =  c()
-  m = 0
-  for(i in 1:length(table_1$value )){
-    if(nrow(grid_table)%%2 == 0  ){
-      m = m+1
-    }
-    if(table_1$value[i] %in% colnames(grid_table[1,-1])){
+get_plot_elements <- function(table_1, grid_table, colname.fill.color, text.fill.color,
+	   colname.color, text.color, colname.face, text.face, colname.size, text.size) {
+	fill_colors = c()
+	m = 0
+	for (i in 1:length(table_1$value)) {
+		if (nrow(grid_table) %% 2 == 0) {
+			m = m + 1
+		}
+		if (table_1$value[i] %in% colnames(grid_table[1, -1])) {
 
-      fill_colors = c(fill_colors, colname.fill.color[1])
-    }else{
-      if(nrow(grid_table)%%2 != 0  ){
-        m = m+1
-      }
-      if(length(text.fill.color)>1){
-        if(m%%2 == 0  ){
-          fill_colors = c(fill_colors,text.fill.color[1])
-        }else{
+			fill_colors = c(fill_colors, colname.fill.color[1])
+		} else {
+			if (nrow(grid_table) %% 2 != 0) {
+				m = m + 1
+			}
+			if (length(text.fill.color) > 1) {
+				if (m %% 2 == 0) {
+					fill_colors = c(fill_colors, text.fill.color[1])
+				} else {
 
-          fill_colors = c(fill_colors,text.fill.color[2])
-        }
+					fill_colors = c(fill_colors, text.fill.color[2])
+				}
 
-      }else{
-        fill_colors = c(fill_colors,text.fill.color[1])
+			} else {
+				fill_colors = c(fill_colors, text.fill.color[1])
 
-      }
-    }
-  }
+			}
+		}
+	}
 
-  text_colors = c()
-  for(i in 1:length(table_1$value )){
-    if(table_1$value[i] %in% colnames(grid_table[1,-1])){
+	text_colors = c()
+	for (i in 1:length(table_1$value)) {
+		if (table_1$value[i] %in% colnames(grid_table[1, -1])) {
 
-      text_colors = c(text_colors,colname.color)
-    }else{
-      text_colors = c(text_colors,text.color )
-    }
-  }
+			text_colors = c(text_colors, colname.color)
+		} else {
+			text_colors = c(text_colors, text.color)
+		}
+	}
 
-  fill_size = c()
-  for(i in 1:length(table_1$value )){
-    if(table_1$value[i] %in% colnames(grid_table[1,-1])){
+	fill_size = c()
+	for (i in 1:length(table_1$value)) {
+		if (table_1$value[i] %in% colnames(grid_table[1, -1])) {
 
-      fill_size = c(fill_size, colname.size)
-    }else{
-      fill_size = c(fill_size,text.size)
-    }
-  }
+			fill_size = c(fill_size, colname.size)
+		} else {
+			fill_size = c(fill_size, text.size)
+		}
+	}
 
-  fill_bold = c()
-  for(i in 1:length(table_1$value )){
-    if(table_1$value[i] %in% colnames(grid_table[1,-1])){
-      fill_bold =  c(fill_bold,colname.face)
-    }else{
-      fill_bold = c(fill_bold,text.face)
-    }
-  }
-  value_width = c()
-  for(i in 1:length(table_1$value )){
-    if(table_1$value[i] %in% colnames(grid_table[1,-1]) && any(nchar(colnames(grid_table[1,-1]))>10)){
-      value_width =  c(value_width,2)
-    }else{
+	fill_bold = c()
+	for (i in 1:length(table_1$value)) {
+		if (table_1$value[i] %in% colnames(grid_table[1, -1])) {
+			fill_bold = c(fill_bold, colname.face)
+		} else {
+			fill_bold = c(fill_bold, text.face)
+		}
+	}
+	value_width = c()
+	for (i in 1:length(table_1$value)) {
+		if (table_1$value[i] %in% colnames(grid_table[1, -1]) && any(nchar(colnames(grid_table[1, -1])) > 10)) {
+			value_width = c(value_width, 2)
+		} else {
 
-      value_width =  c(value_width,1)
-    }
-  }
-  nudge_y = c()
-  for(i in 1:length(table_1$value )){
-    if(table_1$value[i] %in% colnames(grid_table[1,-1]) && any(nchar(colnames(grid_table[1,-1]))>10)){
-      nudge_y =  c(nudge_y,0.05)
-    }else{
+			value_width = c(value_width, 1)
+		}
+	}
+	nudge_y = c()
+	for (i in 1:length(table_1$value)) {
+		if (table_1$value[i] %in% colnames(grid_table[1, -1]) && any(nchar(colnames(grid_table[1, -1])) > 10)) {
+			nudge_y = c(nudge_y, 0.05)
+		} else {
 
-      nudge_y =  c(nudge_y,0)
-    }
-  }
+			nudge_y = c(nudge_y, 0)
+		}
+	}
 
-  return(list(fill_colors = fill_colors ,text_colors = text_colors, fill_size = fill_size,
-           fill_bold = fill_bold,value_width = value_width,nudge_y = nudge_y ))
+	return(list(fill_colors = fill_colors, text_colors = text_colors, fill_size = fill_size,
+		   fill_bold = fill_bold, value_width = value_width, nudge_y = nudge_y))
 }
 
 #' @title Arrange list of plots into a grid
@@ -2488,129 +2499,493 @@ get_plot_elements <- function(table_1,grid_table,colname.fill.color,text.fill.co
 #' plot(p_plots)
 #' @export
 
-multi_grid <- function(...,grobs=list(...),
-                         nrow=NULL, ncol=NULL){
-  n <- length(grobs)
-  if (is.null(nrow) && !is.null(ncol)) {
-    nrow <- ceiling(n/ncol)
-  }
-  if (is.null(ncol) && !is.null(nrow)) {
-    ncol <- ceiling(n/nrow)
-  }
-  stopifnot(nrow * ncol >= n)
-  if(is.null(nrow) && is.null(ncol)) {
-    if(n <= 3){
-      nrow = n
-      ncol = 1
-      }else{
-        if(n <= 6){
-          nrow = (n + 1)%/%2
-          ncol = 2
-          }else{
-            if(n <= 12){
-              nrow = (n + 2)%/%3
-              ncol = 3
-              }else{
-                nrow = ceiling(sqrt(n))
-                ncol = ceiling(n/nrow)
-              }
-          }
-      }
-  }
-  inherit.ggplot <-  unlist(lapply(grobs, inherits, what="ggplot"))
+multi_grid <- function(..., grobs = list(...),
+						 nrow = NULL, ncol = NULL) {
+	n <- length(grobs)
+	if (is.null(nrow) && !is.null(ncol)) {
+		nrow <- ceiling(n / ncol)
+	}
+	if (is.null(ncol) && !is.null(nrow)) {
+		ncol <- ceiling(n / nrow)
+	}
+	stopifnot(nrow * ncol >= n)
+	if (is.null(nrow) && is.null(ncol)) {
+		if (n <= 3) {
+			nrow = n
+			ncol = 1
+		} else {
+			if (n <= 6) {
+				nrow = (n + 1) %/% 2
+				ncol = 2
+			} else {
+				if (n <= 12) {
+					nrow = (n + 2) %/% 3
+					ncol = 3
+				} else {
+					nrow = ceiling(sqrt(n))
+					ncol = ceiling(n / nrow)
+				}
+			}
+		}
+	}
+	inherit.ggplot <- unlist(lapply(grobs, inherits, what = "ggplot"))
 
-  if(any(inherit.ggplot)) {
-    stopifnot(requireNamespace("ggplot2", quietly = TRUE))
-    toconv <- which(inherit.ggplot)
-    grobs[toconv] <- lapply(grobs[toconv], ggplot2::ggplotGrob)
-  }
-  positions <- expand.grid(t = seq_len(nrow),
-                           l = seq_len(ncol))
-  positions$b <- positions$t
-  positions$r <- positions$l
-  positions <- positions[order(positions$t),]
-  positions <- positions[seq_along(grobs), ]
-  ## sizes
-  widths <- unit(rep(1, ncol), "null")
-  heights <- unit(rep(1,nrow), "null")
+	if (any(inherit.ggplot)) {
+		stopifnot(requireNamespace("ggplot2", quietly = TRUE))
+		toconv <- which(inherit.ggplot)
+		grobs[toconv] <- lapply(grobs[toconv], ggplot2::ggplotGrob)
+	}
+	positions <- expand.grid(t = seq_len(nrow),
+						   l = seq_len(ncol))
+	positions$b <- positions$t
+	positions$r <- positions$l
+	positions <- positions[order(positions$t),]
+	positions <- positions[seq_along(grobs),]
+	## sizes
+	widths <- unit(rep(1, ncol), "null")
+	heights <- unit(rep(1, nrow), "null")
 
-  grob_table <- to_gtable(name="arrange",
+	grob_table <- to_gtable(name = "arrange",
 
-               heights = heights,
-               widths = widths)
+			   heights = heights,
+			   widths = widths)
 
-  grob_table <- add_grobs(x = grob_table, grobs,
-                        t = positions$t,
-                        b = positions$b,
-                        l = positions$l,
-                        r = positions$r,
-                        z = seq_along(grobs),
-                        clip =  "off")
-  grob_table
+	grob_table <- add_grobs(x = grob_table, grobs,
+						t = positions$t,
+						b = positions$b,
+						l = positions$l,
+						r = positions$r,
+						z = seq_along(grobs),
+						clip = "off")
+	grob_table
 }
 
-to_gtable = function (widths = list(), heights = list(),
-                   name = "layout"){
-  layout <- new_data_frame(list(t = numeric(), l = numeric(),
-                                b = numeric(), r = numeric(), z = numeric(), clip = character(),
-                                name = character()), n = 0)
-  grid::gTree(grobs = list(), layout = layout, widths = widths, heights = heights,
-              respect = FALSE, name = name, rownames = NULL,
-              colnames = NULL, vp = NULL, cl = "gtable")
+to_gtable = function(widths = list(), heights = list(),
+				   name = "layout") {
+	layout <- new_data_frame(list(t = numeric(), l = numeric(),
+								b = numeric(), r = numeric(), z = numeric(), clip = character(),
+								name = character()), n = 0)
+	grid::gTree(grobs = list(), layout = layout, widths = widths, heights = heights,
+			  respect = FALSE, name = name, rownames = NULL,
+			  colnames = NULL, vp = NULL, cl = "gtable")
 }
 
 
-add_grobs <- function (x, grobs, t, l, b = t, r = l, z = Inf, clip = "off",
-                            name = x$name){
+add_grobs <- function(x, grobs, t, l, b = t, r = l, z = Inf, clip = "off",
+							name = x$name) {
 
-  n_grobs <- length(grobs)
-  layout <- unclass(x$layout)
-  z <- rep(z, length.out = n_grobs)
-  zval <- c(layout$z, z[!is.infinite(z)])
-  if (length(zval) == 0) {
-    zmin <- 1
-    zmax <- 0
-  } else {
-    zmin <- min(zval)
-    zmax <- max(zval)
-  }
-  z[z == -Inf] <- zmin - rev(seq_len(sum(z == -Inf)))
-  z[z == Inf] <- zmax + seq_len(sum(z == Inf))
-  x_row <- length(x$heights)
-  x_col <- length(x$widths)
-  t <- rep(neg_to_pos(t, x_row), length.out = n_grobs)
-  b <- rep(neg_to_pos(b, x_row), length.out = n_grobs)
-  l <- rep(neg_to_pos(l, x_col), length.out = n_grobs)
-  r <- rep(neg_to_pos(r, x_col), length.out = n_grobs)
-  clip <- rep(clip, length.out = n_grobs)
-  name <- rep(name, length.out = n_grobs)
-  x$grobs <- c(x$grobs, grobs)
-  x$layout <- new_data_frame(list(t = c(layout$t, t), l = c(layout$l,
-                                                            l), b = c(layout$b, b),
-                                  r = c(layout$r, r), z = c(layout$z,   z),
-                                  clip = c(layout$clip, clip), name = c(layout$name,
-                                                                        name)))
-  x
+	n_grobs <- length(grobs)
+	layout <- unclass(x$layout)
+	z <- rep(z, length.out = n_grobs)
+	zval <- c(layout$z, z[!is.infinite(z)])
+	if (length(zval) == 0) {
+		zmin <- 1
+		zmax <- 0
+	} else {
+		zmin <- min(zval)
+		zmax <- max(zval)
+	}
+	z[z == -Inf] <- zmin - rev(seq_len(sum(z == -Inf)))
+	z[z == Inf] <- zmax + seq_len(sum(z == Inf))
+	x_row <- length(x$heights)
+	x_col <- length(x$widths)
+	t <- rep(neg_to_pos(t, x_row), length.out = n_grobs)
+	b <- rep(neg_to_pos(b, x_row), length.out = n_grobs)
+	l <- rep(neg_to_pos(l, x_col), length.out = n_grobs)
+	r <- rep(neg_to_pos(r, x_col), length.out = n_grobs)
+	clip <- rep(clip, length.out = n_grobs)
+	name <- rep(name, length.out = n_grobs)
+	x$grobs <- c(x$grobs, grobs)
+	x$layout <- new_data_frame(list(t = c(layout$t, t), l = c(layout$l,
+															l), b = c(layout$b, b),
+								  r = c(layout$r, r), z = c(layout$z, z),
+								  clip = c(layout$clip, clip), name = c(layout$name,
+																		name)))
+	x
 }
 
 neg_to_pos <- function(x, max) {
-  ifelse(x >= 0, x, max + 1 + x)
+	ifelse(x >= 0, x, max + 1 + x)
 }
 
 new_data_frame <- function(x = list(), n = NULL) {
-  if (length(x) != 0 && is.null(names(x))) stop("Elements must be named", call. = FALSE)
-  lengths <- vapply(x, length, integer(1))
-  if (is.null(n)) {
-    n <- if (length(x) == 0 || min(lengths) == 0) 0 else max(lengths)
-  }
-  for (i in seq_along(x)) {
-    if (lengths[i] == n) next
-    if (lengths[i] != 1) stop("Elements must equal the number of rows or 1", call. = FALSE)
-    x[[i]] <- rep(x[[i]], n)
-  }
+	if (length(x) != 0 && is.null(names(x))) stop("Elements must be named", call. = FALSE)
+	lengths <- vapply(x, length, integer(1))
+	if (is.null(n)) {
+		n <- if (length(x) == 0 || min(lengths) == 0) 0 else max(lengths)
+	}
+	for (i in seq_along(x)) {
+		if (lengths[i] == n) next
+		if (lengths[i] != 1) stop("Elements must equal the number of rows or 1", call. = FALSE)
+		x[[i]] <- rep(x[[i]], n)
+	}
 
-  class(x) <- "data.frame"
+	class(x) <- "data.frame"
 
-  attr(x, "row.names") <- .set_row_names(n)
-  x
+	attr(x, "row.names") <- .set_row_names(n)
+	x
+}
+
+#' Plot Density
+#'
+#' You can use the \code{plot_density} to produce plots that characterize the density.
+#' @param dat A data.frame with independent variables and target variable.
+#' @param x The name of an independent variable.
+#' @param y The name of target variable.
+#' @param m  The outlier cutoff.
+#' @param g  Number of initial breakpoints for equal frequency binning.
+#' @param y_breaks Breaks points of y.
+#' @param binwidth Windth of bins for histogram.
+#' @param hist If plot the histogram.
+#' @param colors_y colors of y.
+#' @examples
+#' plot_density(dat = lendingclub, x = "annual_inc",y = "emp_length", m =0, hist = FALSE)
+#' plot_density(dat = lendingclub, x = "annual_inc", m = 2,
+#' colors_y = love_color(type = "line")[c(1,3)])
+#' @import ggplot2
+#' @importFrom dplyr group_by mutate summarize  summarise n  count %>% filter mutate_if distinct ungroup
+#' @export
+
+
+
+plot_density <- function(dat, x, y = NULL, m = 3, g = 5, y_breaks = NULL, binwidth = NULL, hist = TRUE, colors_y = c(love_color(type = "deep"), love_color(type = "light"), love_color(type = "shallow"))) {
+	dat[[x]] = outlier_fuc(dat[[x]], m = m)
+	..density.. = NULL
+	max_min = abs(max(dat[[x]], na.rm = TRUE) - min(dat[[x]], na.rm = TRUE))
+	if (is.null(binwidth)) {
+		binwidth = 1
+		if (!is.na(max_min) && max_min != 0) {
+			if (max_min <= 100 & digits_num(dat[[x]]) == 0) {
+				binwidth = 1
+			} else {
+				n1 = floor(log(max_min / 100, 10))
+				binwidth = round(max_min / 100, - n1)
+			}
+		}
+	}
+	if (is.null(y)) {
+		if (hist) {
+			densitychart = ggplot(dat, aes(dat[[x]])) +
+	  	  geom_histogram(position = 'identity', aes(y = ..density..),
+					 fill = colors_y[2], alpha = 0.5, binwidth = binwidth) +
+				  stat_density(geom = 'line', position = 'identity', color = colors_y[1], size = 1) +
+				  ggtitle(paste('Density Distribution of', x)) + xlab(x) + plot_theme()
+		} else {
+			densitychart = ggplot(dat, aes(dat[[x]])) +
+				  stat_density(geom = 'line', position = 'identity', color = colors_y[1], size = 1) +
+				  ggtitle(paste('Density Distribution of', x)) + xlab(x) + plot_theme()
+
+		}
+
+	} else {
+		if (class(dat[, y]) %in% c("numeric", "double", "integer") && length(unique(dat[, y])) > 10) {
+			if (is.null(y_breaks)) {
+				y_breaks = get_breaks(dat, x = y, g = g, equal_bins = TRUE, cut_bin = "equal_depth")
+			}
+		} else {
+			dat[, y] = as.character(dat[, y])
+			dat = merge_category(dat = dat, char_list  = y, m = g, note = FALSE)
+			y_breaks = unique(dat[, y])
+		}
+		dat[["xs"]] = split_bins(dat = dat, x = y, breaks = y_breaks, bins_no = FALSE)
+		dat[["xs"]] = factor(dat[["xs"]], levels = sort(unique(dat[["xs"]])))
+
+		if (is.null(colors_y) && length(colors_y) < length(unique(dat[["xs"]]))) {
+			colors_y = c(love_color(type = "deep"), love_color(type = "light"), love_color(type = "shallow"), love_color(type = "dark"))
+		}
+
+		if (hist) {
+			densitychart = ggplot(dat, aes(dat[[x]], fill = dat[["xs"]])) +
+  		  geom_histogram(position = 'identity', aes(y = ..density..),
+		alpha = 0.5, binwidth = binwidth) +
+			stat_density(geom = 'line', position = 'identity', aes(color = dat[["xs"]]), size = 1) +
+			scale_fill_manual(values = colors_y) +
+				  scale_color_manual(values = colors_y) +
+  		  ggtitle(paste('Density Distribution of', y, "-", x)) + xlab(x) + plot_theme()
+
+		} else {
+			densitychart = ggplot(dat, aes(dat[[x]], fill = dat[["xs"]])) +
+			stat_density(geom = 'line', position = 'identity', aes(color = dat[["xs"]]), size = 1) +
+			scale_fill_manual(values = colors_y) +
+				  scale_color_manual(values = colors_y) +
+			ggtitle(paste('Density Distribution of', y, "-", x)) + xlab(x) + plot_theme()
+		}
+	}
+
+	return(densitychart)
+}
+
+#' Plot Bar
+#'
+#' You can use the \code{plot_bar} to produce the barplot.
+#' @param dat A data.frame with independent variables and target variable.
+#' @param x The name of an independent variable.
+#' @param g  Number of initial breakpoints for equal frequency binning.
+#' @param breaks Breaks points of x.
+#' @param cut_bin  'equal_width' or 'equal_depth'
+#' @examples
+#' plot_bar(dat = lendingclub, x = "grade")
+#' @import ggplot2
+#' @importFrom dplyr group_by mutate summarize  summarise n  count %>% filter mutate_if distinct ungroup
+#' @export
+
+
+plot_bar <- function(dat, x, breaks = NULL, g = 10, cut_bin = 'equal_width') {
+    xs = percent = NULL
+	if (class(dat[, x]) %in% c("numeric", "double", "integer") && length(unique(dat[, x])) > g) {
+		if (is.null(breaks)) {
+			breaks = get_breaks(dat, x = x, g = g, equal_bins = TRUE, cut_bin = cut_bin)
+		}
+	} else {
+		dat[, x] = as.character(dat[, x])
+		dat = merge_category(dat = dat, char_list  = x, m = g, note = FALSE)
+		breaks = unique(dat[, x])
+	}
+
+	dat[["xs"]] = split_bins(dat = dat, x = x, breaks = breaks)
+	data1 = dat %>% dplyr::count(xs) %>% mutate(percent = n / sum(n))
+	barchart = ggplot(data1, aes(x = xs, y = percent)) +
+	  geom_bar(stat = 'identity', fill = love_color(type = "line")[2]) +
+	  geom_text(aes(label = paste(round(percent, 3) * 100, "%")),
+				size = 2.5, vjust = 1, hjust = 0.5,
+				color = love_color(type = "line")[4], position = position_stack()) +
+			  guides(fill = guide_legend(reverse = TRUE)) +
+				 ggtitle(paste("Frequency of", x)) +
+			  xlab(x) + ylab("percent") + plot_theme(axis_size_x = 6)
+	return(barchart)
+}
+
+
+#' Plot Relative Frequency Histogram
+#'
+#' You can use the \code{plot_relative_freq_histogram} to produce the relative frequency histogram plots.
+#' @param dat A data.frame with independent variables and target variable.
+#' @param x The name of an independent variable.
+#' @param y The name of target variable. Default is NULL.
+#' @param g  Number of initial breakpoints for equal frequency binning.
+#' @param x_breaks Breaks points of x.
+#' @param y_breaks Breaks points of y.
+#' @param cut_bin  'equal_width' or 'equal_depth' to produce the breaks points.
+#' @examples
+#' plot_relative_freq_histogram(dat = lendingclub, x = "grade", y = "dti_joint", g = 7,
+#'		cut_bin = 'equal_width')
+#' @import ggplot2
+#' @importFrom dplyr group_by mutate summarize  summarise n  count %>% filter mutate_if distinct ungroup
+#' @export
+
+
+
+plot_relative_freq_histogram <- function(dat, x, y = NULL, x_breaks = NULL, y_breaks = NULL, g = 10, cut_bin = 'equal_width') {
+	#relative frequency histogram
+	dat = char_to_num(dat[c(x,y)], note = FALSE)
+	if (class(dat[, x]) %in% c("numeric", "double", "integer") && length(unique(dat[, x])) > g) {
+		if (is.null(x_breaks)) {
+			x_breaks = get_breaks(dat, x = x, g = g, equal_bins = TRUE, cut_bin = cut_bin)
+		}
+	} else {
+		dat[, x] = as.character(dat[, x])
+		dat = merge_category(dat = dat, char_list  = x, m = g, note = FALSE)
+		x_breaks = unique(dat[, x])
+	}
+	dat$x = split_bins(dat = dat, x = x, breaks = x_breaks, bins_no = TRUE)
+
+	if (!is.null(y)) {
+		if (class(dat[, y]) %in% c("numeric", "double", "integer") && length(unique(dat[, y])) > g) {
+			if (is.null(y_breaks)) {
+				y_breaks = get_breaks(dat, x = y, g = g, equal_bins = TRUE, cut_bin = cut_bin)
+			}
+		} else {
+			dat[, y] = as.character(dat[, y])
+			dat = merge_category(dat = dat, char_list = y, m = g, note = FALSE)
+			y_breaks = unique(dat[, y])
+		}
+		dat$x = factor(dat[["x"]], levels = rev(sort(unique(dat[["x"]]))))
+		dat$y = split_bins(dat = dat, x = y, breaks = y_breaks, bins_no = TRUE)
+		dat$y = factor(dat[["y"]], levels = rev(sort(unique(dat[["y"]]))))
+		data1 = dat %>%
+  	  dplyr::group_by(y) %>% dplyr::count(y, x) %>%
+  	  dplyr::mutate(percent = n / sum(n))
+		data1$xn = factor(data1$x, levels = rev(unique(data1$x)))
+		data1$target = factor(data1$y, levels = rev(unique(data1$y)))
+		relative_freq_hist <- ggplot(data1, aes(x = data1$y, y = data1$percent, fill = data1$x)) +
+  	  geom_bar(stat = "identity", position = position_stack()) +
+  	  geom_text(aes(label = paste(as_percent(data1$percent, digits = 3))),
+				size = ifelse(length(data1$x) > 10, 2.1,
+							  ifelse(length(data1$x) > 5, 2.5,
+									 ifelse(length(data1$x) > 3, 3, 3.3))), vjust = 0, hjust = 1, colour = 'white', position = position_stack()) +
+									 coord_flip(xlim = NULL, ylim = NULL, expand = FALSE, clip = "off") +
+									 guides(fill = guide_legend(reverse = TRUE)) +
+									 ggtitle(paste("Relative Frequency of", x, "-",y)) +
+			 ylab(x) + xlab(y) +
+								  scale_fill_manual(values = c(love_color(type = "deep")[1:6], love_color(type = "light")[1:8])) +
+								  plot_theme(legend.position = "right", title_size = 9, legend_size = 7,
+							  axis_title_size = 8)
+	} else {
+		dat$y = "1"
+		dat$x = factor(dat[["x"]], levels = sort(unique(dat[["x"]])))
+		data1 = dat %>%
+  	  dplyr::group_by(y) %>% dplyr::count(y, x) %>%
+  	  dplyr::mutate(percent = n / sum(n))
+		data1$xn = factor(data1$x, levels = rev(unique(data1$x)))
+		data1$target = factor(data1$y, levels = rev(unique(data1$y)))
+		relative_freq_hist <- ggplot(data1, aes(x = data1$y, y = data1$percent, fill = data1$x)) +
+  	  geom_bar(stat = "identity", position = position_stack()) +
+  	  geom_text(aes(label = paste(as_percent(data1$percent, digits = 3))),
+				size = ifelse(length(data1$x) > 10, 2.1,
+							  ifelse(length(data1$x) > 5, 2.5,
+									 ifelse(length(data1$x) > 3, 3, 3.3))), vjust = 1, hjust = 0, colour = 'white', position = position_stack()) +
+									 guides(fill = guide_legend(reverse = FALSE)) +
+									 ggtitle(paste("Relative Frequency of", x,"-",y)) +
+			 ylab("percent") + xlab(x) +
+								  scale_fill_manual(values = c(love_color(type = "deep")[1:6], love_color(type = "light")[1:8])) +
+								  plot_theme(legend.position = "right", title_size = 9, legend_size = 7,
+							  axis_title_size = 8)
+	}
+	return(relative_freq_hist)
+}
+
+
+
+#' Plot Distribution
+#'
+#' You can use the \code{plot_distribution_x} to produce the distrbution plot of a variable.
+#' You can use the \code{plot_distribution} to produce the plots of distrbutions of all variables.
+#' @param dat A data.frame with independent variables and target variable.
+#' @param x  The name of an independent variable.
+#' @param x_list Names of independent variables.
+#' @param breaks Splitting points for an independent variable. Default is NULL.
+#' @param breaks_list A table containing a list of splitting points for each independent variable. Default is NULL.
+#' @param g  Number of initial breakpoints for equal frequency binning.
+#' @param m  The outlier cutoff.
+#' @param cut_bin A string, if equal_bins is TRUE, 'equal_depth' or 'equal_width', default is 'equal_depth'.
+#' @param binwidth Windth of bins for histogram.
+#' @param dir_path The path for periodically saved graphic files.
+#' @examples
+#' plot_distribution_x(dat = lendingclub, x = "max_bal_bc", g = 10,
+#'		cut_bin = 'equal_width')
+#' plot_distribution(dat = lendingclub, x_list = c("max_bal_bc", "installment"), 
+#'      g = 10,dir_path = tempdir(),
+#'		cut_bin = 'equal_width')
+#' @import ggplot2
+#' @importFrom dplyr group_by mutate summarize  summarise n  count %>% filter mutate_if distinct ungroup
+#' @export
+
+
+plot_distribution <- function(dat, x_list = NULL, dir_path = tempdir(), breaks_list = NULL, g = 10, m = 3, cut_bin = 'equal_width') {
+	if (is.null(x_list)) {
+		x_list = get_names(dat)
+	}
+	dat = checking_data(dat)
+	for (x in x_list) {
+		if (!is.null(breaks_list)) {
+			if (any(as.character(breaks_list[, "Feature"]) == names(dat[x]))) {
+				breaks = breaks_list[which(as.character(breaks_list[, "Feature"]) == names(dat[x])), "cuts"]
+
+			} else {
+				breaks = get_breaks(dat = dat, x = x, g = g, equal_bins = TRUE, cut_bin = cut_bin)
+			}
+		} else {
+			breaks = get_breaks(dat = dat, x = x, g = g, equal_bins = TRUE, cut_bin = cut_bin)
+		}
+		if (class(dat[, x]) %in% c("numeric", "double", "integer") && length(unique(dat[, x])) > 10) {
+			densitychart = plot_density(dat = dat, x = x, m = m)
+			barchart = plot_bar(dat = dat, x = x, g = g, breaks = breaks, cut_bin = cut_bin)
+			distri_plot = multi_grid(grobs = list(densitychart, barchart), ncol = 2, nrow = 1)
+		} else {
+			relative_freqchart = plot_relative_freq_histogram(dat = dat, x = x)
+			barchart = plot_bar(dat = dat, x = x, g = g, breaks = breaks, cut_bin = cut_bin)
+			distri_plot = multi_grid(grobs = list(relative_freqchart, barchart), ncol = 2, nrow = 1)
+		}
+		ggsave(paste0(dir_path, "/", x, ".png"),
+		  plot = distri_plot,
+		  width = 9, height = 9 / 2, dpi = "retina")
+	}
+}
+
+
+#' @rdname plot_distribution
+#' @export
+
+
+plot_distribution_x <- function(dat, x, breaks = NULL, g = 10, m = 3, cut_bin = 'equal_width', binwidth = NULL) {
+
+	dat = checking_data(dat)
+	if (class(dat[, x]) %in% c("numeric", "double", "integer") && length(unique(dat[, x])) > 10) {
+
+		densitychart = plot_density(dat = dat, x = x, m = m, binwidth = binwidth)
+		barchart = plot_bar(dat = dat, x = x, g = g, breaks = breaks, cut_bin = cut_bin)
+		distri_plot = multi_grid(grobs = list(densitychart, barchart), ncol = 2, nrow = 1)
+	} else {
+		relative_freqchart = plot_relative_freq_histogram(dat = dat, x = x)
+		barchart = plot_bar(dat = dat, x = x, g = g, breaks = breaks, cut_bin = cut_bin)
+		distri_plot = multi_grid(grobs = list(relative_freqchart, barchart), ncol = 2, nrow = 1)
+	}
+	return(plot(distri_plot))
+}
+
+#' Plot Box
+#'
+#' You can use the \code{plot_box} to produce boxplot.
+#' @param dat A data.frame with independent variables and target variable.
+#' @param x The name of an independent variable.
+#' @param y The name of target variable.
+#' @param g  Number of initial breakpoints for equal frequency binning.
+#' @param colors_x colors of x.
+#' @examples
+#' plot_box(lendingclub, x = "grade", y = "installment", g = 7)
+#' @import ggplot2
+#' @importFrom dplyr group_by mutate summarize  summarise n  count %>% filter mutate_if distinct ungroup
+#' @export
+
+plot_box <- function(dat, y, x = NULL, g = 5, colors_x = c(love_color(type = "deep"), love_color(type = "light"), love_color(type = "shallow"), love_color(type = "dark"))) {
+	if (!is.null(x)) {
+
+		if (class(dat[, x]) %in% c("numeric", "double", "integer") && length(unique(dat[, x])) > 10) {
+			if (is.null(x_breaks)) {
+				x_breaks = get_breaks(dat, x = x, g = g, equal_bins = TRUE, cut_bin = "equal_depth")
+			}
+		} else {
+			dat[, x] = as.character(dat[, x])
+			dat = merge_category(dat = dat, char_list = x, m = g, note = FALSE)
+			x_breaks = unique(dat[, x])
+		}
+		dat[["x"]] = split_bins(dat = dat, x = x, breaks = x_breaks, bins_no = TRUE)
+		dat[["x"]] = factor(dat[["x"]], levels = sort(unique(dat[["x"]])))
+		dat = char_to_num(dat, char_list = y, note = FALSE)
+		dat[["y"]] = dat[, y]
+
+		if (is.null(colors_x) && length(colors_x) < length(unique(dat[["x"]]))) {
+			colors_y = c(love_color(type = "deep"), love_color(type = "light"), love_color(type = "shallow"), love_color(type = "dark"))
+		}
+
+		box_plot <- ggplot(dat, aes(y = y, x = x)) +
+		geom_boxplot(position = "identity", aes(fill = x)) + xlab(x) +
+		scale_fill_manual(values = colors_x) +
+		plot_theme()
+	} else {
+		dat = char_to_num(dat, char_list = y, note = FALSE)
+		dat[["y"]] = dat[, y]
+		box_plot <- ggplot(dat, aes(y = y)) +
+		geom_boxplot(position = "identity", fill = colors_x[1]) + xlab(x) +
+		plot_theme()
+	}
+	return(box_plot)
+}
+
+
+
+
+outlier_fuc = function(x, m = 1) {
+	if (class(x) == 'numeric' | class(x) == 'integer') {
+		QL = quantile(x, 0.01, na.rm = TRUE)
+		QU = quantile(x, 0.99, na.rm = TRUE)
+		QU_QL = QU - QL
+		if (QU_QL == 0) {
+			out_imp01 = quantile(x, 0.9999, na.rm = TRUE)
+		} else {
+			out_imp01 = round(QU + m * QU_QL, 0)
+		}
+		x[x > out_imp01] = out_imp01
+	}
+	return(x)
 }

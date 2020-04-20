@@ -1,3 +1,13 @@
+# creditmodel-1.1.9
+
+**In this version I have:**
+* New function `plot_distribution` ,`plot_relative_freq_histogram`, `plot_box`,`plot_density`, `plot_bar` are for data visualization.
+* New function `swap_analysis` is for swap out/swap in analysis.
+* New function `rules_filter` is used to filter or select samples by rules
+* Fixed some potential bugs in `char_to_num`, `merge_category`,`check_rules`,`get_ctree_rules`.
+
+swap_analysis
+rules_filter
 # creditmodel-1.1.8
 
 **In this version I have:**

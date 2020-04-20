@@ -41,7 +41,9 @@
 #'
 #' @export
 
-split_bins_all <- function(dat, x_list = NULL, ex_cols = NULL, breaks_list = NULL, bins_no = TRUE, note = FALSE,
+
+
+split_bins_all = function(dat, x_list = NULL, ex_cols = NULL, breaks_list = NULL, bins_no = TRUE, note = FALSE,
 						  save_data = FALSE, file_name = NULL, dir_path = tempdir(), ...) {
 	dat = checking_data(dat)
 	if (note) cat_line("-- Transforming variables to bins", col = love_color("deep_green"))
@@ -56,11 +58,10 @@ split_bins_all <- function(dat, x_list = NULL, ex_cols = NULL, breaks_list = NUL
 		}
 	}
 
-	if (sum(is.na(dat)) > 0) { stop("Input data contains NAs, please process missing value first.") }
 
-	dat[ ,x_list] = lapply(x_list, function(x) split_bins(dat = dat, x = x,
-					 breaks = if(is.null(breaks_list)) NULL else breaks_list[which(as.character(breaks_list[, "Feature"]) ==
-					                           names(dat[x])), "cuts"],
+	dat[, x_list] = lapply(x_list, function(x) split_bins(dat = dat, x = x,
+					 breaks = if (is.null(breaks_list)) NULL else breaks_list[which(as.character(breaks_list[, "Feature"]) ==
+											   names(dat[x])), "cuts"],
 					 bins_no = bins_no))
 
 	if (save_data) {
@@ -90,7 +91,7 @@ split_bins_all <- function(dat, x_list = NULL, ex_cols = NULL, breaks_list = NUL
 #' x = "PAY_AMT1", breaks = NULL, bins_no = TRUE)
 #' @export
 
-split_bins <- function(dat, x, breaks = NULL, bins_no = TRUE) {
+split_bins = function(dat, x, breaks = NULL, bins_no = TRUE) {
 
 	opt = options(scipen = 200, stringsAsFactors = FALSE) #
 	dat = checking_data(dat)
@@ -99,12 +100,13 @@ split_bins <- function(dat, x, breaks = NULL, bins_no = TRUE) {
 	}
 	sp_value_num = sp_value_char = NULL
 	if (any(c("integer", "numeric", "double") == class(dat[, x])[1])) {
+		dat[, x] = as.numeric(dat[, x])
 		breaks = sort(unlist(unique(c(-Inf, breaks, Inf))))
 		bins_1 = cut(dat[, x], breaks = unique(breaks), dig.lab = 12,
 					 ordered = TRUE, include.lowest = FALSE, right = TRUE)
-		dat[, x] = as.numeric(dat[, x])
+
 		if (bins_no) {
-			bins_0 = paste("0", as.numeric(bins_1), sep = "")
+			bins_0 = ifelse(is.na(bins_1), '00', paste("0", as.numeric(bins_1), sep = ""))
 			bins = paste(bins_0, bins_1, sep = ".")
 			bins[which(as.numeric(bins_1) >= 10)] =
 			  paste(as.numeric(bins_1[which(as.numeric(bins_1) >= 10)]),
@@ -113,7 +115,7 @@ split_bins <- function(dat, x, breaks = NULL, bins_no = TRUE) {
 			bins = as.character(bins_1)
 		}
 	} else {
-		breaks = unique(breaks)
+		breaks = sort(unlist(unique(breaks)))
 		if (any(grepl("\\|", breaks))) {
 			breaks_s = strsplit(breaks, "\\|")
 		} else {
@@ -128,13 +130,13 @@ split_bins <- function(dat, x, breaks = NULL, bins_no = TRUE) {
 						split_ind = which(dat[, x] %in% unlist(breaks_s[[i]]))
 						if (length(split_ind) > 0) {
 							dat[split_ind, x] =
-							paste(ifelse(bins_no, paste0("0", i), ""), paste(breaks_s[[i]], collapse = ";"), sep = ".")
+							ifelse(bins_no, paste(ifelse(is.na(dat[split_ind, x]), '00', paste0("0", i)), paste(breaks_s[[i]], collapse = ";"), sep = "."), paste(breaks_s[[i]], collapse = ";"))
 						}
 					} else {
 						split_ind = which(dat[, x] %in% unlist(breaks_s[[i]]))
 						if (length(split_ind) > 0) {
 							dat[split_ind, x] =
-							paste(ifelse(bins_no, paste0("0", i), ""), paste(breaks_s[[i]], collapse = ";"), sep = ".")
+							ifelse(bins_no, paste(ifelse(is.na(dat[split_ind, x]), '00', paste0(i)), paste(breaks_s[[i]], collapse = ";"), sep = "."), paste(breaks_s[[i]], collapse = ";"))
 						}
 					}
 				}

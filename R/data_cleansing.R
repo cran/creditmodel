@@ -26,7 +26,7 @@
 #' @param missing_proc If logical, process missing values or not. If "median", then Nas imputation with k neighbors median. If "avg_dist", the distance weighted average method is applied to determine the NAs imputation with k neighbors. If "default", assigning the missing values to -1 or "missing", otherwise ,processing the missing values according to the results of missing analysis.
 #' @param low_var The maximum percent of unique values (including NAs) for filtering low variance variables.
 #' @param missing_rate The maximum percent of missing values for recoding values to missing and non_missing.
-#' @param merge_cat The minimum number of categories or the minimum percent of samples in a category for merging categories of character variables.
+#' @param merge_cat The minimum number of categories for merging categories of character variables.
 #' @param parallel  Logical, parallel computing or not. Default is FALSE.
 #' @param note Logical. Outputs info. Default is TRUE.
 #' @param save_data  Logical, save the result or not. Default is FALSE.
@@ -57,7 +57,6 @@
 #' @importFrom dplyr group_by mutate summarize  summarise n  count %>% filter mutate_if
 #' @importFrom data.table fwrite melt fread dcast
 #' @export
-
 data_cleansing <- function(dat, target = NULL, obs_id = NULL, occur_time = NULL, pos_flag = NULL, x_list = NULL, ex_cols = NULL, miss_values = NULL,
 						  remove_dup = TRUE, outlier_proc = TRUE, missing_proc = "median", low_var = 0.999, missing_rate = 0.98, merge_cat = 30,
 						  note = TRUE, parallel = FALSE,
@@ -94,7 +93,7 @@ data_cleansing <- function(dat, target = NULL, obs_id = NULL, occur_time = NULL,
 								types = c("Date", "POSIXlt", "POSIXct", "POSIXt"),
 								ex_cols = c(obs_id, target, occur_time, ex_cols),
 								get_ex = FALSE)
-		flag_list =  c(obs_id, occur_time, target)
+		flag_list = c(obs_id, occur_time, target)
 		if ((is.logical(low_var) && low_var) || (is.numeric(low_var) && (low_var > 0 & low_var < 1))) {
 			#delecte low vaiance variables
 			lvp = ifelse(is.numeric(low_var) && (low_var > 0 & low_var < 1), low_var, 0.999)
@@ -126,21 +125,14 @@ data_cleansing <- function(dat, target = NULL, obs_id = NULL, occur_time = NULL,
 		}
 
 		#merge categories of character variables
-		if ((is.logical(merge_cat) && merge_cat) || (is.numeric(merge_cat) && (merge_cat > 0 & merge_cat < 1))) {
-			if (is.numeric(merge_cat) && (merge_cat > 0 & merge_cat < 1)) {
-				p = merge_cat
-				m = 1000
-			} else {
+		if ((is.logical(merge_cat) && merge_cat) || (is.numeric(merge_cat) && (merge_cat > 1))) {
 				if (is.numeric(merge_cat) && merge_cat >= 1) {
-					p = 0.000001
 					m = merge_cat
 				} else {
-					p = 0.001
 					m = 50
 				}
-			}
 			dat = merge_category(dat = dat, ex_cols = c(date_x_list, flag_list, ex_x_cols),
-						 p = p, m = m, note = note)
+						 m = m, note = note)
 		}
 
 		char_x_list = get_names(dat = dat,
@@ -152,11 +144,11 @@ data_cleansing <- function(dat, target = NULL, obs_id = NULL, occur_time = NULL,
 							   ex_cols = c(date_x_list, flag_list, ex_x_cols),
 							   get_ex = FALSE)
 
-		summary(dat$meitu_register_at_a1.apply_time_duration)
+
 		dat = dat[, c(flag_list, date_x_list, char_x_list, num_x_list)]
 
 		if (length(char_x_list) > 0) {
-			dat[, char_x_list] = lapply(dat[, char_x_list], function(x) gsub("[^\u4e00-\u9fa5,^a-zA-Z,^0-9,^_]", "_", x))
+			dat[, char_x_list] = lapply(dat[, char_x_list], function(x) gsub("[^\u4e00-\u9fa5,^a-zA-Z,^0-9,^_,^.,^-]", "_", x))
 		}
 		if (outlier_proc) {
 			dat = process_outliers(dat = dat, target = target,

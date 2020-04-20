@@ -2,7 +2,7 @@
 % Please edit documentation in R/data_anaylsis.R
 \name{get_ctree_rules}
 \alias{get_ctree_rules}
-\title{Parse party ctree rules}
+\title{Parse desision tree rules}
 \usage{
 get_ctree_rules(tree_fit = NULL, train_dat = NULL, target = NULL,
   test_dat = NULL, tree_control = list(p = 0.05, cp = 1e-04, xval = 1,
@@ -25,7 +25,7 @@ get_ctree_rules(tree_fit = NULL, train_dat = NULL, target = NULL,
 A data frame with tree rules and 1 percent under each rule.
 }
 \description{
-\code{get_ctree_rules} This function is used to parse party ctree rules and percentage of 1 under each rule.
+\code{get_ctree_rules} This function is used to desision tree rules and percentage of 1 under each rule.
 }
 \examples{
 train_test <- train_test_split(UCICreditCard, split_type = "Random", prop = 0.8, save_data = FALSE)
@@ -35,4 +35,8 @@ dat_train$default.payment.next.month = as.numeric(dat_train$default.payment.next
 get_ctree_rules(tree_fit = NULL, train_dat = dat_train[, 8:26],
 target ="default.payment.next.month", test_dat = dat_test)
 
+}
+\seealso{
+\code{\link{rules_filter}},
+\code{\link{check_rules}}
 }

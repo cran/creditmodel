@@ -105,3 +105,4 @@ NULL
 #' @format A data frame with 10 rows and 13 variables.
 #' @name ewm_data
 NULL
+

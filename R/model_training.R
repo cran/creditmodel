@@ -2928,3 +2928,7 @@ p_to_score <- function(p, PDO=20, base=600, ratio = 1){
   score = A - B *y
   return(round(score,0))
 }
+
+
+
+
