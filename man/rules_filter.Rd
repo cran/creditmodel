@@ -4,14 +4,16 @@
 \alias{rules_filter}
 \title{rules_filter}
 \usage{
-rules_filter(rules_list, dat, filtering = TRUE)
+rules_filter(dat, rules_list, drop = FALSE, logic = "or")
 }
 \arguments{
-\item{rules_list}{A list of rules.}
-
 \item{dat}{A data.frame.}
 
-\item{filtering}{Logical, if TRUE, filtering samples, if FALSE, selecting samples.}
+\item{rules_list}{A list of rules.}
+
+\item{drop}{Logical, if TRUE, dropping samples, if FALSE, selecting samples. Default is FALSE.}
+
+\item{logic}{The logic between rules in the rules_list: 'and','or'. Default is 'or'.}
 }
 \value{
 A data frame with tree rules and percent under each rule.

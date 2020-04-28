@@ -639,7 +639,7 @@ check_rules <- function(rules_list, test_dat, target, value = NULL) {
 		colnames(sub_dat) = iconv(colnames(sub_dat), from = "UTF-8", to = "GBK")
 		if (nrow(sub_dat) > 0) {
 			sub_dat$rules_no = final_rules[i, 'rules_no']
-			test_rules[[i]] = sub_dat[c("rules_no", "target","value")]
+			test_rules[[i]] = sub_dat[c("rules_no", "target", "value")]
 		}
 	}
 	filter_all = as.character(paste("(", final_rules[, "rules"], ")", collapse = '|'))
@@ -650,7 +650,7 @@ check_rules <- function(rules_list, test_dat, target, value = NULL) {
 
 	dat_all_pct = dat_all %>%
 	dplyr::group_by(target) %>%
-	dplyr:: summarise(n = sum(value, na.rm = TRUE)) %>%
+	dplyr::summarise(n = sum(value, na.rm =	TRUE)) %>%
 	dplyr::mutate(test_1_pct = as_percent(n / sum(n), digits = 4))
 	dat_all_pct = as.data.table(dat_all_pct)
 	dat_all_sum = data.table::dcast(dat_all_pct[, c("target", "n"), with = FALSE], . ~ target, value.var = "n")
@@ -671,7 +671,7 @@ check_rules <- function(rules_list, test_dat, target, value = NULL) {
 	tree_test_pct_sub = test_rules_dt_sub %>%
 	dplyr::group_by(rules_no, target) %>%
 	dplyr::summarise(n = sum(value, na.rm = TRUE)) %>%
-	dplyr::mutate(test_1_pct = as_percent(n / sum(n), digits = 4))
+	dplyr::mutate(test_1_pct = as_percent(n / sum(n, na.rm = TRUE), digits = 4))
 	tree_test_pct_sub = as.data.table(tree_test_pct_sub)
 	test_sum_sub = data.table::dcast(tree_test_pct_sub[, c("rules_no", "target", "n"),
 		  with = FALSE], rules_no ~ target, value.var = "n")
@@ -692,43 +692,44 @@ check_rules <- function(rules_list, test_dat, target, value = NULL) {
 	test_sum[is.na(test_sum)] = 0
 
 	test_tb = gather_data(test_dat, x_list = "value", ID = "target", sum)[, 2]
-	test_ks = transform(test_sum_sub,
-					   test_total =sum(test_tb),
+	dt_rules = merge(final_rules[c('rules_no', 'rules')], test_sum_sub, all.x = TRUE)
+	dt_rules[is.na(dt_rules)] = 0
+	dt_rules = transform(dt_rules,
+					   test_total = sum(test_tb),
 					   total_1 = test_tb[2],
 					   `%total_1` = test_tb[2] / sum(test_tb),
-					   `%test_total` = round((test_sum$G + test_sum$B) /sum(test_tb), 4),
-					   hit_total = test_sum$G + test_sum$B,
+					   `%test_total` = round((G + B) / sum(test_tb), 4),
+					   hit_total =G + B,
 					   `%test_1` = round(B / ifelse(G + B > 0, G + B, 1), 4)
 					   )
-	dt_rules = merge(final_rules[c('rules_no', 'rules')], test_ks, all.x = TRUE)
-	dt_rules[is.na(dt_rules)] = 0
+
 	dt_rules_k = within(dt_rules, {
-	  X.total_1 = as_percent(X.total_1, digits = 4)
-						 X.test_total = as_percent(X.test_total, digits = 4)
-						 X.test_1 = as_percent(X.test_1, digits = 4)
-						 lift = round((B / ifelse(G + B > 0, G + B, 1)) / (test_tb[2] / test_total), 2)
-						 FN = G
-						 TP = B
-						 TN = test_tb[1] - G
-						 FP = test_tb[2] - B
-						 Accuracy = as_percent((TP + TN) / (FN + TP + TN + FP), digits = 4)
-						 Recall = as_percent(TP / ifelse(TP + FN > 0, TP + FN, 1), digits = 4)
-						 Precision = as_percent(TP / ifelse(TP + FP > 0, TP + FP, 1), digits = 4)
-						 Specificity = as_percent(FP / ifelse(TN + FP > 0, TN + FP, 1), digits = 4)
-						 F1_score = round(2 * TP / ifelse(2 * TP + FP + FN > 0, 2 * TP + FP + FN, 1), 4)
-						 res_total = as_percent(1 - round((test_sum$G + test_sum$B) /sum(test_tb), 4),4)
+		X.total_1 = as_percent(X.total_1, digits = 4)
+		X.test_total = as_percent(X.test_total, digits = 4)
+		X.test_1 = as_percent(X.test_1, digits = 4)
+		lift = round((B / ifelse(G + B > 0, G + B, 1)) / (test_tb[2] / test_total), 2)
+		FN = G
+		TP = B
+		TN = test_tb[1] - G
+		FP = test_tb[2] - B
+		Accuracy = as_percent((TP + TN) / (FN + TP + TN + FP), digits = 4)
+		Recall = as_percent(TP / ifelse(TP + FN > 0, TP + FN, 1), digits = 4)
+		Precision = as_percent(TP / ifelse(TP + FP > 0, TP + FP, 1), digits = 4)
+		Specificity = as_percent(FP / ifelse(TN + FP > 0, TN + FP, 1), digits = 4)
+		F1_score = round(2 * TP / ifelse(2 * TP + FP + FN > 0, 2 * TP + FP + FN, 1), 4)
+		res_total = as_percent(1 - round((G + B) / sum(test_tb), 4), 4)
 
 	}
   )
 
 	names(dt_rules_k) = c("rules_no", "rules", "hit_1", "hit_0",
 	"#total", "total_1", "%total_1", "%hit", "#hit",
-	 "%hit_1","%residue", "F1_score", "Specificity", "Precision",
+	 "%hit_1", "%residue", "F1_score", "Specificity", "Precision",
 	 "Recall", "Accuracy", "FP", "TN", "TP", "FN", "Lift")
 
 	dt_rules_k = dt_rules_k[c("rules_no", "rules", "#total", "total_1", "%total_1",
-	"#hit", "%hit", "FN", "TP", "TN", "FP", "Recall", 
-	"Accuracy",  "Precision", "Specificity","%residue","F1_score", "Lift")]
+	"#hit", "%hit", "FN", "TP", "TN", "FP", "Recall",
+	"Accuracy", "Precision", "Specificity", "%residue", "F1_score", "Lift")]
 	FN = dat_all_sub_sum$G
 	TP = dat_all_sub_sum$B
 	TN = test_tb[1] - dat_all_sub_sum$G
@@ -741,7 +742,7 @@ check_rules <- function(rules_list, test_dat, target, value = NULL) {
 			 dat_all_sum$B + dat_all_sum$G,
 			 as_percent((dat_all_sum$B + dat_all_sum$G) /
 			 max(dt_rules_k$`#total`, na.rm = TRUE), 4),
-			FN, TN, TP, FP,
+			FN, TP, TN, FP,
 			as_percent(TP / ifelse(TP + FN > 0, TP + FN, 1), digits = 4),
 			as_percent((TP + TN) / (FN + TP + TN + FP), digits = 4),
 			as_percent(TP / ifelse(TP + FP > 0, TP + FP, 1), digits = 4),
@@ -763,7 +764,8 @@ check_rules <- function(rules_list, test_dat, target, value = NULL) {
 #' \code{rules_filter} This function is used to filter or select samples by rules.
 #' @param rules_list  A list of rules.
 #' @param dat  A data.frame.
-#' @param filtering Logical, if TRUE, filtering samples, if FALSE, selecting samples.
+#' @param drop Logical, if TRUE, dropping samples, if FALSE, selecting samples. Default is FALSE.
+#' @param logic The logic between rules in the rules_list: 'and','or'. Default is 'or'.
 #' @return A data frame with tree rules and percent under each rule.
 #' @seealso
 #' \code{\link{get_ctree_rules}},
@@ -782,13 +784,21 @@ check_rules <- function(rules_list, test_dat, target, value = NULL) {
 #' @export
 
 
-rules_filter <- function(rules_list, dat, filtering = TRUE) {
-    dat = checking_data(dat)
-	filter_new = as.character(paste("(", rules_list, ")", collapse = '|'))
-	if (filtering) {
-		new_dat = dplyr::filter(dat, eval(parse(text = filter_new)))
+rules_filter = function(dat, rules_list, drop = FALSE, logic = "or") {
+	dat = checking_data(dat)
+	if (!is.null(logic) && logic == 'and') {
+		filter_new = as.character(paste("(", rules_list, ")", collapse = '&'))
 	} else {
-		new_dat = dplyr::filter(dat, !eval(parse(text = filter_new)))
+		filter_new = as.character(paste("(", rules_list, ")", collapse = '|'))
+	}
+
+	if (!drop) {
+		new_dat = subset(dat, eval(parse(text = filter_new)))
+	} else {
+		dat$ID = 1:nrow(dat)
+		new_dat = subset(dat, eval(parse(text = filter_new)))
+		new_dat = dat[-which(dat$ID %in% new_dat$ID),]
+		new_dat = new_dat[-length(dat)]
 	}
 	return(new_dat)
 }
@@ -1273,8 +1283,8 @@ get_iv <- function(dat, x, target = NULL, pos_flag = NULL, breaks = NULL, breaks
         stop(paste("The target variable is missing.\n"))
     }
 
-    best_bins <- split_bins(dat = dat, x = x, breaks = breaks, bins_no = TRUE)
-    dt_bins <- table(best_bins, dat[, target])
+    best_bins = split_bins(dat = dat, x = x, breaks = breaks, bins_no = TRUE)
+    dt_bins = table(best_bins, dat[, target])
     rm(best_bins)
 
     bins_df = data.frame(unclass(dt_bins))
@@ -1471,7 +1481,7 @@ get_psi <- function(dat, x, target = NULL, dat_test = NULL, occur_time = NULL, s
       dat_psi = data.frame(Feature = x, PSI = as.numeric(sum(df_psi$PSI_i,na.rm = TRUE)),
                            COS = max(df_psi$cos_s,na.rm = TRUE))
     }
-    dt_psi <- within(dat_psi, {
+    dt_psi = within(dat_psi, {
       stability = "Great change"
       stability[PSI <= 0.02] <- "Very stable"
       stability[PSI > 0.02 & PSI <= 0.1] <- "Stable"
@@ -1535,7 +1545,8 @@ get_psi <- function(dat, x, target = NULL, dat_test = NULL, occur_time = NULL, s
 #' @importFrom data.table setDT .N := dcast merge.data.table as.data.table
 #' @export
 
-cross_table = function(dat, cross_x, cross_y, target = NULL, value = NULL, cross_type = 'total_sum') {
+
+cross_table = function(dat, cross_x, cross_y = NULL, target = NULL, value = NULL, cross_type = 'total_sum') {
 	dat = checking_data(dat = dat, target = target)
 	dat = process_nas(dat[c(cross_x, cross_y, target, value)])
 	if (is.null(value)) {
@@ -1547,32 +1558,44 @@ cross_table = function(dat, cross_x, cross_y, target = NULL, value = NULL, cross
 	crs_y = c("m", "n", "r", "o", "p", "q")
 	len_crs_x = length(cross_x)
 	len_crs_y = length(cross_y)
-	if (len_crs_x > 0 & len_crs_x <= 6) {
+	if (len_crs_x > 0 & len_crs_x <= 6 & len_crs_y > 0 & len_crs_y <= 6) {
 		crs_x = crs_x[1:len_crs_x]
 		dat[, crs_x] = dat[, cross_x]
-	} else {
-		if (len_crs_x < 1) {
-			stop("corss_x must have at least 1 variables.")
-		} else {
-			stop("corss_x must have less than or equal to 6 variables.")
-		}
-	}
-	if (len_crs_y > 0 & len_crs_y <= 6) {
 		crs_y = crs_y[1:len_crs_y]
 		dat[, crs_y] = dat[, cross_y]
 	} else {
-		if (len_crs_y < 1) {
-			stop("corss_y must have at least 1 variables.")
+		if (len_crs_x < 1) {
+			stop("corss_x  must have at least 1 variables.")
 		} else {
-			stop("corss_y must have less than or equal to 6 variables.")
+			if (len_crs_x > 0 & len_crs_x <= 6 & len_crs_y <= 0) {
+				if (len_crs_x > 1 & len_crs_x <= 6 & len_crs_y <= 0) {
+					crs_y = crs_x[len_crs_x]
+					dat[, crs_y] = dat[, cross_x[len_crs_x]]
+					crs_x = crs_x[1:(len_crs_x-1)]
+					dat[, crs_x] = dat[, cross_x[(-len_crs_x)]]
+					
+				} else {
+					crs_y = crs_x[len_crs_x]
+					dat[, crs_y] = dat[, cross_x[len_crs_x]]
+					crs_x = crs_x[len_crs_x]
+					dat[, crs_x] = dat[, cross_x[len_crs_x]]
+
+				}
+
+			} else {
+				stop("corss_x or cross_y must have less than or equal to 6 variables.")
+			}
+		
 		}
 	}
+
 
 	x.Formula = as.formula(paste(paste(crs_x, collapse = ' + '), paste(crs_y, collapse = ' + '),
 							   sep = ' ~ '))
 	x_list = crs_x[which(sapply(dat[crs_x], function(i) is.numeric(i) && length(unique(i)) > 10))]
 	y_list = crs_y[which(sapply(dat[crs_y], function(i) is.numeric(i) && length(unique(i)) > 10))]
-	dat = split_bins_all(dat = dat, x_list = c(x_list, y_list))
+	dat = split_bins_all(dat = dat, x_list = c(x_list))
+	dat = split_bins_all(dat = dat, x_list = c(y_list))
 	dat = as.data.table(dat)
 
 	. = NULL
@@ -1588,14 +1611,29 @@ cross_table = function(dat, cross_x, cross_y, target = NULL, value = NULL, cross
 	total_sum = as.data.table(total_sum)
 	total_value = sum(dat$value)
 	total_pct = sapply(total_sum[, - crs_x[c(1:len_crs_x)], with = FALSE] / total_value, function(x) as_percent(x, 4))
-	if (len_crs_x > 1) {
+	if (len_crs_x > 1 & len_crs_y >0) {
 		names(total_sum)[1:(len_crs_x)] = c(cross_x[1:(len_crs_x - 1)], paste(cross_x[(len_crs_x)], paste0(cross_y, collapse = "/"), sep = "/"))
 	} else {
-		names(total_sum)[1:(len_crs_x)] = c(paste(cross_x[(len_crs_x)], paste0(cross_y, collapse = "/"),
+		if (len_crs_x > 1 & len_crs_y == 0) {
+			names(total_sum)[1:(len_crs_x - 1)] = c(paste(cross_x[(len_crs_x - 1)], paste0(cross_x[(len_crs_x )], collapse = "/"),
 												sep = "/"))
+		} else {
+			names(total_sum)[1:(len_crs_x)] = paste(cross_x[(len_crs_x)])
+		}
 	}
 
-	total_pct = cbind(total_sum[, 1:(len_crs_x)], total_pct)
+	if (len_crs_x ==1 & len_crs_y < 1) {
+		total_pct = cbind(total_sum[, 1:(len_crs_x)], total_pct[, "sum_x"])
+		names(total_pct) = c(cross_x, cross_type)
+		total_pct = quick_as_df(total_pct)
+		total_pct[nrow(total_pct), 1] = "total"
+	} else {
+		if (len_crs_x > 1 & len_crs_y < 1) {
+			total_pct = cbind(total_sum[, 1:(len_crs_x-1)], total_pct)
+		} else {
+			total_pct = cbind(total_sum[, 1:(len_crs_x)], total_pct)
+		}
+	}
 	if (!is.null(target)) {
 		dat$target = dat[, target, with = FALSE]
 		value_dt = dat[, .(value = sum(value, na.rm = TRUE)), by = c(crs_x, crs_y, "target")]
@@ -1613,16 +1651,38 @@ cross_table = function(dat, cross_x, cross_y, target = NULL, value = NULL, cross
 		bad_sum = quick_as_df(bad_sum)
 		bad_sum[nrow(bad_sum), crs_x] = "sum_y"
 		bad_sum = as.data.table(bad_sum)
-		bad_pct = bad_sum[, - crs_x[c(1:len_crs_x)], with = FALSE] / total_sum[, - names(total_sum)[1:len_crs_x], with = FALSE]
-		bad_pct[is.na(bad_pct)] = 0
-		bad_pct = sapply(bad_pct, function(x) as_percent(x, 4))
-		if (len_crs_x > 1) {
+
+		if (len_crs_x > 1 & len_crs_y > 0) {
+			bad_pct = bad_sum[, - crs_x[c(1:(len_crs_x))], with = FALSE] / total_sum[, - names(total_sum)[1:(len_crs_x)], with = FALSE]
+			bad_pct[is.na(bad_pct)] = 0
+			bad_pct = sapply(bad_pct, function(x) as_percent(x, 4))
 			names(bad_sum)[1:(len_crs_x)] = c(cross_x[1:(len_crs_x - 1)], paste(cross_x[(len_crs_x)], paste0(cross_y, collapse = "/"), sep = "/"))
 		} else {
-			names(bad_sum)[1:(len_crs_x)] = c(paste(cross_x[(len_crs_x)], paste0(cross_y, collapse = "/"),
+			if (len_crs_x > 1 & len_crs_y == 0) {
+				bad_pct = bad_sum[, - crs_x[c(1:(len_crs_x-1))], with = FALSE] / total_sum[, - names(total_sum)[1:(len_crs_x-1)], with = FALSE]
+				bad_pct[is.na(bad_pct)] = 0
+				bad_pct = sapply(bad_pct, function(x) as_percent(x, 4))
+				names(bad_sum)[1:(len_crs_x - 1)] = c(paste(cross_x[(len_crs_x - 1)], paste0(cross_x[(len_crs_x)], collapse = "/"),
 												sep = "/"))
+			} else {
+				bad_pct = bad_sum[, - crs_x[c(1:(len_crs_x - 1))], with = FALSE] / total_sum[, - names(total_sum)[1:(len_crs_x - 1)], with = FALSE]
+				bad_pct[is.na(bad_pct)] = 0
+				bad_pct = sapply(bad_pct, function(x) as_percent(x, 4))
+				names(bad_sum)[1:(len_crs_x)] = paste(cross_x[(len_crs_x)])
+			}
 		}
-		bad_pct = cbind(bad_sum[, 1:(len_crs_x)], bad_pct)
+		if (len_crs_x == 1 & len_crs_y < 1) {
+			bad_pct = cbind(bad_sum[, 1:(len_crs_x)], bad_pct[, "sum_x"])
+			names(bad_pct) = c(cross_x, cross_type)
+			bad_pct = quick_as_df(bad_pct)
+			bad_pct[nrow(bad_pct), 1] = "total"
+		} else {
+			if (len_crs_x > 1 & len_crs_y < 1) {
+				bad_pct = cbind(bad_sum[, 1:(len_crs_x - 1)], bad_pct)
+			} else {
+				bad_pct = cbind(bad_sum[, 1:(len_crs_x)], bad_pct)
+			}
+		}
 	}
 	if (cross_type == "total_sum") {
 		cross_dt = total_sum

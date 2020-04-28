@@ -30,7 +30,7 @@ local_outlier_factor <- function(dat, k = 10) {
         neihbor_num2 = neibr_num + neibr_num + 2
         neighdist = c(neihbor_num1, neihbor_num2, neighbor_index, neibs)
         neighdist[is.na(neighdist)] = 0
-        x <- length(neighdist)
+        x = length(neighdist)
         if (x > matrix_nrow) {
             dist_dat = rbind(dist_dat, matrix(rep(0, (x - matrix_nrow) * row_num), ncol = row_num))
             matrix_nrow = x
@@ -287,7 +287,7 @@ ks_value <- function(target, prob) {
   }
  sum_prob = as.data.frame(table(prob,target))
  sum_prob = as.data.table(sum_prob)
- sum_prob <- data.table :: dcast(sum_prob, prob  ~ target, value.var = "Freq")
+ sum_prob = data.table :: dcast(sum_prob, prob  ~ target, value.var = "Freq")
  sum_prob[is.na(sum_prob)] = 0
  sum_prob = data.frame(unclass(sum_prob))
  cum_sum_1  = (cumsum(sum_prob$X1) / sum(sum_prob$X1))
@@ -387,16 +387,16 @@ eval_lift = function(preds, dtrain) {
 get_median <- function(x, weight_avg = NULL) {
     if (any(c('numeric', 'integer', 'double') == class(x)[1])) {
         if (is.null(weight_avg)) {
-            central_value <- median(x, na.rm = T)
+            central_value = median(x, na.rm = T)
         } else {
-            central_value <- ifelse(sum(weight_avg) > 0, sum(x * (weight_avg / sum(weight_avg))), NA)
+            central_value = ifelse(sum(weight_avg) > 0, sum(x * (weight_avg / sum(weight_avg))), NA)
         }
     } else {
-        x <- as.factor(x)
+        x = as.factor(x)
         if (is.null(weight_avg)) {
-            central_value <- levels(x)[which.max(table(x))]
+            central_value = levels(x)[which.max(table(x))]
         } else {
-            central_value <- levels(x)[which.max(aggregate(weight_avg, list(x), sum)[, 2])]
+            central_value = levels(x)[which.max(aggregate(weight_avg, list(x), sum)[, 2])]
         }
     }
     return(central_value)

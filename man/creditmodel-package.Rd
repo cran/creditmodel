@@ -26,8 +26,7 @@ and is more suitable for the risk and marketing data of financial credit, e-comm
 with relatively high noise and low information content.
 }
 
-To learn more about creditmodel, start with the vignettes:
-`browseVignettes(package = "creditmodel")`
+To learn more about creditmodel, start with the WeChat Platform: hansenmode
 }
 \author{
 \strong{Maintainer}: Dongping Fan \email{fdp@pku.edu.cn}

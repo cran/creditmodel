@@ -4,8 +4,8 @@
 \alias{cross_table}
 \title{cross_table}
 \usage{
-cross_table(dat, cross_x, cross_y, target = NULL, value = NULL,
-  cross_type = "total_sum")
+cross_table(dat, cross_x, cross_y = NULL, target = NULL,
+  value = NULL, cross_type = "total_sum")
 }
 \arguments{
 \item{dat}{A data.frame with independent variables.}

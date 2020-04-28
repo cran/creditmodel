@@ -69,7 +69,7 @@ process NAs.
 }
 \examples{
 #data cleaning
-dat_cl <- data_cleansing(dat = UCICreditCard[1:2000,],
+dat_cl = data_cleansing(dat = UCICreditCard[1:2000,],
                        target = "default.payment.next.month",
                        x_list = NULL,
                        obs_id = "ID",

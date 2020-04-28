@@ -1,3 +1,13 @@
+# creditmodel-1.2
+
+**In this version I have:**
+* Enhanced strategy analysis capabilities.
+* New function `replace_value` is for replacing values of some variables.
+* Fixed some potential bugs in `check_rules`, `get_ctree_rules`,`rules_filter`,`%alike%`.
+
+
+
+
 # creditmodel-1.1.9
 
 **In this version I have:**

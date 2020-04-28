@@ -389,10 +389,10 @@ read_data <- function(path, pattern = NULL, encoding = "unknown", header = TRUE,
 check_data_format <- function(path) {
   if (file.exists(path)) {
     sig = readBin(path, n = 10, what = "raw")
-    xlsx_sig <- as.raw(c(
+    xlsx_sig = as.raw(c(
       "0x50", "0x4B", "0x03", "0x04"
     ))
-    xls_sig <- as.raw(c(
+    xls_sig = as.raw(c(
       "0xD0", "0xCF", "0x11", "0xE0", "0xA1", "0xB1", "0x1A", "0xE1"
     ))
     data_format = NA
@@ -619,25 +619,26 @@ as_percent <- function(x, digits = 2) {
 #' "xyz"  %alike% "xy"
 #' @export
 
-'%alike%' <- function(x, y) {
-    x = gsub("[^\u4e00-\u9fa5,^a-zA-Z,^0-9,^.,^_,^;^-]", "", x)
-    if (any(x != '') & any(y != '') & any(!is.null(x)) & any(!is.null(y)) & any(!is.na(x)) & any(!is.na(y))) {
-        y = unlist(y)
-        y = y[which(y != '')]
-        x = unlist(x)
-        x[which(x != '')]
-        grx1 = Reduce(function(u, v) paste(u, v, sep = '|'), y)
-        grx2 = Reduce(function(u, v) paste(u, v, sep = '|'), x)
-        if (any(grepl(grx1, x))) {
-            grpl2 = grepl(grx1, x)
-        } else {
-            grpl2 = grepl(grx2, y)
-        }
-    } else {
-        grpl2 = grepl(FALSE, x)
-    }
-    return(grpl2)
+`%alike%` = function(x, y) {
+	x = gsub("[^\u4e00-\u9fa5,^a-zA-Z,^0-9,^.,^_,^;^-]", "", x)
+	if (any(x != '') & any(y != '') & any(!is.null(x)) & any(!is.null(y)) & any(!is.na(x)) & any(!is.na(y))) {
+		y = unlist(y)
+		y = y[which(y != '')]
+		x = unlist(x)
+		x[which(x != '')]
+		grx1 = Reduce(function(u, v) paste(u, v, sep = '|'), y)
+		if (any(grepl(grx1, x))) {
+			grpl2 = grepl(grx1, x)
+		} else {
+			grx2 = Reduce(function(u, v) paste(u, v, sep = '|'), x)
+			grpl2 = grepl(grx2, y)
+		}
+	} else {
+		grpl2 = grepl(FALSE, x)
+	}
+	return(grpl2)
 }
+
 
 
 #'  Rename
@@ -835,7 +836,7 @@ get_names = function(dat, types = c('logical', 'factor', 'character', 'numeric',
 	} else {
 		dat = dat[sel_names]
 	}
-	var_names <- names(dat)
+	var_names = names(dat)
 	return(var_names)
 }
 

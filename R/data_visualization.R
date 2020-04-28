@@ -134,246 +134,243 @@ get_plots <- function(dat_train, dat_test = NULL, x_list = NULL,
 
 
 plot_vars <- function(dat_train, x, target, dat_test = NULL,
-                      g_width = 8, breaks_list = NULL, breaks = NULL,
-                      pos_flag = list("1", 1, "bad", "positive"),
-                      equal_bins = TRUE, cut_bin = 'equal_depth', best = FALSE,
-                      g = 10, tree_control = NULL,
-                      bins_control = NULL,
-                      plot_show = TRUE,
-                      save_data = FALSE,
-                      dir_path = tempdir()) {
-  
-  dat_train = checking_data(dat = dat_train, target = target)
-  dat_train = char_to_num(dat_train, char_list = x, note = FALSE)
-  digits_x =min( ifelse(is.numeric(dat_train[, x]), digits_num(dat_train[, x]), 4),4,na.rm = FALSE)
-  opt = options('warn' = -1, scipen = 200, digits = digits_x + 1) #
-  
-  dat_train$target = as.character(dat_train[, target])
-  xn = NULL
-  if (class(dat_train[, x]) %in% c("numeric", "double", "integer") && length(unique(dat_train[, x])) > 5) {
-    
-    med <- dat_train %>%
-      dplyr::mutate(xn = dat_train[, x]) %>%
-      dplyr::group_by(target) %>%
-      dplyr::summarise(grp.mean = quantile(xn, 0.5, na.rm = TRUE, type = 3))
-    none_na_num <- sum(!is.na(dat_train[, x]))
-    tbl_x <- table(dat_train[, x])
-    x_unique_value <- as.double(names(tbl_x))
-    cum_sum <- cumsum(tbl_x)
-    cuts_sum <- approx(cum_sum, x_unique_value, xout = (1:100) * none_na_num / 100,
-                       method = "constant", rule = 2, f = 1)$y
-    
-    dat_train_sub = dat_train
-    if (length(unique(cuts_sum)) > 10) {
-      x_cuts <- cuts_sum[length(cuts_sum) - 1]
-      dat_train_sub <- subset(dat_train, dat_train[, x] <= x_cuts)
-    }
-    #desity plot
-    plot_1 <- ggplot(dat_train_sub, aes(x = dat_train_sub[, x])) +
-      geom_density(aes(fill = dat_train_sub$target), alpha = 0.3) +
-      stat_density(geom = "line", position = "identity", size = 0.6,
-                   aes(color = dat_train_sub$target)) +
-      scale_fill_manual(values = c('1' = love_color("shallow_red"),
-                                   '0' = love_color("sky_blue"))) +
-      scale_color_manual(values = c('1' = love_color("shallow_red"),
-                                    '0' = love_color("sky_blue"))) +
-      geom_vline(data = med, linetype = "dashed", size = 0.7,
-                 aes(xintercept = med$grp.mean, color = med$target)) +
-      xlab(x) +
-      ggtitle(paste("Density of", x)) +
-      plot_theme(legend.position = c(.9, .9), title_size = 9,
-                 axis_title_size = 8)
-    
-  } else {
-    #relative frequency histogram
-    dat_tr = dat_train
-    dat_tr[, x] = as.character(dat_tr[, x])
-    
-    #relative frequency histogram
-    dat_tr$target = as.character(dat_tr[, target])
-    data1 = dat_tr %>%
-      dplyr::mutate(xn = dat_tr[, x]) %>%
-      dplyr::group_by(target) %>% dplyr::count(target, xn) %>%
-      dplyr::mutate(percent = n / sum(n))
-    data1$xn = factor(data1$xn, levels = rev(unique(data1$xn)))
-    data1$target = factor(data1$target, levels = rev(unique(data1$target)))
-    plot_1 = ggplot(data1, aes(x = data1$target, y = data1$percent, fill = data1$xn)) +
-      geom_bar(stat = "identity", position = position_stack()) +
-      geom_text(aes(label = paste(as_percent(data1$percent, digits = 3))),
-                size = ifelse(length(data1$xn) > 10, 2.1,
-                              ifelse(length(data1$xn) > 5, 2.5,
-                                     ifelse(length(data1$xn) > 3, 3, 3.3))), vjust = 0, hjust = 1, colour = 'white', position = position_stack()) +
-      coord_flip(xlim = NULL, ylim = NULL, expand = FALSE, clip = "off") +
-      guides(fill = guide_legend(reverse = TRUE)) +
-      ggtitle(paste("Relative Frequency of", x)) +
-      ylab(x) + xlab(target) +
-      scale_fill_manual(values = c(love_color(type = "deep")[1:6], love_color(type = "light")[1:8])) +
-      plot_theme(legend.position = "right", title_size = 9, legend_size = 7,
-                 axis_title_size = 8)
-  }
-  
-  if (!is.null(dat_test) || length(dat_test) > 1) {
-    dat_test = char_to_num(dat_test,char_list = x, note = FALSE)
-    if(class(dat_test[,x])[1] != class(dat_train[,x])[1]){
-      warning("The types of x in dat_test and dat_train are different!")
-      
-    }
-    df_ae = get_psi_iv(dat = dat_train, dat_test = dat_test,
-                       x = x, target = target, pos_flag = pos_flag,
-                       breaks_list = breaks_list,
-                       breaks = breaks,
-                       equal_bins = equal_bins,
-                       cut_bin = cut_bin,
-                       tree_control = tree_control,
-                       bins_control = bins_control,
-                       bins_total = FALSE,
-                       best = best, g = g, as_table = TRUE,
-                       note = FALSE, bins_no = TRUE)
-    ae_total <- data.table::melt(as.data.table(df_ae[c("bins", "%actual", "%expected")]),
-                                 id.vars = c("bins"),
-                                 variable.name = "actual_expected",
-                                 value.name = "value")
-    ae_1 <- data.table::melt(as.data.table(df_ae[c("bins", "%actual_1", "%expected_1")]),
-                             id.vars = c("bins"),
-                             variable.name = "actual_expected",
-                             value.name = "value")
-    
-    plot_2 <- ggplot(ae_total, aes(x = ae_total$bins,
-                                   y = ae_total$value,
-                                   fill = ae_total$actual_expected)) +
-      geom_bar(stat = "identity", position = position_dodge(width = 0.7)) +
-      geom_text(aes(y = ae_total$value,
-                    label = paste(as_percent(ae_total$value, digits = 3))),
-                position = position_dodge(width = 0.7),
-                size = ifelse(nrow(ae_total) > 10, 2.6,
-                              ifelse(nrow(ae_total) > 5, 2.8,
-                                     ifelse(nrow(ae_total) > 3, 3, 3.2))), vjust = 1, hjust = 0.3, colour = "white") +
-      geom_line(aes(x = factor(ae_1[[1]]),
-                    y = as.numeric(ae_1$value) * max(ae_total$value) * 4,
-                    color = ae_1$actual_expected,
-                    linetype = ae_1$actual_expected,
-                    group = ae_1$actual_expected),
-                position = position_dodge(width = 0.5), size = 1) +
-      geom_point(aes(y = as.numeric(ae_1$value) * max(ae_total$value) * 4,
-                     color = ae_1$actual_expected,
-                     group = ae_1$actual_expected),
-                 position = position_dodge(width = 0.5),
-                 fill = 'white', color = love_color("deep_red"), size = 2, shape = 21) +
-      geom_text(aes(y = as.numeric(ae_1$value) * max(ae_total$value) * 4,
-                    label = paste(as_percent(ae_1$value, digits = 3))),
-                position = position_dodge(width = 0.5),
-                colour = 'black',
-                size = ifelse(nrow(ae_total) > 10, 2.6,
-                              ifelse(nrow(ae_total) > 5, 2.8,
-                                     ifelse(nrow(ae_total) > 3, 3, 3.2))), vjust = -0.1) +
-      annotate(geom = 'text',
-               x = dim(ae_total)[1] / 3,
-               y = max(c(ae_total$value, as.numeric(ae_1$value) * max(ae_total$value) * 4)) + 0.09,
-               label = paste(paste("IV:", sum(df_ae$IVi)), paste('PSI:', sum(df_ae$PSIi)), sep = "   ")) +
-      scale_fill_manual(values = c('%actual' = love_color("deep_grey"),
-                                   '%expected' = love_color("light_yellow"))) +
-      scale_color_manual(values = c('%actual_1' = love_color("shallow_red"),
-                                    '%expected_1' = love_color("sky_blue"))) +
-      ylim(c(-0.01, max(c(ae_total$value, as.numeric(ae_1$value) * max(ae_total$value) * 4)) + 0.1)) +
-      xlab(x) + ylab("Total Percent") +
-      ggtitle(paste(x, "Distribution of Train/Expected and Test/Actual")) +
-      plot_theme(legend.position = "top",
-                 title_size = 9,
-                 axis_title_size = 8,
-                 angle = ifelse(nrow(ae_total) > 10, 60,
-                                ifelse(nrow(ae_total) > 5, 40,
-                                       ifelse(nrow(ae_total) > 3, 20, 10))),
-                 axis_size_x = ifelse(max(nchar(ae_total$bins)) > 30, 5,
-                                      ifelse(max(nchar(ae_total$bins)) > 20, 6,
-                                             ifelse(max(nchar(ae_total$bins)) > 10, 7, 8))))
-    
-  } else {
-    
-    if (is.null(breaks) & is.null(breaks_list)) {
-      
-      breaks = get_breaks(dat = dat_train, dat_test = dat_test,
-                          x = x, target = target, pos_flag = pos_flag,
-                          equal_bins = equal_bins,
-                          cut_bin = cut_bin,
-                          tree_control = tree_control,
-                          bins_control = bins_control,
-                          bins_total = FALSE,
-                          best = best, g = g, as_table = FALSE,
-                          note = FALSE, bins_no = TRUE)
-      
-    }
-    df_ae <- get_bins_table(dat = dat_train,
-                            x = x, target = target, pos_flag = pos_flag,
-                            breaks_list = breaks_list,
-                            breaks = breaks,
-                            bins_total = FALSE,
-                            note = FALSE)
-    tar_var = paste0("%", target)
-    plot_2 <- ggplot(df_ae, aes(x = df_ae$bins,
-                                y = de_percent(df_ae$`%total`, 3)
-    )) +
-      geom_bar(aes(fill = "%total"), stat = "identity", position = position_dodge(width = 0.7)) +
-      geom_text(aes(y = de_percent(df_ae$`%total`, 3),
-                    label = paste(df_ae$`%total`)),
-                position = position_dodge(width = 0.7),
-                size = ifelse(nrow(df_ae) > 10, 2.6,
-                              ifelse(nrow(df_ae) > 5, 2.8,
-                                     ifelse(nrow(df_ae) > 3, 3, 3.2))), vjust = 1, hjust = 0.3, colour = "white") +
-      geom_line(aes(x = factor(df_ae[['bins']]),
-                    y = de_percent(df_ae$bad_rate, 3) * max(de_percent(df_ae$`%total`, 3)) * 4,
-                    color = tar_var
-      ),
-      linetype = 1,
-      group = "%total",
-      position = position_dodge(width = 0.5), size = 1) +
-      geom_point(aes(y = de_percent(df_ae$bad_rate, 3) * max(de_percent(df_ae$`%total`, 3)) * 4
-      ),
-      color = love_color("deep_orange"),
-      group = 1,
-      position = position_dodge(width = 0.5),
-      fill = 'white', color = love_color("deep_red"), size = 2, shape = 21) +
-      geom_text(aes(y = de_percent(df_ae$bad_rate, 3) * max(de_percent(df_ae$`%total`, 3)) * 4,
-                    label = paste(df_ae$bad_rate)),
-                position = position_dodge(width = 0.5),
-                colour = 'black',
-                size = ifelse(nrow(df_ae) > 10, 2.6,
-                              ifelse(nrow(df_ae) > 5, 2.8,
-                                     ifelse(nrow(df_ae) > 3, 3, 3.2))), vjust = -0.1) +
-      annotate(geom = 'text',
-               x = dim(df_ae)[1] / 3,
-               y = max(c(de_percent(df_ae$`%total`, 3),
-                         de_percent(df_ae$bad_rate, 3) * max(de_percent(df_ae$`%total`, 3)) * 4)) + 0.09,
-               label = paste(paste("IV:", sum(df_ae$iv, na.rm = TRUE)))) +
-      scale_fill_manual(values = c("%total" = love_color("light_cyan"))) +
-      scale_color_manual(values = c(love_color("deep_orange"))) +
-      ylim(c(-0.01, max(c(de_percent(df_ae$`%total`, 3),
-                          de_percent(df_ae$bad_rate, 3) * max(de_percent(df_ae$`%total`, 3)) * 4)) + 0.05)) +
-      
-      guides(fill = guide_legend(title = NULL)) +
-      xlab(x) + ylab("percent") +
-      ggtitle(paste(x, " Distribution")) +
-      plot_theme(legend.position = "top",
-                 title_size = 9,
-                 axis_title_size = 8,
-                 angle = ifelse(nrow(df_ae) > 10, 60,
-                                ifelse(nrow(df_ae) > 5, 40,
-                                       ifelse(nrow(df_ae) > 3, 20, 10))),
-                 axis_size_x = ifelse(max(nchar(df_ae$bins)) > 30, 5,
-                                      ifelse(max(nchar(df_ae$bins)) > 20, 6,
-                                             ifelse(max(nchar(df_ae$bins)) > 10, 7, 8))))
-    
-    
-  }
-  if (save_data) {
-    ggsave(paste0(dir_path, paste(x, "png", sep = '.')),
-           plot = multi_grid(grobs = list(plot_1, plot_2), ncol = 2, nrow = 1),
-           width = g_width, height = g_width / 2, dpi = "retina")
-  }
-  if (plot_show) {
-    plot(multi_grid(grobs = list(plot_1, plot_2), ncol = 2, nrow = 1))
-  }
-  return(df_ae)
-  options(opt) # reset
+					  g_width = 8, breaks_list = NULL, breaks = NULL,
+					  pos_flag = list("1", 1, "bad", "positive"),
+					  equal_bins = TRUE, cut_bin = 'equal_depth', best = FALSE,
+					  g = 10, tree_control = NULL,
+					  bins_control = NULL,
+					  plot_show = TRUE,
+					  save_data = FALSE,
+					  dir_path = tempdir()) {
+
+	dat_train = checking_data(dat = dat_train, target = target)
+	dat_train = char_to_num(dat_train, char_list = x, note = FALSE)
+	digits_x = min(ifelse(is.numeric(dat_train[, x]), digits_num(dat_train[, x]), 4), 4, na.rm = FALSE)
+	opt = options('warn' = -1, scipen = 200, digits = digits_x + 1) #
+
+	dat_train$target = as.character(dat_train[, target])
+	xn = NULL
+	if (class(dat_train[, x]) %in% c("numeric", "double", "integer") && length(unique(dat_train[, x])) > 5) {
+
+		med <- dat_train %>%
+  	  dplyr::mutate(xn = dat_train[, x]) %>%
+  	  dplyr::group_by(target) %>%
+  	  dplyr::summarise(grp.mean = quantile(xn, 0.5, na.rm = TRUE, type = 3))
+		none_na_num <- sum(!is.na(dat_train[, x]))
+		tbl_x <- table(dat_train[, x])
+		x_unique_value <- as.double(names(tbl_x))
+		cum_sum <- cumsum(tbl_x)
+		cuts_sum <- approx(cum_sum, x_unique_value, xout = (1:100) * none_na_num / 100,
+					   method = "constant", rule = 2, f = 1)$y
+
+		dat_train_sub = dat_train
+		if (length(unique(cuts_sum)) > 10) {
+			x_cuts <- cuts_sum[length(cuts_sum) - 1]
+			dat_train_sub <- subset(dat_train, dat_train[, x] <= x_cuts)
+		}
+		#desity plot
+		plot_1 <- ggplot(dat_train_sub, aes(x = dat_train_sub[, x])) +
+  	  geom_density(aes(fill = dat_train_sub$target), alpha = 0.3) +
+  	  stat_density(geom = "line", position = "identity", size = 0.6,
+				   aes(color = dat_train_sub$target)) +
+  	  scale_fill_manual(values = c('1' = love_color("shallow_red"),
+								   '0' = love_color("sky_blue"))) +
+  	  scale_color_manual(values = c('1' = love_color("shallow_red"),
+									'0' = love_color("sky_blue"))) +
+  	  geom_vline(data = med, linetype = "dashed", size = 0.7,
+				 aes(xintercept = med$grp.mean, color = med$target)) +
+  	  xlab(x) +
+  	  ggtitle(paste("Density of", x)) +
+  	  plot_theme(legend.position = c(.9, .9), title_size = 9,
+				 axis_title_size = 8)
+
+	} else {
+		#relative frequency histogram
+		dat_tr = dat_train
+		dat_tr[, x] = as.character(dat_tr[, x])
+
+		#relative frequency histogram
+		dat_tr$target = as.character(dat_tr[, target])
+		data1 = dat_tr %>%
+  	  dplyr::mutate(xn = dat_tr[, x]) %>%
+  	  dplyr::group_by(xn) %>% dplyr::count( xn,target) %>%
+  	  dplyr::mutate(percent = n / sum(n))
+		plot_1 <- ggplot(data1, aes(x = data1$xn, y = data1$percent, fill = reorder(data1$target, n))) +
+  	  geom_bar(stat = "identity", position = position_stack()) +
+  	  geom_text(aes(label = paste(as_percent(data1$percent, digits = 3))),
+				size = ifelse(length(data1$xn) > 10, 2.1,
+							  ifelse(length(data1$xn) > 5, 2.5,
+									 ifelse(length(data1$xn) > 3, 3, 3.3))), vjust = 1, colour = 'white', position = position_stack()) +
+  	  guides(fill = guide_legend(reverse = F)) +
+  	  ggtitle(paste("Relative Frequency of", x)) +
+  	  ylab("Percent") + xlab(x) +
+  	  scale_fill_manual(values = c('0' = love_color("shallow_cyan"),
+								   '1' = love_color("deep_grey"))) +
+  	  plot_theme(legend.position = "top", title_size = 9,
+				 axis_title_size = 8)
+	}
+
+	if (!is.null(dat_test) || length(dat_test) > 1) {
+		dat_test = char_to_num(dat_test, char_list = x, note = FALSE)
+		if (class(dat_test[, x])[1] != class(dat_train[, x])[1]) {
+			warning("The types of x in dat_test and dat_train are different!")
+		}
+		df_ae = get_psi_iv(dat = dat_train, dat_test = dat_test,
+					   x = x, target = target, pos_flag = pos_flag,
+					   breaks_list = breaks_list,
+					   breaks = breaks,
+					   equal_bins = equal_bins,
+					   cut_bin = cut_bin,
+					   tree_control = tree_control,
+					   bins_control = bins_control,
+					   bins_total = FALSE,
+					   best = best, g = g, as_table = TRUE,
+					   note = FALSE, bins_no = TRUE)
+		ae_total <- data.table::melt(as.data.table(df_ae[c("bins", "%actual", "%expected")]),
+								 id.vars = c("bins"),
+								 variable.name = "actual_expected",
+								 value.name = "value")
+		ae_1 <- data.table::melt(as.data.table(df_ae[c("bins", "%actual_1", "%expected_1")]),
+							 id.vars = c("bins"),
+							 variable.name = "actual_expected",
+							 value.name = "value")
+
+		plot_2 <- ggplot(ae_total, aes(x = ae_total$bins,
+								   y = ae_total$value,
+								   fill = ae_total$actual_expected)) +
+  	  geom_bar(stat = "identity", position = position_dodge(width = 0.7)) +
+  	  geom_text(aes(y = ae_total$value,
+					label = paste(as_percent(ae_total$value, digits = 3))),
+				position = position_dodge(width = 0.7),
+				size = ifelse(nrow(ae_total) > 10, 2.6,
+							  ifelse(nrow(ae_total) > 5, 2.8,
+									 ifelse(nrow(ae_total) > 3, 3, 3.2))), vjust = 1, hjust = 0.3, colour = "white") +
+  	  geom_line(aes(x = factor(ae_1[[1]]),
+					y = as.numeric(ae_1$value) * max(ae_total$value) * 4,
+					color = ae_1$actual_expected,
+					linetype = ae_1$actual_expected,
+					group = ae_1$actual_expected),
+				position = position_dodge(width = 0.5), size = 1) +
+  	  geom_point(aes(y = as.numeric(ae_1$value) * max(ae_total$value) * 4,
+					 color = ae_1$actual_expected,
+					 group = ae_1$actual_expected),
+				 position = position_dodge(width = 0.5),
+				 fill = 'white', color = love_color("deep_red"), size = 2, shape = 21) +
+  	  geom_text(aes(y = as.numeric(ae_1$value) * max(ae_total$value) * 4,
+					label = paste(as_percent(ae_1$value, digits = 3))),
+				position = position_dodge(width = 0.5),
+				colour = 'black',
+				size = ifelse(nrow(ae_total) > 10, 2.6,
+							  ifelse(nrow(ae_total) > 5, 2.8,
+									 ifelse(nrow(ae_total) > 3, 3, 3.2))), vjust = -0.1) +
+  	  annotate(geom = 'text',
+			   x = dim(ae_total)[1] / 3,
+			   y = max(c(ae_total$value, as.numeric(ae_1$value) * max(ae_total$value) * 4)) + 0.09,
+			   label = paste(paste("IV:", sum(df_ae$IVi)), paste('PSI:', sum(df_ae$PSIi)), sep = "   ")) +
+  	  scale_fill_manual(values = c('%actual' = love_color("deep_grey"),
+								   '%expected' = love_color("light_yellow"))) +
+  	  scale_color_manual(values = c('%actual_1' = love_color("shallow_red"),
+									'%expected_1' = love_color("sky_blue"))) +
+  	  ylim(c(-0.01, max(c(ae_total$value, as.numeric(ae_1$value) * max(ae_total$value) * 4)) + 0.1)) +
+  	  xlab(x) + ylab("Total Percent") +
+  	  ggtitle(paste(x, "Distribution of Train/Expected and Test/Actual")) +
+  	  plot_theme(legend.position = "top",
+				 title_size = 9,
+				 axis_title_size = 8,
+				 angle = ifelse(nrow(ae_total) > 10, 60,
+								ifelse(nrow(ae_total) > 5, 40,
+									   ifelse(nrow(ae_total) > 3, 20, 10))),
+				 axis_size_x = ifelse(max(nchar(ae_total$bins)) > 30, 5,
+									  ifelse(max(nchar(ae_total$bins)) > 20, 6,
+											 ifelse(max(nchar(ae_total$bins)) > 10, 7, 8))))
+
+	} else {
+
+		if (is.null(breaks) & is.null(breaks_list)) {
+
+			breaks = get_breaks(dat = dat_train, dat_test = dat_test,
+						  x = x, target = target, pos_flag = pos_flag,
+						  equal_bins = equal_bins,
+						  cut_bin = cut_bin,
+						  tree_control = tree_control,
+						  bins_control = bins_control,
+						  bins_total = FALSE,
+						  best = best, g = g, as_table = FALSE,
+						  note = FALSE, bins_no = TRUE)
+
+		}
+		df_ae <- get_bins_table(dat = dat_train,
+							x = x, target = target, pos_flag = pos_flag,
+							breaks_list = breaks_list,
+							breaks = breaks,
+							bins_total = FALSE,
+							note = FALSE)
+		tar_var = paste0("%", target)
+		plot_2 <- ggplot(df_ae, aes(x = df_ae$bins,
+								y = de_percent(df_ae$`%total`, 3)
+	)) +
+  	  geom_bar(aes(fill = "%total"), stat = "identity", position = position_dodge(width = 0.7)) +
+  	  geom_text(aes(y = de_percent(df_ae$`%total`, 3),
+					label = paste(df_ae$`%total`)),
+				position = position_dodge(width = 0.7),
+				size = ifelse(nrow(df_ae) > 10, 2.6,
+							  ifelse(nrow(df_ae) > 5, 2.8,
+									 ifelse(nrow(df_ae) > 3, 3, 3.2))), vjust = 1, hjust = 0.3, colour = "white") +
+  	  geom_line(aes(x = factor(df_ae[['bins']]),
+					y = de_percent(df_ae$bad_rate, 3) * max(de_percent(df_ae$`%total`, 3)) * 4,
+					color = tar_var
+	  ),
+	  linetype = 1,
+	  group = "%total",
+	  position = position_dodge(width = 0.5), size = 1) +
+  	  geom_point(aes(y = de_percent(df_ae$bad_rate, 3) * max(de_percent(df_ae$`%total`, 3)) * 4
+	  ),
+	  color = love_color("deep_orange"),
+	  group = 1,
+	  position = position_dodge(width = 0.5),
+	  fill = 'white', color = love_color("deep_red"), size = 2, shape = 21) +
+  	  geom_text(aes(y = de_percent(df_ae$bad_rate, 3) * max(de_percent(df_ae$`%total`, 3)) * 4,
+					label = paste(df_ae$bad_rate)),
+				position = position_dodge(width = 0.5),
+				colour = 'black',
+				size = ifelse(nrow(df_ae) > 10, 2.6,
+							  ifelse(nrow(df_ae) > 5, 2.8,
+									 ifelse(nrow(df_ae) > 3, 3, 3.2))), vjust = -0.1) +
+  	  annotate(geom = 'text',
+			   x = dim(df_ae)[1] / 3,
+			   y = max(c(de_percent(df_ae$`%total`, 3),
+						 de_percent(df_ae$bad_rate, 3) * max(de_percent(df_ae$`%total`, 3)) * 4)) + 0.09,
+			   label = paste(paste("IV:", sum(df_ae$iv, na.rm = TRUE)))) +
+  	  scale_fill_manual(values = c("%total" = love_color("light_cyan"))) +
+  	  scale_color_manual(values = c(love_color("deep_orange"))) +
+  	  ylim(c(-0.01, max(c(de_percent(df_ae$`%total`, 3),
+						  de_percent(df_ae$bad_rate, 3) * max(de_percent(df_ae$`%total`, 3)) * 4)) + 0.05)) +
+
+  	  guides(fill = guide_legend(title = NULL)) +
+  	  xlab(x) + ylab("percent") +
+  	  ggtitle(paste(x, " Distribution")) +
+  	  plot_theme(legend.position = "top",
+				 title_size = 9,
+				 axis_title_size = 8,
+				 angle = ifelse(nrow(df_ae) > 10, 60,
+								ifelse(nrow(df_ae) > 5, 40,
+									   ifelse(nrow(df_ae) > 3, 20, 10))),
+				 axis_size_x = ifelse(max(nchar(df_ae$bins)) > 30, 5,
+									  ifelse(max(nchar(df_ae$bins)) > 20, 6,
+											 ifelse(max(nchar(df_ae$bins)) > 10, 7, 8))))
+
+
+	}
+	if (save_data) {
+		ggsave(paste0(dir_path, paste(x, "png", sep = '.')),
+		   plot = multi_grid(grobs = list(plot_1, plot_2), ncol = 2, nrow = 1),
+		   width = g_width, height = g_width / 2, dpi = "retina")
+	}
+	if (plot_show) {
+		plot(multi_grid(grobs = list(plot_1, plot_2), ncol = 2, nrow = 1))
+	}
+	return(df_ae)
+	options(opt) # reset
 }
 
 #' Plot PSI(Population Stability Index)
@@ -2501,12 +2498,12 @@ get_plot_elements <- function(table_1, grid_table, colname.fill.color, text.fill
 
 multi_grid <- function(..., grobs = list(...),
 						 nrow = NULL, ncol = NULL) {
-	n <- length(grobs)
+	n = length(grobs)
 	if (is.null(nrow) && !is.null(ncol)) {
-		nrow <- ceiling(n / ncol)
+		nrow = ceiling(n / ncol)
 	}
 	if (is.null(ncol) && !is.null(nrow)) {
-		ncol <- ceiling(n / nrow)
+		ncol = ceiling(n / nrow)
 	}
 	stopifnot(nrow * ncol >= n)
 	if (is.null(nrow) && is.null(ncol)) {
@@ -2528,29 +2525,29 @@ multi_grid <- function(..., grobs = list(...),
 			}
 		}
 	}
-	inherit.ggplot <- unlist(lapply(grobs, inherits, what = "ggplot"))
+	inherit.ggplot = unlist(lapply(grobs, inherits, what = "ggplot"))
 
 	if (any(inherit.ggplot)) {
 		stopifnot(requireNamespace("ggplot2", quietly = TRUE))
-		toconv <- which(inherit.ggplot)
-		grobs[toconv] <- lapply(grobs[toconv], ggplot2::ggplotGrob)
+		toconv = which(inherit.ggplot)
+		grobs[toconv] = lapply(grobs[toconv], ggplot2::ggplotGrob)
 	}
-	positions <- expand.grid(t = seq_len(nrow),
+	positions = expand.grid(t = seq_len(nrow),
 						   l = seq_len(ncol))
-	positions$b <- positions$t
-	positions$r <- positions$l
-	positions <- positions[order(positions$t),]
-	positions <- positions[seq_along(grobs),]
+	positions$b = positions$t
+	positions$r = positions$l
+	positions = positions[order(positions$t),]
+	positions = positions[seq_along(grobs),]
 	## sizes
-	widths <- unit(rep(1, ncol), "null")
-	heights <- unit(rep(1, nrow), "null")
+	widths = unit(rep(1, ncol), "null")
+	heights = unit(rep(1, nrow), "null")
 
-	grob_table <- to_gtable(name = "arrange",
+	grob_table = to_gtable(name = "arrange",
 
 			   heights = heights,
 			   widths = widths)
 
-	grob_table <- add_grobs(x = grob_table, grobs,
+	grob_table = add_grobs(x = grob_table, grobs,
 						t = positions$t,
 						b = positions$b,
 						l = positions$l,
@@ -2562,7 +2559,7 @@ multi_grid <- function(..., grobs = list(...),
 
 to_gtable = function(widths = list(), heights = list(),
 				   name = "layout") {
-	layout <- new_data_frame(list(t = numeric(), l = numeric(),
+	layout = new_data_frame(list(t = numeric(), l = numeric(),
 								b = numeric(), r = numeric(), z = numeric(), clip = character(),
 								name = character()), n = 0)
 	grid::gTree(grobs = list(), layout = layout, widths = widths, heights = heights,
@@ -2574,29 +2571,29 @@ to_gtable = function(widths = list(), heights = list(),
 add_grobs <- function(x, grobs, t, l, b = t, r = l, z = Inf, clip = "off",
 							name = x$name) {
 
-	n_grobs <- length(grobs)
-	layout <- unclass(x$layout)
-	z <- rep(z, length.out = n_grobs)
-	zval <- c(layout$z, z[!is.infinite(z)])
+	n_grobs = length(grobs)
+	layout = unclass(x$layout)
+	z = rep(z, length.out = n_grobs)
+	zval = c(layout$z, z[!is.infinite(z)])
 	if (length(zval) == 0) {
-		zmin <- 1
-		zmax <- 0
+		zmin = 1
+		zmax = 0
 	} else {
-		zmin <- min(zval)
-		zmax <- max(zval)
+		zmin = min(zval)
+		zmax = max(zval)
 	}
-	z[z == -Inf] <- zmin - rev(seq_len(sum(z == -Inf)))
-	z[z == Inf] <- zmax + seq_len(sum(z == Inf))
-	x_row <- length(x$heights)
-	x_col <- length(x$widths)
-	t <- rep(neg_to_pos(t, x_row), length.out = n_grobs)
-	b <- rep(neg_to_pos(b, x_row), length.out = n_grobs)
-	l <- rep(neg_to_pos(l, x_col), length.out = n_grobs)
-	r <- rep(neg_to_pos(r, x_col), length.out = n_grobs)
-	clip <- rep(clip, length.out = n_grobs)
-	name <- rep(name, length.out = n_grobs)
-	x$grobs <- c(x$grobs, grobs)
-	x$layout <- new_data_frame(list(t = c(layout$t, t), l = c(layout$l,
+	z[z == -Inf] = zmin - rev(seq_len(sum(z == -Inf)))
+	z[z == Inf] = zmax + seq_len(sum(z == Inf))
+	x_row = length(x$heights)
+	x_col = length(x$widths)
+	t = rep(neg_to_pos(t, x_row), length.out = n_grobs)
+	b = rep(neg_to_pos(b, x_row), length.out = n_grobs)
+	l = rep(neg_to_pos(l, x_col), length.out = n_grobs)
+	r = rep(neg_to_pos(r, x_col), length.out = n_grobs)
+	clip = rep(clip, length.out = n_grobs)
+	name = rep(name, length.out = n_grobs)
+	x$grobs = c(x$grobs, grobs)
+	x$layout = new_data_frame(list(t = c(layout$t, t), l = c(layout$l,
 															l), b = c(layout$b, b),
 								  r = c(layout$r, r), z = c(layout$z, z),
 								  clip = c(layout$clip, clip), name = c(layout$name,
@@ -2610,7 +2607,7 @@ neg_to_pos <- function(x, max) {
 
 new_data_frame <- function(x = list(), n = NULL) {
 	if (length(x) != 0 && is.null(names(x))) stop("Elements must be named", call. = FALSE)
-	lengths <- vapply(x, length, integer(1))
+	lengths = vapply(x, length, integer(1))
 	if (is.null(n)) {
 		n <- if (length(x) == 0 || min(lengths) == 0) 0 else max(lengths)
 	}

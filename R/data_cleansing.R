@@ -43,7 +43,7 @@
 #' \code{\link{process_outliers}}
 #' @examples
 #' #data cleaning
-#' dat_cl <- data_cleansing(dat = UCICreditCard[1:2000,],
+#' dat_cl = data_cleansing(dat = UCICreditCard[1:2000,],
 #'                        target = "default.payment.next.month",
 #'                        x_list = NULL,
 #'                        obs_id = "ID",
@@ -208,12 +208,12 @@ remove_duplicated <- function(dat = dat, obs_id = NULL, occur_time = NULL,
             if (!is.null(occur_time)) {
                 dat[c("id_1", "apply_date_1", "y_1")] = dat[c(obs_id, occur_time, target)]
                 if (is.numeric(dat$y_1)) {
-                    dat <- dat %>% dplyr::group_by(id_1) %>%
+                    dat = dat %>% dplyr::group_by(id_1) %>%
                     dplyr::filter( y_1 == max(y_1) & apply_date_1 == max(apply_date_1)) %>%
                     dplyr::distinct(id_1, .keep_all = TRUE) %>%
                     dplyr::ungroup()
                 } else {
-                    dat <- dat %>% dplyr::group_by(id_1) %>% base :: as.factor(y_1) %>%
+                    dat = dat %>% dplyr::group_by(id_1) %>% base :: as.factor(y_1) %>%
                         dplyr::filter(y_1 == levels(y_1)[which.min(table(y_1))] & apply_date_1 == max(apply_date_1)) %>%
                         dplyr::distinct(id_1, .keep_all = TRUE) %>%
                         dplyr::ungroup()
@@ -221,12 +221,12 @@ remove_duplicated <- function(dat = dat, obs_id = NULL, occur_time = NULL,
             } else {
                 dat[c("id_1", "y_1")] = dat[c(obs_id, target)]
                 if (is.numeric(dat$y_1)) {
-                    dat <- dat %>% dplyr::group_by(id_1) %>%
+                    dat = dat %>% dplyr::group_by(id_1) %>%
                     dplyr::filter(y_1 == max(y_1) )%>%
                     dplyr::distinct(id_1, .keep_all = TRUE) %>%
                     dplyr::ungroup()
                 } else {
-                    dat <- dat %>% dplyr::group_by(id_1) %>% as.factor(y_1) %>%
+                    dat = dat %>% dplyr::group_by(id_1) %>% as.factor(y_1) %>%
                         dplyr::filter(y_1 == levels(y_1)[which.min(table(y_1))]) %>%
                         dplyr::distinct(id_1, .keep_all = TRUE) %>%
                         dplyr::ungroup()
@@ -235,12 +235,12 @@ remove_duplicated <- function(dat = dat, obs_id = NULL, occur_time = NULL,
         } else {
             if (!is.null(occur_time)) {
                 dat[c("id_1", "apply_date_1")] = dat[c(obs_id, occur_time)]
-                dat <- dat %>% dplyr::group_by(id_1) %>%
+                dat = dat %>% dplyr::group_by(id_1) %>%
                 dplyr::filter(apply_date_1 == max(apply_date_1)) %>%
                 dplyr::distinct(id_1, .keep_all = TRUE) %>% dplyr::ungroup()
             } else {
                 dat[c("id_1")] = dat[c(obs_id)]
-                dat <- dat %>% dplyr::group_by(id_1) %>%
+                dat = dat %>% dplyr::group_by(id_1) %>%
                 dplyr::distinct(id_1, .keep_all = TRUE) %>% dplyr::ungroup()
             }
         }
@@ -293,11 +293,11 @@ null_blank_na <- function(dat, miss_values = NULL, note = FALSE) {
 
 entry_rate_na <- function(dat, nr = 0.98, note = FALSE) {
     if(note)cat_line(paste("-- Processing NAs & special value rate is more than", nr), col = love_color("dark_green"))
-    n_row <- nrow(dat)
-    NAs_rate <- vapply(dat, function(x) {
+    n_row = nrow(dat)
+    NAs_rate = vapply(dat, function(x) {
         sum(is.na(x)) / n_row
     }, FUN.VALUE = numeric(1))
-    dat[which(NAs_rate > nr)] <- lapply(dat[which(NAs_rate > nr)], function(x) {
+    dat[which(NAs_rate > nr)] = lapply(dat[which(NAs_rate > nr)], function(x) {
         if (is.element(class(x), c('numeric', 'integer', 'double'))) {
             ifelse( is.na(x), "missing", "non_missing")
         } else {
@@ -328,11 +328,11 @@ low_variance_filter <- function(dat, lvp = 0.97, note = FALSE, ex_cols = NULL) {
 	if (note) {
 		cat_line(paste("-- Deleting low variance variables"), col = love_color("dark_green"))
 	}
-	dat <- dat[which(colSums(is.na(dat)) != nrow(dat) | names(dat) %in% ex_cols)]
-	is_na <- as.data.frame(abs(is.na(dat)))
-	dat <- dat[which(apply(is_na, 2, function(x) sum(is.na(x)) / nrow(is_na)) < lvp | names(dat) %in% ex_cols)]
-	low_variance <- vapply(dat, function(x) max(table(x, useNA = "always")) / nrow(dat),
+	dat = dat[which(colSums(is.na(dat)) != nrow(dat) | names(dat) %in% ex_cols)]
+	is_na = as.data.frame(abs(is.na(dat)))
+	dat = dat[which(apply(is_na, 2, function(x) sum(is.na(x)) / nrow(is_na)) < lvp | names(dat) %in% ex_cols)]
+	low_variance = vapply(dat, function(x) max(table(x, useNA = "always")) / nrow(dat),
 						   FUN.VALUE = numeric(1))
-	dat <- dat[which(low_variance < lvp | names(dat) %in% ex_cols)]
+	dat = dat[which(low_variance < lvp | names(dat) %in% ex_cols)]
 	return(dat)
 }

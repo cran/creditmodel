@@ -19,8 +19,6 @@
 #' with relatively high noise and low information content.
 #' }
 #'
-#' To learn more about creditmodel, start with the vignettes:
-#' `browseVignettes(package = "creditmodel")`
+#' To learn more about creditmodel, start with the WeChat Platform: hansenmode
 #'
-
 "_PACKAGE"

@@ -142,11 +142,10 @@ woe_trans <- function(dat, x, bins_table = NULL, target = NULL, breaks_list = NU
 one_hot_encoding <- function(dat, cat_vars = NULL, ex_cols = NULL,
                             merge_cat = TRUE, na_act = TRUE, note = FALSE) {
   if (note)cat_line("-- One-hot encoding for charactor or factor", col = love_color("deep_green"))
-  if (class(dat)[1] != "data.frame") {
-    dat <- as.data.frame(dat)
-  }
+
+  dat = checking_data(dat)
   if (is.null(cat_vars)) {
-    cat_vars <- get_names(dat = dat, types = c("character", "factor"), ex_cols = ex_cols)
+    cat_vars = get_names(dat = dat, types = c("character", "factor"), ex_cols = ex_cols)
   }
   if (length(cat_vars) > 0) {
     if (na_act) {
@@ -159,12 +158,12 @@ one_hot_encoding <- function(dat, cat_vars = NULL, ex_cols = NULL,
       if (is.factor(dat[, i]) || is.character(dat[, i])) {
         col_name = i
         dat[, i] = sapply(dat[, i], function(x) gsub("[^\u4e00-\u9fa5,^a-zA-Z,^0-9]", "_", x))
-        cat_list <- unique(dat[, i])
-        encode_cols <- length(cat_list)
+        cat_list = unique(dat[, i])
+        encode_cols = length(cat_list)
         #Create individual column for every unique value in the variable
         for (j in 1:encode_cols) {
-          one_hot_name <- (paste(col_name, ".", cat_list[j], ".",sep = ""))
-          dat[, one_hot_name] <- ifelse(dat[, i] == cat_list[j] & !is.na(dat[, i]), 1, 0)
+          one_hot_name = (paste(col_name, ".", cat_list[j], ".",sep = ""))
+          dat[, one_hot_name] = ifelse(dat[, i] == cat_list[j] & !is.na(dat[, i]), 1, 0)
         }
       }
     }
@@ -198,30 +197,27 @@ one_hot_encoding <- function(dat, cat_vars = NULL, ex_cols = NULL,
 de_one_hot_encoding <- function(dat_one_hot, cat_vars = NULL, na_act = TRUE,note = FALSE) {
 
   if(note)cat_line("-- Recoverying one-hot encoding for charactor or factor.\n", col = love_color("deep_green"))
-  if (class(dat_one_hot)[1] != "data.frame") {
-    dat_one_hot <- as.data.frame(dat_one_hot)
-  }
-
+  dat_one_hot = checking_data(dat_one_hot)
   if (is.null(cat_vars)) {
     char_names = one_hot_names = one_hot_names = c()
     for (i in 1:length(dat_one_hot)) {
-      char_names[i] <- sub(paste0("\\.$"), "", colnames(dat_one_hot)[i])
+      char_names[i] = sub(paste0("\\.$"), "", colnames(dat_one_hot)[i])
       if (!is.null(char_names[i]) && !is.na(char_names[i]) &&
           char_names[i] == colnames(dat_one_hot)[i]) {
-        char_names[i] <- NA
+        char_names[i] = NA
       }
-      one_hot_names[i] <- try(strsplit(char_names[i], "[.]")[[1]][1], silent = TRUE)
+      one_hot_names[i] = try(strsplit(char_names[i], "[.]")[[1]][1], silent = TRUE)
     }
-    cat_vars <- unique(one_hot_names[!is.na(one_hot_names)])
+    cat_vars = unique(one_hot_names[!is.na(one_hot_names)])
   }
 
-  one_hot_vars <- unlist(sapply(cat_vars, function(x) grep(paste0(x, "\\.", "\\S{1,100}", "\\."),
+  one_hot_vars = unlist(sapply(cat_vars, function(x) grep(paste0(x, "\\.", "\\S{1,100}", "\\."),
                                                            paste(colnames(dat_one_hot)))))
 
   de_cat_vars = intersect(cat_vars, unique(gsub("\\d{1}$", "", names(one_hot_vars))))
 
   if (length(de_cat_vars) > 0) {
-    dat_one_hot[, de_cat_vars] <- lapply(de_cat_vars, function(x) {
+    dat_one_hot[, de_cat_vars] = lapply(de_cat_vars, function(x) {
       grx = cv_cols = names_1 = re_code = NULL
       grx = paste0(x, "\\.", "\\S{1,100}", "\\.$")
       cv_cols =  grep(grx, paste(colnames(dat_one_hot)))
@@ -752,11 +748,12 @@ time_variable = function(dat, date_cols = NULL, enddate = NULL) {
 #' @param city_class  Class or levels of cities.
 #' @export
 
+
 city_varieble_process = function(df_city, x, city_class) {
 	if (class(df_city)[1] != "data.frame") {
-		df_city <- as.data.frame(df_city)
+		df_city <- quick_as_df(df_city)
 	}
-	df_city <- within(df_city, {
+	df_city = within(df_city, {
 		city_level <- NA
 		city_level[df_city[[x]] %alike% city_class[1]] <- 1
 		city_level[df_city[[x]] %alike% city_class[2]] <- 2
@@ -764,43 +761,12 @@ city_varieble_process = function(df_city, x, city_class) {
 		city_level[df_city[[x]] %alike% city_class[4]] <- 4
 		city_level[df_city[[x]] %alike% city_class[5]] <- 5
 		city_level[df_city[[x]] %alike% city_class[6]] <- 6
-		city_level[is.null(df_city[[x]]) == TRUE | df_city[[x]] == "NULL" | df_city[[x]] == "" |
-			df_city[[x]] == "Missing" | city_level == "NA" | df_city[[x]] == "NA"] <- -1
-		city_level[is.na(city_level)] <- -1
+		city_level[is.null(df_city[[x]]) | df_city[[x]] == "NULL" | df_city[[x]] == "" | df_city[[x]] == "missing"|
+			df_city[[x]] == "Missing" | city_level == "null" | df_city[[x]] == "NA"] = -1
+		city_level[is.na(city_level)] = -1
 	})
-	NAsRate <- length(which(df_city$city_level == -1)) / nrow(df_city)
-	if (NAsRate >= 0.3 & NAsRate < 0.6) {
-		df_city2 <- data.frame()
-		df_city2 <- within(df_city, {
-			city_level <- NA
-			city_level[df_city[[x]] %alike% city_class[1]] <- 1
-			city_level[df_city[[x]] %alike% city_class[2]] <- 2
-			city_level[df_city[[x]] %alike% city_class[3]] <- 3
-			city_level[df_city[[x]] %alike% city_class[4]] <- 4
-			city_level[df_city[[x]] %alike% city_class[5]] <- 4
-			city_level[df_city[[x]] %alike% city_class[6]] <- 4
-			city_level[is.null(df_city[[x]]) == TRUE | df_city[[x]] == "NULL" | df_city[[x]] == "" |
-				df_city[[x]] == "Missing" | city_level == "NA" | df_city[[x]] == "NA"] <- -1
-			city_level[is.na(city_level)] <- -1
-		})
-	}
-	if (NAsRate >= 0.6) {
-		df_city3 <- data.frame()
-		df_city3 <- within(df_city, {
-			city_level <- NULL
-			city_level[df_city[[x]] %alike% city_class[1]] <- 1
-			city_level[df_city[[x]] %alike% city_class[2]] <- 1
-			city_level[df_city[[x]] %alike% city_class[3]] <- 1
-			city_level[df_city[[x]] %alike% city_class[4]] <- 1
-			city_level[df_city[[x]] %alike% city_class[5]] <- 1
-			city_level[df_city[[x]] %alike% city_class[6]] <- 1
-			city_level[is.null(df_city[[x]]) == TRUE | df_city[[x]] == "NULL" | df_city[[x]] == "" |
-				df_city[[x]] == "Missing" | city_level == "NA" | df_city[[x]] == "NA"] <- -1
-			city_level[is.na(city_level)] <- -1
-		})
-	}
 	city_level_name <- paste(x, "city_level", sep = "_")
-	df_city <- re_name(dat = df_city, oldname = "city_level", newname = city_level_name)
+	df_city = re_name(dat = df_city, oldname = "city_level", newname = city_level_name)
 	return(df_city[city_level_name])
 }
 
@@ -825,15 +791,15 @@ city_varieble = function(df = df, city_cols = NULL,
 						  city_pattern = NULL, city_class = city_class,
 						  parallel = TRUE) {
 	if (class(df)[1] != "data.frame") {
-		df <- as.data.frame(df)
+		df  = quick_as_df(df)
 	}
 	if (is.null(city_cols)) {
 		city_index <- grepl(city_pattern, paste(colnames(df)))
-		city_cols <- names(df[city_index])
+		city_cols = names(df[city_index])
 	} else {
-		city_cols <- names(df[city_cols])
+		city_cols = names(df[city_cols])
 	}
-	df_city = df[, city_cols]
+	df_city = df[city_cols]
 	if (parallel) {
 		parallel <- start_parallel_computing(parallel)
 		stopCluster <- TRUE
@@ -844,18 +810,111 @@ city_varieble = function(df = df, city_cols = NULL,
 	i. = NULL
 	df_city_list = list()
 	if (!parallel) {
-		df_city_list <- lapply(city_cols, function(x) city_varieble_process(df_city=df_city, x = x, city_class = city_class))
-		df_city_tbl <- Reduce("cbind", df_city_list) %>% as.data.frame()
+		df_city_list = lapply(city_cols, function(x) city_varieble_process(df_city = df_city, x = x, city_class = city_class))
+		df_city_tbl = Reduce("cbind", df_city_list) %>% as.data.frame()
 	} else {
-		df_city_list <- foreach(i. = city_cols, .combine = "c") %dopar% {
+		df_city_list = foreach(i. = city_cols, .combine = "c") %dopar% {
 			try(do.call(city_varieble_process,
 						args = list(df_city = df_city, x = i., city_class = city_class)),
 				silent = TRUE)
 		}
-		df_city_tbl <- as.data.frame(df_city_list)
+		df_city_tbl = quick_as_df(df_city_list)
 	}
-	return(df_city_tbl)
+	df = cbind(df, df_city_tbl)
+	return(df)
 }
+
+
+
+#' Replace Value
+#'
+#' \code{replace_value} is for replacing values of some variables .
+#' \code{replace_value_x} is for replacing values of a variable.
+#'
+#' @param dat  A data.frame.
+#' @param x  Name of variable to replace value.
+#' @param x_list Names of variables to replace value.
+#' @param x_pattern  Regular expressions, used to match variable names.
+#' @param replace_dat A data.frame contains value to replace.
+#' @param MARGIN A vector giving the subscripts which the function will be applied over. E.g., for a matrix 1 indicates rows, 2 indicates columns, c(1, 2) indicates rows and columns. Where X has named dimnames, it can be a character vector selecting dimension names.
+#' @param RE_NAME Logical, rename the replaced variable.
+#' @param VALUE Values to replace.
+#' @param parallel Logical, parallel computing. Default is TRUE.
+#' @importFrom dplyr group_by mutate summarize  summarise n  count %>% filter left_join
+#' @importFrom parallel detectCores  clusterExport clusterCall makeCluster stopCluster
+#' @importFrom doParallel registerDoParallel
+#' @importFrom foreach foreach %dopar% %do%  registerDoSEQ
+#' @export
+
+
+
+replace_value = function(dat = dat, x_list = NULL,
+						  x_pattern = NULL, replace_dat, MARGIN = 2,
+						  VALUE = if (MARGIN == 2) colnames(replace_dat) else rownames(replace_dat),
+						  RE_NAME = TRUE,
+						  parallel = FALSE) {
+	dat = checking_data(dat)
+	if (is.null(x_list)) {
+		if (!is.null(x_pattern)) {
+			x_index = grepl(x_pattern, paste(colnames(dat)))
+			x_list = names(dat[x_index])
+		} else {
+			x_list = get_names(dat)
+		}
+
+	}
+	if (parallel) {
+		parallel <- start_parallel_computing(parallel)
+		stopCluster <- TRUE
+	} else {
+		parallel <- stopCluster <- FALSE
+	}
+	on.exit(if (parallel & stopCluster) stop_parallel_computing(attr(parallel, "cluster")))
+	i. = NULL
+	dat_list = list()
+	if (!parallel) {
+		dat_list = lapply(x_list, function(x) replace_value_x(dat = dat, x = x, replace_dat = replace_dat, MARGIN = MARGIN, VALUE = VALUE, RE_NAME = RE_NAME))
+		dat_tbl = Reduce("cbind", dat_list) %>% quick_as_df()
+	} else {
+		dat_list = foreach(i. = x_list, .combine = "c") %dopar% {
+			try(do.call(city_varieble_process,
+						args = list(dat = dat, x = i., replace_dat = replace_dat)),
+				silent = TRUE)
+		}
+		dat_tbl = quick_as_df(dat_list)
+	}
+	dat = cbind(dat, dat_tbl)
+	return(dat)
+}
+#' @rdname replace_value
+#' @export
+
+replace_value_x = function(dat, x, replace_dat, MARGIN = 2, 
+				VALUE = if (MARGIN == 2) colnames(replace_dat) else rownames(replace_dat), RE_NAME = TRUE) {
+	dat = checking_data(dat)
+	replace_dat = checking_data(replace_dat)
+	dat = within(dat, {
+		x_level = NA
+		if (MARGIN == 2) {
+			for (i in 1:ncol(replace_dat)) {
+				x_level[dat[[x]] %alike% replace_dat[i]] = VALUE[i]
+			}
+		} else {
+			for (i in 1:nrow(replace_dat)) {
+				x_level[dat[[x]] %alike% replace_dat[i,]] = VALUE[i]
+			}
+		}
+
+	})
+	if (RE_NAME) {
+		new_name = paste(x, "replace", sep = "_")
+		dat = re_name(dat = dat, oldname = "x_level", newname = new_name)
+	}
+	return(dat[new_name])
+}
+
+
+
 #' add_variable_process
 #'
 #' This function is not intended to be used by end user.

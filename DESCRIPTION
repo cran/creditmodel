@@ -1,6 +1,6 @@
 Package: creditmodel
-Version: 1.1.9
-Date: 2020-04-15
+Version: 1.2
+Date: 2020-04-30
 Title: Toolkit for Credit Modeling, Analysis and Visualization
 Authors@R: c(person(given = "Dongping", family = "Fan",email = "fdp@pku.edu.cn",role = c("aut", "cre")))
 Maintainer: Dongping Fan <fdp@pku.edu.cn>
@@ -18,7 +18,7 @@ LazyLoad: yes
 License: AGPL-3
 RoxygenNote: 6.1.1
 NeedsCompilation: no
-Packaged: 2020-04-20 09:19:15 UTC; 28142
 Author: Dongping Fan [aut, cre]
 Repository: CRAN
-Date/Publication: 2020-04-20 10:20:06 UTC
+Packaged: 2020-04-28 13:05:21 UTC; 28142
+Date/Publication: 2020-04-28 13:40:02 UTC

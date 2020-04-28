@@ -55,7 +55,7 @@ data_exploration <- function(dat,  save_data = FALSE, file_name = NULL, dir_path
     }
     view_num[is.na(view_num)] = 0
     num_var_list = gsub(" ", "", as.character(unlist(view_num[, "Feature"])))
-    view_num$Std = colSds(dat1[num_var_list], na.rm = TRUE)
+    view_num$Std = round(as.numeric(colSds(dat1[num_var_list], na.rm = TRUE)),2)
     view_num$Miss_Rate = as_percent(as.numeric(view_num$NMiss)/nrow(dat1),4)
     
     names(view_num) = c("Feature", "25%", "75%", "Max", "Mean", "Median", "Min", "NMiss", "Std","Miss_Rate")
