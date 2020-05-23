@@ -49,13 +49,14 @@ customer_segmentation <- function(dat, x_list = NULL, ex_cols = NULL,
     file_name = ifelse(is.null(file_name) | !is.character(file_name), "customer_seg", file_name)
     if (!dir.exists(dir_path)) dir.create(dir_path)
 	if (any(is.na(dat[x_list]))) {
-        dat = process_nas(dat = dat, x_list = x_list, default_miss = TRUE, ex_cols =  ex_cols, parallel = FALSE, method = "median",note = FALSE)
+        dat = process_nas(dat = dat, x_list = x_list,  ex_cols =  ex_cols, parallel = FALSE,
+                          method = "median",note = FALSE)
     }
     dat = one_hot_encoding(dat[x_list])
-    dat = low_variance_filter(dat, lvp = 0.98)
-    dat_s <- apply(dat, 2, min_max_norm)
+    dat_s = quick_as_df(lapply(dat, min_max_norm))
 	if (any(is.na(dat_s))) {
-        dat_s = process_nas(dat = dat_s, x_list = x_list, default_miss = TRUE, ex_cols =  ex_cols, parallel = FALSE, method = "median",note = FALSE)
+        dat_s = process_nas(dat = dat_s, x_list = x_list, ex_cols =  ex_cols,
+                            parallel = FALSE, method = "median",note = FALSE)
     }
     meth = ifelse(!is.null(cluster_control[["meth"]]), cluster_control[["meth"]], "FCM")
     nstart = ifelse(!is.null(cluster_control[["nstart"]]), cluster_control[["nstart"]], 1)
@@ -584,7 +585,7 @@ get_ctree_rules = function(tree_fit = NULL, train_dat = NULL, target = NULL, tes
 							"#test", "%test", "%test_1", "PSI", "#total", "%total",
 							"%test_cumsum", "%test_cum_1_rate", "%test_cum_1", "%test_cum_0","test_KS","test_Lift")
 		dt_rules_k = dt_rules_ts1[c("tree_nodes", "tree_rules", "#total", "%total", "#train", "%train", "%train_cumsum", "train_0", "train_1", "%train_1", "%train_cum_1_rate",
-								 "%train_cum_0", "%train_cum_1","train_KS","train_Lift","#test", "%test","%test_cumsum", "test_0","test_1", 
+								 "%train_cum_0", "%train_cum_1","train_KS","train_Lift","#test", "%test","%test_cumsum", "test_0","test_1",
 								 "%test_1", "%test_cum_1_rate",
 							"%test_cum_0", "%test_cum_1", "test_KS","test_Lift", "PSI")]
 	}
@@ -612,7 +613,7 @@ get_ctree_rules = function(tree_fit = NULL, train_dat = NULL, target = NULL, tes
 #' dat_train$default.payment.next.month = as.numeric(dat_train$default.payment.next.month)
 #' rules_list = get_ctree_rules(tree_fit = NULL, train_dat = dat_train[, 8:26],
 #'                              target ="default.payment.next.month", test_dat = dat_test)[1:3,2]
-#' check_rules(rules_list = rules_list, target = "default.payment.next.month", 
+#' check_rules(rules_list = rules_list, target = "default.payment.next.month",
 #' test_dat = dat_test, value = NULL)
 #'
 #' @importFrom data.table fwrite melt fread dcast
@@ -766,7 +767,7 @@ check_rules <- function(rules_list, test_dat, target, value = NULL) {
 #' @param dat  A data.frame.
 #' @param drop Logical, if TRUE, dropping samples, if FALSE, selecting samples. Default is FALSE.
 #' @param logic The logic between rules in the rules_list: 'and','or'. Default is 'or'.
-#' @return A data frame with tree rules and percent under each rule.
+#' @return A data frame.
 #' @seealso
 #' \code{\link{get_ctree_rules}},
 #' \code{\link{check_rules}}
@@ -802,6 +803,76 @@ rules_filter = function(dat, rules_list, drop = FALSE, logic = "or") {
 	}
 	return(new_dat)
 }
+
+#' rules_result
+#'
+#'
+#' \code{rules_result} This function is used to get rules results.
+#' @param dat  A data.frame
+#' @param rules_list  A list of rules.
+#' @param yes Default is 'reject'.
+#' @param no Default is 'pass'.
+#' @return A vector with 'pass' and 'reject'.
+#' @seealso
+#' \code{\link{get_ctree_rules}},
+#' \code{\link{check_rules}},
+#' \code{\link{rules_filter}}
+#' @examples
+#' train_test <- train_test_split(UCICreditCard, split_type = "Random", prop = 0.8, save_data = FALSE)
+#' dat_train = train_test$train
+#' dat_test = train_test$test
+#' dat_train$default.payment.next.month = as.numeric(dat_train$default.payment.next.month)
+#' rules_list = get_ctree_rules(tree_fit = NULL, train_dat = dat_train[, 8:26],
+#'                              target ="default.payment.next.month", test_dat = dat_test)[1:3,2]
+#' dat_test$rules_result = rules_result(rules_list = rules_list[3], dat = dat_test)
+#'
+#' @importFrom dplyr group_by mutate summarize  summarise n  count %>% filter  left_join
+#' @export
+
+
+
+rules_result = function(dat, rules_list, yes = 'reject', no = 'pass') {
+	dat = checking_data(dat)
+	filter_new = as.character(paste("(", rules_list, ")", collapse = '|'))
+
+	dat = transform(dat,
+		 new_rules = ifelse(eval(parse(text = filter_new)), yes, no)
+	)
+
+	dat[is.na(dat$new_rules), "new_rules"] = no
+	return(dat$new_rules)
+}
+
+#' rule_value_replace
+#'
+#' \code{rule_value_replace} is for generating new variables by rules.
+#'
+#' @param dat  A data.frame.
+#' @param rules_list Names of variables to replace value.
+#' @param x_name name of the new variable.
+#' @param VALUE values to replace.
+#' @export
+
+
+rule_value_replace = function(dat, rules_list, VALUE = 1:length(rules_list), x_name = "x_level") {
+	dat = checking_data(dat)
+	if (x_name %in% names(dat)) {
+		warning("Columns'name duplicated. Delete column with duplicate name.\n")
+		dat = subset(dat, select = !names(dat) == x_name)
+	}
+	dat = within(dat, {
+		x_level = NA
+		for (i in 1:length(rules_list)) {
+			x_level[eval(parse(text = as.character(rules_list[i])))] = VALUE[i]
+		}
+		i = NULL
+	})
+	if (!is.null(x_name)) {
+		dat = re_name(dat = dat, oldname = "x_level", newname = x_name)
+	}
+	return(dat)
+}
+
 
 #' Table of Binning
 #'
@@ -1573,7 +1644,7 @@ cross_table = function(dat, cross_x, cross_y = NULL, target = NULL, value = NULL
 					dat[, crs_y] = dat[, cross_x[len_crs_x]]
 					crs_x = crs_x[1:(len_crs_x-1)]
 					dat[, crs_x] = dat[, cross_x[(-len_crs_x)]]
-					
+
 				} else {
 					crs_y = crs_x[len_crs_x]
 					dat[, crs_y] = dat[, cross_x[len_crs_x]]
@@ -1585,7 +1656,7 @@ cross_table = function(dat, cross_x, cross_y = NULL, target = NULL, value = NULL
 			} else {
 				stop("corss_x or cross_y must have less than or equal to 6 variables.")
 			}
-		
+
 		}
 	}
 

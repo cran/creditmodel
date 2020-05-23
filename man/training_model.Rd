@@ -6,9 +6,11 @@
 \usage{
 training_model(model_name = "mymodel", dat, dat_test = NULL,
   target = NULL, occur_time = NULL, obs_id = NULL, x_list = NULL,
-  ex_cols = NULL, pos_flag = NULL, prop = 0.7, preproc = TRUE,
+  ex_cols = NULL, pos_flag = NULL, prop = 0.7, split_type = if
+  (!is.null(occur_time)) "OOT" else "Random", preproc = TRUE,
   low_var = 0.99, missing_rate = 0.98, merge_cat = 30,
-  outlier_proc = TRUE, missing_proc = "median", miss_values = NULL,
+  remove_dup = TRUE, outlier_proc = TRUE, missing_proc = "median",
+  default_miss = list(-1, "missing"), miss_values = NULL,
   one_hot = FALSE, trans_log = FALSE, feature_filter = list(filter =
   c("IV", "PSI", "COR", "XGB"), iv_cp = 0.02, psi_cp = 0.1, xgb_cp = 0,
   cv_folds = 1, hopper = FALSE), algorithm = list("LR", "XGB", "GBM",
@@ -39,6 +41,8 @@ training_model(model_name = "mymodel", dat, dat_test = NULL,
 
 \item{prop}{Percentage of train-data after the partition. Default: 0.7.}
 
+\item{split_type}{Methods for partition. See details at :  \code{\link{train_test_split}}.}
+
 \item{preproc}{Logical. Preprocess data. Default is TRUE.}
 
 \item{low_var}{Logical, delete low variance variables or not. Default is TRUE.}
@@ -47,9 +51,13 @@ training_model(model_name = "mymodel", dat, dat_test = NULL,
 
 \item{merge_cat}{merge categories of character variables that  is more than m.}
 
+\item{remove_dup}{Logical, if TRUE, remove the duplicated observations.}
+
 \item{outlier_proc}{Logical, process outliers or not. Default is TRUE.}
 
 \item{missing_proc}{If logical, process missing values or not. If "median", then Nas imputation with k neighbors median. If "avg_dist", the distance weighted average method is applied to determine the NAs imputation with k neighbors. If "default", assigning the missing values to -1 or "missing", otherwise ,processing the missing values according to the results of missing analysis.}
+
+\item{default_miss}{Default value of missing data imputation, Defualt is list(-1,'missing').}
 
 \item{miss_values}{Other extreme value might be used to represent missing values, e.g: -9999, -9998. These miss_values will be encoded to -1 or "missing".}
 

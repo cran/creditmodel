@@ -11,16 +11,19 @@
 #' @param pos_flag The value of positive class of target variable, default: "1".
 #' @param ex_cols Names of excluded variables. Regular expressions can also be used to match variable names. Default is NULL.
 #' @param prop Percentage of train-data after the partition. Default: 0.7.
+#' @param split_type  Methods for partition. See details at :  \code{\link{train_test_split}}.
 #' @param obs_id  The name of ID of observations or key variable of data. Default is NULL.
 #' @param preproc Logical. Preprocess data. Default is TRUE.
 #' @param outlier_proc Logical, process outliers or not. Default is TRUE.
 #' @param missing_proc If logical, process missing values or not. If "median", then Nas imputation with k neighbors median. If "avg_dist", the distance weighted average method is applied to determine the NAs imputation with k neighbors. If "default", assigning the missing values to -1 or "missing", otherwise ,processing the missing values according to the results of missing analysis.
 #' @param miss_values  Other extreme value might be used to represent missing values, e.g: -9999, -9998. These miss_values will be encoded to -1 or "missing".
+#' @param default_miss  Default value of missing data imputation, Defualt is list(-1,'missing').
 #' @param missing_rate The maximum percent of missing values for recoding values to missing and non_missing.
 #' @param one_hot  Logical. If TRUE, one-hot_encoding  of category variables. Default is FASLE.
 #' @param trans_log  Logical, Logarithmic transformation. Default is FALSE.
 #' @param low_var  Logical, delete low variance variables or not. Default is TRUE.
 #' @param merge_cat merge categories of character variables that  is more than m.
+#' @param remove_dup  Logical, if TRUE, remove the duplicated observations.
 #' @param feature_filter  Parameters for selecting important and stable features.See details at: \code{\link{feature_selector}}
 #' @param algorithm  Algorithms for training a model. list("LR", "XGB", "GBDT", "RF") are available.
 #' @param LR.params  Parameters of logistic regression & scorecard. See details at :  \code{\link{lr_params}}.
@@ -88,12 +91,15 @@ training_model <- function(model_name = "mymodel",
 						   ex_cols = NULL,
 						   pos_flag = NULL,
 						   prop = 0.7,
+						   split_type = if (!is.null(occur_time)) "OOT" else "Random",
 						   preproc = TRUE,
 						   low_var = 0.99,
 						   missing_rate = 0.98,
 						   merge_cat = 30,
+						   remove_dup = TRUE,
 						   outlier_proc = TRUE,
 						   missing_proc = 'median',
+						   default_miss = list(-1,'missing'),
 						   miss_values = NULL,
 						   one_hot = FALSE,
 						   trans_log = FALSE,
@@ -184,7 +190,7 @@ training_model <- function(model_name = "mymodel",
 		cat_rule("Cleansing & Prepocessing data", col = love_color("light_cyan"))
 		dat = data_cleansing(dat = dat, x_list = x_list,
 						 target = target, obs_id = obs_id, occur_time = occur_time,
-						 ex_cols = ex_cols, remove_dup = TRUE,
+						 ex_cols = ex_cols, remove_dup = remove_dup,
 						outlier_proc = FALSE, missing_proc = FALSE,
 						 miss_values = miss_values, missing_rate = missing_rate,
 						 low_var = low_var, merge_cat = merge_cat, parallel = parallel, note = TRUE,
@@ -226,7 +232,7 @@ training_model <- function(model_name = "mymodel",
 
 	if (is.null(dat_test)) {
 		cat_rule("Spliting train & test", col = love_color("light_cyan"))
-		train_test <- train_test_split(dat, split_type = "OOT",
+		train_test <- train_test_split(dat, split_type = split_type,
 								   prop = prop, occur_time = occur_time, note = TRUE,
 								   save_data = TRUE, dir_path = data_dir_path,
 								   file_name = NULL,
@@ -248,45 +254,46 @@ training_model <- function(model_name = "mymodel",
 								 file_name = NULL, dir_path = data_dir_path)
 	}
 
-	if ((is.logical(missing_proc) && missing_proc) || (is.character(missing_proc) && is.element(missing_proc, c("median", "avg_dist", "default")))) {
+	if ((is.logical(missing_proc) && missing_proc) || (is.character(missing_proc) && is.element(missing_proc, 
+	c("median", "avg_dist", "default")))) {
 		if (is.character(missing_proc) && is.element(missing_proc, c("median", "avg_dist", "default"))) {
 			method = missing_proc
 			dat_train = process_nas(dat = dat_train, class_var = FALSE, x_list = x_list,
-							ex_cols = c(obs_id, occur_time, target),
-							miss_values = unique(append(miss_values, list(-1, "missing"))),
+							ex_cols = c(obs_id, occur_time, target),default_miss = default_miss,
+							miss_values = unique(append(miss_values, list("missing"))),
 							parallel = parallel,
 							method = method, note = TRUE, save_data = TRUE,
 							file_name = NULL, dir_path = data_dir_path)
 			dat_test = process_nas(dat = dat_test, class_var = FALSE, x_list = x_list,
-							ex_cols = c(obs_id, occur_time, target),
-							miss_values = unique(append(miss_values, list(-1, "missing"))),
+							ex_cols = c(obs_id, occur_time, target),default_miss = default_miss,
+							miss_values = unique(append(miss_values, list("missing"))),
 							parallel = parallel,
 							method = method, note = FALSE, save_data = FALSE,
 							file_name = NULL, dir_path = data_dir_path)
 		} else {
 			dat_train = process_nas(dat = dat_train, class_var = FALSE, x_list = x_list,
-							ex_cols = c(obs_id, occur_time, target),
-							miss_values = unique(append(miss_values, list(-1, "missing"))),
+							ex_cols = c(obs_id, occur_time, target),default_miss = default_miss,
+							miss_values = unique(append(miss_values, list("missing"))),
 							parallel = parallel,
 							method = "median", note = FALSE, save_data = FALSE,
 							file_name = NULL, dir_path = data_dir_path)
 			dat_test = process_nas(dat = dat_test, class_var = FALSE, x_list = x_list,
-							ex_cols = c(obs_id, occur_time, target),
-							miss_values = unique(append(miss_values, list(-1, "missing"))),
+							ex_cols = c(obs_id, occur_time, target),default_miss = default_miss,
+							miss_values = unique(append(miss_values, list("missing"))),
 							parallel = parallel,
 							method = "median", note = FALSE, save_data = FALSE,
 							file_name = NULL, dir_path = data_dir_path)
 		}
 	} else {
 		dat_train = process_nas(dat = dat_train, class_var = FALSE, x_list = x_list,
-							ex_cols = c(obs_id, occur_time, target),
-							miss_values = unique(append(miss_values, list(-1, "missing"))),
+							ex_cols = c(obs_id, occur_time, target),default_miss = default_miss,
+							miss_values = unique(append(miss_values, list("missing"))),
 							parallel = parallel,
 							method = "default", note = FALSE, save_data = FALSE,
 							file_name = NULL, dir_path = data_dir_path)
 		dat_test = process_nas(dat = dat_test, class_var = FALSE, x_list = x_list,
-							ex_cols = c(obs_id, occur_time, target),
-							miss_values = unique(append(miss_values, list(-1, "missing"))),
+							ex_cols = c(obs_id, occur_time, target),default_miss = default_miss,
+							miss_values = unique(append(miss_values, list("missing"))),
 							parallel = parallel,
 							method = "default", note = FALSE, save_data = FALSE,
 							file_name = NULL, dir_path = data_dir_path)
@@ -513,6 +520,7 @@ training_model <- function(model_name = "mymodel",
 								   plot.it = FALSE, seed = seed,
 								   save_data = TRUE, file_name = "LR", dir_path = LR_var_dir_path)
 			}
+			select_vars = unique(c(forced_in, select_vars))
 			save_data(select_vars, as_list = TRUE, row_names = FALSE, note = TRUE,
 			  file_name = "lr_premodel_features", dir_path = LR_var_dir_path)
 

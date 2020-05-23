@@ -12,6 +12,7 @@
 #' @param dt_nas_random A data.frame with random nas imputation.
 #' @param missing_type Type of missing, genereted by code{\link{analysis_nas}}
 #' @param miss_values  Other extreme value might be used to represent missing values, e.g:-1, -9999, -9998. These miss_values will be encoded to NA.
+#' @param default_miss  Default value of missing data imputation, Defualt is list(-1,'missing').
 #' @param method  The methods of imputation by knn. If "median", then Nas imputation with k neighbors median. If "avg_dist", the distance weighted average method is applied to determine the NAs imputation with k neighbors. If "default", assigning the missing values to -1 or "missing", otherwise ,processing the missing values according to the results of missing analysis.
 #' @param class_var Logical, nas analysis of the nominal variables. Default is TRUE.
 #' @param parallel Logical, parallel computing. Default is FALSE.
@@ -28,7 +29,7 @@
 #'
 #' @export
 
-process_nas <- function(dat, x_list = NULL, class_var = FALSE, miss_values = NULL,
+process_nas <- function(dat, x_list = NULL, class_var = FALSE, miss_values = list(-1, "missing"),default_miss =  list(-1, "missing"),
 						parallel = FALSE, ex_cols = NULL, method = "median", note = FALSE,
 						save_data = FALSE, file_name = NULL, dir_path = tempdir(), ...) {
 	if (note) cat_line("-- Processing NAs", col = love_color("dark_green"))
@@ -61,6 +62,7 @@ process_nas <- function(dat, x_list = NULL, class_var = FALSE, miss_values = NUL
 													mat_nas_shadow = mat_nas_shadow,
 													dt_nas_random = dt_nas_random,
 													missing_type = missing_type,
+													default_miss = default_miss,
 													method = method,
 													note = note, save_data = save_data,
 													file_name = file_name, dir_path = dir_path),
@@ -190,7 +192,7 @@ analysis_nas <- function(dat, class_var = FALSE, nas_rate = NULL, na_vars = NULL
 #' @rdname process_nas
 #' @export
 
-process_nas_var <- function(dat = dat, x, nas_rate = NULL,
+process_nas_var <- function(dat = dat, x, nas_rate = NULL,default_miss = list('missing',-1),
 							mat_nas_shadow = NULL, dt_nas_random = NULL, missing_type = NULL,
 							method = "median", note = FALSE, save_data = FALSE,
 							file_name = NULL, dir_path = tempdir(), ...) {
@@ -201,12 +203,24 @@ process_nas_var <- function(dat = dat, x, nas_rate = NULL,
 		nas_rate_x = nas_rate[x]
 	}
 	len_num = length(unique(dat[, x]))
+	miss_value_char = miss_value_num = NULL
+	if (!is.null(default_miss)) {
+	miss_value_char = unlist(default_miss[sapply(default_miss, is.character)])[1]
+	miss_value_num = unlist(default_miss[sapply(default_miss, is.numeric)])[1]
+	}
+	if (is.null(miss_value_char)) {
+	miss_value_char = "missing"
+	}
+	if (is.null(miss_value_num)) {
+	miss_value_num = -1
+	}
+
 	if (method == "default") {
 		if (nas_rate_x > 0 & len_num > 0) {
 			if (all(c('numeric', 'integer', 'double', 'Date') != class(dat[, x])[1])) {
-				dat[nas, x] = "missing"
+				dat[nas, x] = miss_value_char
 			} else {
-				dat[nas, x] = -1
+				dat[nas, x] = miss_value_num
 			}
 		}
 	} else {
@@ -231,14 +245,14 @@ process_nas_var <- function(dat = dat, x, nas_rate = NULL,
 				if (!is.element(class(dat[, x])[1], c('numeric', 'integer', 'double', 'Date'))) {
 					if ((missing_type_x == "IM" & (length(nas) > 30 | nas_rate_x > 0.01)) |
 						nas_rate_x > 0.1) {
-						dat[nas, x] = "missing"
+						dat[nas, x] = miss_value_char
 					} else {
 						dat[, x] = knn_nas_imp(dat = dat, x, mat_nas_shadow = mat_nas_shadow,
-											   dt_nas_random = dt_nas_random)
+											   dt_nas_random = dt_nas_random,miss_value_num = miss_value_num)
 					}
 				} else {
 					if ((missing_type_x == "IM" & (length(nas) > 30 | nas_rate_x > 0.01)) | nas_rate_x > 0.1) {
-						dat[nas, x] = -1
+						dat[nas, x] = miss_value_num
 					} else {
 						if ((missing_type_x == "MCAR" | length(nas) < 10 | nas_rate_x < 0.001) &
 							length(unique(is_not_na)) > 10) {
@@ -246,7 +260,7 @@ process_nas_var <- function(dat = dat, x, nas_rate = NULL,
 							dat[nas, x] = sample(is_not_na, size = length(nas), replace = TRUE)
 						} else {
 							dat[, x] = knn_nas_imp(dat = dat, x, mat_nas_shadow = mat_nas_shadow,
-							dt_nas_random = dt_nas_random, method = method)
+							dt_nas_random = dt_nas_random, method = method,miss_value_num=miss_value_num)
 						}
 					}
 				}
@@ -268,12 +282,16 @@ process_nas_var <- function(dat = dat, x, nas_rate = NULL,
 #' @param k  Number of neighbors of each obs which x is missing.
 #' @param scale Logical.Standardization of variable.
 #' @param method The methods of imputation by knn. "median" is knn imputation with k neighbors median, "avg_dist" is knn imputation with k neighbors of distance weighted mean.
+#' @param miss_value_num Default value of missing data imputation for numeric variables, Defualt is -1.
 #' @export
 
 knn_nas_imp <- function(dat, x, nas_rate = NULL, mat_nas_shadow = NULL,
-dt_nas_random = NULL, k = 10, scale = FALSE, method = 'median') {
+dt_nas_random = NULL, k = 10, scale = FALSE, method = 'median', miss_value_num = -1) {
 	dat = checking_data(dat)
-	miss_x <- which(!complete.cases(dat[, x]))
+	miss_x = which(!complete.cases(dat[, x]))	
+	if (is.null(miss_value_num)) {
+	miss_value_num = -1
+	}
 	if (length(miss_x) > 0) {
 		n_row <- nrow(dat)
 		if (any(is.element(class(dat[, x]), c("integer", "numeric", "double")))) {
@@ -281,7 +299,7 @@ dt_nas_random = NULL, k = 10, scale = FALSE, method = 'median') {
 				mat_nas_shadow = get_shadow_nas(dat)
 			}
 			if (is.null(dt_nas_random)) {
-				dt_nas_random <- get_nas_random(dat)
+				dt_nas_random = get_nas_random(dat)
 			}
 			mat_cor = cor_names = nums_names = NULL
 			nums_names = get_names(dat = dt_nas_random, types = c('numeric', 'integer', 'double'),
@@ -297,16 +315,16 @@ dt_nas_random = NULL, k = 10, scale = FALSE, method = 'median') {
 				cor_names = names(mat_cor_sub[max_cor])
 				dm = data.frame(dat[x], dt_nas_random[, cor_names])
 				dm = as.matrix(dm)
-				no_ms <- which(!is.na(dm[, x]))
+				no_ms = which(!is.na(dm[, x]))
 				set.seed(46)
-				no_miss_x <- sample(no_ms, round(n_row / 3))
-				no_miss_obs <- dm[no_miss_x,]
+				no_miss_x = sample(no_ms, round(n_row / 3))
+				no_miss_obs = dm[no_miss_x,]
 				na_distance = na_dist = NULL
 				if (nrow(no_miss_obs) > k) {
-					dat[miss_x, x] <- vapply(miss_x, function(i) {
-						na_distance <- scale(no_miss_obs[, - 1], dm[i, - 1], FALSE)
-						na_distance <- ifelse(na_distance > 0, 1, na_distance)
-						na_dist <- sqrt(drop(na_distance ^ 2 %*% rep(1, ncol(na_distance))))
+					dat[miss_x, x] = vapply(miss_x, function(i) {
+						na_distance = scale(no_miss_obs[, - 1], dm[i, - 1], FALSE)
+						na_distance = ifelse(na_distance > 0, 1, na_distance)
+						na_dist = sqrt(drop(na_distance ^ 2 %*% rep(1, ncol(na_distance))))
 						k_neighbors <- order(na_dist)[seq(k)]
 						if (method == "median") {
 							dat[i, x] = get_median(dat[base::setdiff(1:n_row, miss_x), x][k_neighbors])
@@ -317,10 +335,10 @@ dt_nas_random = NULL, k = 10, scale = FALSE, method = 'median') {
 					}, FUN.VALUE = numeric(1)
 					)
 				} else {
-					dat[miss_x, x] = -1
+					dat[miss_x, x] = miss_value_num
 				}
 			} else {
-				dat[miss_x, x] = -1
+				dat[miss_x, x] = miss_value_num
 			}
 		} else {
 			dat[miss_x, x] = get_median(dat[base::setdiff(1:n_row, miss_x), x])

@@ -6,10 +6,10 @@
 \title{Fuzzy Cluster means.}
 \usage{
 fuzzy_cluster_means(dat, kc = 2, sf = 2, nstart = 1,
-  max_iter = 100, epsm = 0.000001)
+  max_iter = 100, epsm = 1e-06)
 
 fuzzy_cluster(dat, kc = 2, init_centers, sf = 3, max_iter = 100,
-  epsm = 0.000001)
+  epsm = 1e-06)
 }
 \arguments{
 \item{dat}{A data.frame contained only predict variables.}

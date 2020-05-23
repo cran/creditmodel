@@ -1491,9 +1491,7 @@ perf_table <- function(train_pred, test_pred = NULL, target = NULL, score = NULL
                     "%test_B", "%train_cumG", "%train_cumB", "%test_cumG", "%test_cumB",
                     "train_K-S", "test_K-S", "train_Lift", "test_Lift", "PSI")]
 
-    if (mean(dt_ks[1:floor(nrow(dt_ks)/2), "train_Lift"]) < mean(dt_ks[(floor(nrow(dt_ks)/2)+1):nrow(dt_ks), "train_Lift"])) {
-      dt_ks = dt_ks[order(dt_ks$bins, decreasing = TRUE),]
-    }
+
 
     if(total){
       total <- c("Total",
@@ -1539,9 +1537,6 @@ perf_table <- function(train_pred, test_pred = NULL, target = NULL, score = NULL
 
     dt_ks = dt_ks[c("bins", "#Pop", "%Pct", "%Pct_1",
                     "%Cumsum_0", "%Cumsum_1", "K-S", "Lift")]
-    if (mean(dt_ks[1:floor(nrow(dt_ks)/2), "Lift"]) < mean(dt_ks[(floor(nrow(dt_ks)/2)+1):nrow(dt_ks), "Lift"])) {
-      dt_ks = dt_ks[order(dt_ks$bins, decreasing = TRUE),]
-    }
   }
   return(dt_ks)
   options(opt) # reset
@@ -1576,6 +1571,7 @@ ks_plot <- function(train_pred, test_pred = NULL, target = NULL, score =  NULL,
         geom_point(aes(x = which.max(ks$`train_K-S`),
                      y = as.numeric(ks$`%train_cumG`[which.max(ks$`train_K-S`)])),
                  size = 2, shape = 21, fill = 'white', color = "#085A9C") +
+				   geom_abline() + geom_hline(yintercept = 1) + geom_hline(yintercept = 0) +
         geom_segment(aes(x = which.max(ks$`train_K-S`),
                        y = as.numeric(ks$`%train_cumG`[which.max(ks$`train_K-S`)]) + 0.01,
                        xend = which.max(ks$`train_K-S`),
@@ -1589,9 +1585,9 @@ ks_plot <- function(train_pred, test_pred = NULL, target = NULL, score =  NULL,
         geom_point(aes(x = which.max(ks$`train_K-S`),
                      y = as.numeric(ks$`%train_cumB`[which.max(ks$`train_K-S`)])),
                  size = 2, shape = 21, fill = 'white', color = '#ca3e1c') +
-        annotate(geom = 'text', x = 7, y = 0.1,
+        annotate(geom = 'text', x = 5, y = 0.2,
                label = paste('train K-S : ', max(round(ks$`train_K-S`, 2))),
-                vjust = 1.5,size = 3) +
+                vjust = 1.5) +
         geom_line(aes(y = `%test_cumG`, group = 1, color = "%test_cumG"),
                 linetype = "dashed", size = 1) +
         geom_point(aes(x = which.max(ks$`test_K-S`),
@@ -1611,8 +1607,8 @@ ks_plot <- function(train_pred, test_pred = NULL, target = NULL, score =  NULL,
         geom_point(aes(x = which.max(ks$`test_K-S`),
                      y = as.numeric(ks$`%test_cumB`[which.max(ks$`test_K-S`)])),
                  size = 2, shape = 21, fill = 'white', color = '#ca3e1c') +
-        annotate(geom = 'text', x = 7, y = 0.15, vjust = 1.5,
-               label = paste('test K-S : ', max(round(ks$`test_K-S`, 2))),size = 3) +
+        annotate(geom = 'text', x = 5, y = 0.3, vjust = 1.5,
+               label = paste('test K-S : ', max(round(ks$`test_K-S`, 2)))) +
         scale_colour_manual(values = c("%train_cumG" = love_color("light_blue"),
                                      "%test_cumG" = love_color("light_green"),
                                      "%train_cumB" = love_color("light_red"),
@@ -1629,6 +1625,7 @@ ks_plot <- function(train_pred, test_pred = NULL, target = NULL, score =  NULL,
         geom_point(aes(x = which.max(ks$`K-S`),
                      y = as.numeric(ks$`%Cumsum_0`[which.max(ks$`K-S`)])),
                  size = 2, shape = 21, fill = 'white', color = "#085A9C") +
+		geom_abline() + geom_hline(yintercept = 1) + geom_hline(yintercept = 0) +		 
         geom_segment(aes(x = which.max(ks$`K-S`),
                        y = as.numeric(ks$`%Cumsum_0`[which.max(ks$`K-S`)]) + 0.01,
                        xend = which.max(ks$`K-S`),
@@ -1642,7 +1639,7 @@ ks_plot <- function(train_pred, test_pred = NULL, target = NULL, score =  NULL,
         geom_point(aes(x = which.max(ks$`K-S`),
                      y = as.numeric(ks$`%Cumsum_1`[which.max(ks$`K-S`)])),
                  size = 2, shape = 21, fill = 'white', color = '#ca3e1c') +
-        annotate(geom = 'text', x = 7, y = 0.1,
+        annotate(geom = 'text', x = 5, y = 0.2,
                label = paste('K-S : ', max(round(ks$`K-S`, 2))),
                 vjust = 1.5) +
         scale_colour_manual(values = c("%Cumsum_0" = love_color("water_blue"),
@@ -1761,12 +1758,12 @@ roc_plot <- function(train_pred, test_pred = NULL, target = NULL, score = NULL, 
         tpr_fpr_ts = data.frame(tpr_ts, fpr_ts)
         roc_pl = ggplot() +
         geom_line(aes(x = tpr_fpr$fpr, y = tpr_fpr$tpr,group = 1, color = "train ROC"), size = 1) +
-        annotate(geom = 'text', x = 0.5, y = 0.35, vjust = 1.5,
-               label = paste('train AUC : ', round(auc, 4)),size = 3) +
+        annotate(geom = 'text', x = 0.5, y = 0.4, vjust = 1.5,
+               label = paste('train AUC : ', round(auc, 4))) +
         geom_line( aes(x = tpr_fpr_ts$fpr_ts, y = tpr_fpr_ts$tpr_ts, group = 1, color = "test ROC"), size = 1) +
 		scale_colour_manual(values = c("train ROC" = love_color("deep_orange"), 'test ROC' = love_color("deep_blue"))) +
         annotate(geom = 'text', x = 0.5, y = 0.3, vjust = 1.5,
-               label = paste('test AUC : ', round(auc_ts, 4)),size = 3) +
+               label = paste('test AUC : ', round(auc_ts, 4))) +
         geom_abline() + geom_hline(yintercept = 1) + geom_hline(yintercept = 0) +
         ylim(c(0, 1)) + labs(x = 'FPR', y = 'TPR',title = paste(gtitle, "ROC Curve"))+ theme_light()+
 		theme(legend.title = element_blank(), legend.position = "top",
@@ -1776,7 +1773,7 @@ roc_plot <- function(train_pred, test_pred = NULL, target = NULL, score = NULL, 
         geom_line(aes(x = tpr_fpr$fpr, y = tpr_fpr$tpr), size = 1, color = love_color("deep_orange")) +
         geom_abline() + geom_hline(yintercept = 1) + geom_hline(yintercept = 0) +
         annotate(geom = 'text', x = 0.5, y = 0.35, vjust = 1.5,
-               label = paste('AUC : ', round(auc, 4)),size = 3) +
+               label = paste('AUC : ', round(auc, 4))) +
         ylim(c(0, 1)) + labs(x = 'Fpr', y = 'Tpr',title = paste(gtitle, "ROC Curve")) + theme_light() +
 		theme(legend.title = element_blank(), legend.position = "top",
 		   plot.title = element_text(face = "bold", size = 11, vjust = 0, hjust = 0))
@@ -1913,7 +1910,7 @@ score_distribution_plot <- function(train_pred, test_pred, target, score,
 #' x_list = c("PAY_0", "LIMIT_BAL", "PAY_AMT5", "PAY_3", "PAY_2")
 #' dat = data_cleansing(dat, target = "target", obs_id = "ID",x_list = x_list,
 #' occur_time = "apply_date", miss_values = list("", -1))
-#' dat = process_nas(dat,default_miss = TRUE)
+#' dat = process_nas(dat)
 #' train_test <- train_test_split(dat, split_type = "OOT", prop = 0.7,
 #'                                 occur_time = "apply_date")
 #' dat_train = train_test$train
@@ -2474,7 +2471,7 @@ get_plot_elements <- function(table_1, grid_table, colname.fill.color, text.fill
 #' dat = re_name(dat, "default.payment.next.month", "target")
 #' dat = data_cleansing(dat, target = "target", obs_id = "ID",
 #' occur_time = "apply_date", miss_values = list("", -1))
-#' dat = process_nas(dat,default_miss = TRUE)
+#' dat = process_nas(dat)
 #' train_test <- train_test_split(dat, split_type = "OOT", prop = 0.7,
 #'                                 occur_time = "apply_date")
 #' dat_train = train_test$train

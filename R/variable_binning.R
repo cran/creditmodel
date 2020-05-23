@@ -717,7 +717,7 @@ select_best_breaks <- function(dat, x, target, breaks = NULL, pos_flag = NULL,
 	if (length(breaks) > 2) {
 		break_points = sp_value_num = NULL
 		x_miss = any(dat[, x] %in% sp_values)
-		if (any(is.na(dat[, x])) | !is.null(sp_values) && x_miss) {
+		if (!is.null(sp_values) & x_miss) {
 			sp_value_num = unlist(sp_values[sapply(sp_values, is.numeric)])
 			miss_num = unlist(breaks[sapply(breaks, function(x) any(sp_value_num %in% x))])
 			breaks = breaks[!sapply(breaks, function(x) any(sp_value_num %in% x))]

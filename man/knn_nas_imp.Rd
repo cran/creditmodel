@@ -5,7 +5,8 @@
 \title{Imputate nas using KNN}
 \usage{
 knn_nas_imp(dat, x, nas_rate = NULL, mat_nas_shadow = NULL,
-  dt_nas_random = NULL, k = 10, scale = FALSE, method = "median")
+  dt_nas_random = NULL, k = 10, scale = FALSE, method = "median",
+  miss_value_num = -1)
 }
 \arguments{
 \item{dat}{A data.frame with independent variables.}
@@ -23,6 +24,8 @@ knn_nas_imp(dat, x, nas_rate = NULL, mat_nas_shadow = NULL,
 \item{scale}{Logical.Standardization of variable.}
 
 \item{method}{The methods of imputation by knn. "median" is knn imputation with k neighbors median, "avg_dist" is knn imputation with k neighbors of distance weighted mean.}
+
+\item{miss_value_num}{Default value of missing data imputation for numeric variables, Defualt is -1.}
 }
 \description{
 This function is not intended to be used by end user.

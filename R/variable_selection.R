@@ -1,4 +1,4 @@
-#'  Variable reduction based on Information Value & Population Stability Index filter
+#' Variable reduction based on Information Value & Population Stability Index filter
 #'
 #'
 #' \code{psi_iv_filter}  is for selecting important and stable features using IV & PSI.
@@ -76,12 +76,12 @@ psi_iv_filter <- function(dat, dat_test = NULL, target, x_list = NULL,
                       ex_cols = c(target, occur_time, ex_cols))
   if (any(is.na(dat_train[x_list]))) {
     dat_train = low_variance_filter(dat = dat_train, lvp = 1, note = FALSE)
-    dat_train = process_nas(dat = dat, x_list = x_list, default_miss = TRUE,
+    dat_train = process_nas(dat = dat, x_list = x_list,
                             ex_cols = c(occur_time, target, ex_cols), parallel = parallel, method = "median")
   }
   if (any(is.na(dat_test[x_list]))) {
     dat_test = low_variance_filter(dat = dat_test, lvp = 1, note = FALSE)
-    dat_test = process_nas(dat = dat_test, x_list = x_list, default_miss = TRUE,
+    dat_test = process_nas(dat = dat_test, x_list = x_list, 
                            ex_cols = c(occur_time, target, ex_cols), parallel = parallel, method = "median")
   }
   
@@ -1255,7 +1255,7 @@ select_cor_list <- function(cor_vars_list) {
 #'  dat = re_name(dat, "default.payment.next.month", "target")
 #'  dat_train = data_cleansing(dat, target = "target", obs_id = "ID", occur_time = "apply_date",
 #'   miss_values = list("", -1))
-#'  dat_train = process_nas(dat_train, default_miss = TRUE)
+#'  dat_train = process_nas(dat_train)
 #'  #get breaks of all predictive variables
 #'  x_list = c("PAY_0", "LIMIT_BAL", "PAY_AMT5", "EDUCATION", "PAY_3", "PAY_2")
 #'  breaks_list <- get_breaks_all(dat = dat_train, target = "target",

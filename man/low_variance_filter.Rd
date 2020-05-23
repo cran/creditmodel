@@ -4,12 +4,15 @@
 \alias{low_variance_filter}
 \title{Filtering Low Variance Variables}
 \usage{
-low_variance_filter(dat, lvp = 0.97, note = FALSE, ex_cols = NULL)
+low_variance_filter(dat, lvp = 0.97, only_NA = FALSE, note = FALSE,
+  ex_cols = NULL)
 }
 \arguments{
 \item{dat}{A data frame with x and target.}
 
 \item{lvp}{The maximum percent of unique values (including NAs).}
+
+\item{only_NA}{Logical, only process variables which NA's rate are more than lvp.}
 
 \item{note}{Logical.Outputs info.Default is TRUE.}
 

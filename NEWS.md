@@ -1,3 +1,13 @@
+
+#creditmodel-1.2.1
+
+**In this version I have:**
+* Enhanced strategy analysis capabilities.
+* New function `rule_value_replace` is for generating new variables by rules.
+* Fixed some potential bugs in `ks_plot`, `perf_table`,`training_model`,`process_nas`.
+
+
+
 # creditmodel-1.2
 
 **In this version I have:**

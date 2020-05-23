@@ -51,7 +51,7 @@ A list of filtered x variables by lasso.
  dat = re_name(dat, "default.payment.next.month", "target")
  dat_train = data_cleansing(dat, target = "target", obs_id = "ID", occur_time = "apply_date",
   miss_values = list("", -1))
- dat_train = process_nas(dat_train, default_miss = TRUE)
+ dat_train = process_nas(dat_train)
  #get breaks of all predictive variables
  x_list = c("PAY_0", "LIMIT_BAL", "PAY_AMT5", "EDUCATION", "PAY_3", "PAY_2")
  breaks_list <- get_breaks_all(dat = dat_train, target = "target",

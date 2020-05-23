@@ -721,7 +721,6 @@ rowCVs <- function(x, na.rm = FALSE) {
 #' @export
 rowSds <- function(x, na.rm = FALSE) sqrt(rowSums((x - rowMeans(x, na.rm = na.rm)) ^ 2, na.rm = na.rm) / length(x))
 
-colSds <- function(x, na.rm = FALSE) sqrt(colSums((x - colMeans(x, na.rm = na.rm)) ^ 2, na.rm = na.rm) / nrow(x))
 #' @rdname rowAny
 #' @export
 

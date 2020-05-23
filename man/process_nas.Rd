@@ -6,11 +6,13 @@
 \title{missing Treatment}
 \usage{
 process_nas(dat, x_list = NULL, class_var = FALSE,
-  miss_values = NULL, parallel = FALSE, ex_cols = NULL,
-  method = "median", note = FALSE, save_data = FALSE,
-  file_name = NULL, dir_path = tempdir(), ...)
+  miss_values = list(-1, "missing"), default_miss = list(-1,
+  "missing"), parallel = FALSE, ex_cols = NULL, method = "median",
+  note = FALSE, save_data = FALSE, file_name = NULL,
+  dir_path = tempdir(), ...)
 
-process_nas_var(dat = dat, x, nas_rate = NULL, mat_nas_shadow = NULL,
+process_nas_var(dat = dat, x, nas_rate = NULL,
+  default_miss = list("missing", -1), mat_nas_shadow = NULL,
   dt_nas_random = NULL, missing_type = NULL, method = "median",
   note = FALSE, save_data = FALSE, file_name = NULL,
   dir_path = tempdir(), ...)
@@ -23,6 +25,8 @@ process_nas_var(dat = dat, x, nas_rate = NULL, mat_nas_shadow = NULL,
 \item{class_var}{Logical, nas analysis of the nominal variables. Default is TRUE.}
 
 \item{miss_values}{Other extreme value might be used to represent missing values, e.g:-1, -9999, -9998. These miss_values will be encoded to NA.}
+
+\item{default_miss}{Default value of missing data imputation, Defualt is list(-1,'missing').}
 
 \item{parallel}{Logical, parallel computing. Default is FALSE.}
 

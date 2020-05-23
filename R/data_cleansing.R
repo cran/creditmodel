@@ -200,7 +200,7 @@ data_cleansing <- function(dat, target = NULL, obs_id = NULL, occur_time = NULL,
 remove_duplicated <- function(dat = dat, obs_id = NULL, occur_time = NULL,
                               target = NULL , note = FALSE) {
     if(note)cat_line("-- Removing duplicated observations", col = love_color("dark_green"))
-	
+
 
     y_1 = id_1 = apply_date_1 = NULL
     if (!is.null(obs_id)) {
@@ -267,8 +267,8 @@ remove_duplicated <- function(dat = dat, obs_id = NULL, occur_time = NULL,
 #' @importFrom dplyr group_by mutate summarize  summarise n  count %>% filter mutate_if
 null_blank_na <- function(dat, miss_values = NULL, note = FALSE) {
     if(note)cat_line("-- Replacing null or blank or miss_values with NA", col = love_color("dark_green"))
-    dat %>%
-      mutate_if(is.character, function(x) {
+  dat = checking_data(dat)
+    dat %>% mutate_if(is.character, function(x) {
         ifelse(is.null(x) | x == "" | x == "null" | x == "NULL" | x == " " | x %in% miss_values, NA, x)}) %>%
       mutate_if(is.numeric, function(x) {
         ifelse(x %in% miss_values, NA, x)
@@ -315,6 +315,7 @@ entry_rate_na <- function(dat, nr = 0.98, note = FALSE) {
 #'
 #' @param dat A data frame with x and target.
 #' @param lvp  The maximum percent of unique values (including NAs).
+#' @param only_NA Logical, only process variables which NA's rate are more than lvp.
 #' @param note Logical.Outputs info.Default is TRUE.
 #' @param ex_cols  A list of excluded variables. Default is NULL.
 #' @return  A data.frame
@@ -324,15 +325,18 @@ entry_rate_na <- function(dat, nr = 0.98, note = FALSE) {
 #'
 #' @export
 
-low_variance_filter <- function(dat, lvp = 0.97, note = FALSE, ex_cols = NULL) {
+low_variance_filter = function(dat, lvp = 0.97, only_NA = FALSE, note = FALSE, ex_cols = NULL) {
 	if (note) {
 		cat_line(paste("-- Deleting low variance variables"), col = love_color("dark_green"))
 	}
 	dat = dat[which(colSums(is.na(dat)) != nrow(dat) | names(dat) %in% ex_cols)]
 	is_na = as.data.frame(abs(is.na(dat)))
 	dat = dat[which(apply(is_na, 2, function(x) sum(is.na(x)) / nrow(is_na)) < lvp | names(dat) %in% ex_cols)]
-	low_variance = vapply(dat, function(x) max(table(x, useNA = "always")) / nrow(dat),
+	if (!only_NA) {
+		n_row = nrow(dat)
+		low_variance = vapply(dat, function(x) max(table(x, useNA = "always")) / n_row,
 						   FUN.VALUE = numeric(1))
-	dat = dat[which(low_variance < lvp | names(dat) %in% ex_cols)]
+		dat = dat[which(low_variance < lvp | names(dat) %in% ex_cols)]
+	}
 	return(dat)
 }

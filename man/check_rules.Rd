@@ -28,7 +28,7 @@ dat_test = train_test$test
 dat_train$default.payment.next.month = as.numeric(dat_train$default.payment.next.month)
 rules_list = get_ctree_rules(tree_fit = NULL, train_dat = dat_train[, 8:26],
                              target ="default.payment.next.month", test_dat = dat_test)[1:3,2]
-check_rules(rules_list = rules_list, target = "default.payment.next.month", 
+check_rules(rules_list = rules_list, target = "default.payment.next.month",
 test_dat = dat_test, value = NULL)
 
 }

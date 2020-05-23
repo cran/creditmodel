@@ -34,7 +34,7 @@ dat = UCICreditCard[sub,]
 dat = re_name(dat, "default.payment.next.month", "target")
 dat = data_cleansing(dat, target = "target", obs_id = "ID",
 occur_time = "apply_date", miss_values = list("", -1))
-dat = process_nas(dat,default_miss = TRUE)
+dat = process_nas(dat)
 train_test <- train_test_split(dat, split_type = "OOT", prop = 0.7,
                                 occur_time = "apply_date")
 dat_train = train_test$train
