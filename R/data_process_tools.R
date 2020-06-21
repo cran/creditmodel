@@ -688,6 +688,7 @@ re_name = function(dat, oldname = c(), newname = c()) {
 #' col_sd =  colSds(UCICreditCard[8:10])
 #' @export
 
+
 rowAny <- function(x) rowSums(x, na.rm = TRUE) > 0
 
 #' @rdname rowAny

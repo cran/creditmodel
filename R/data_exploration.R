@@ -1,5 +1,5 @@
 #' Data Exploration
-#'
+#' 
 #' #'The \code{data_exploration} includes both univariate and bivariate analysis and ranges from univariate statistics and frequency distributions, to correlations, cross-tabulation and characteristic analysis.
 #' @param dat A data.frame with x and target.
 #' @param save_data Logical. If TRUE, save  files to the specified folder at \code{dir_path}
@@ -11,6 +11,7 @@
 #' @importFrom dplyr group_by mutate summarize  summarise n  count %>% filter mutate_if ungroup count 
 #' @importFrom data.table fwrite melt fread dcast as.data.table
 #' @export
+
 data_exploration <- function(dat,  save_data = FALSE, file_name = NULL, dir_path = tempdir()) {
   opt = options("warn" = -1, scipen = 100, stringsAsFactors = FALSE, digits = 2) # suppress warnings
   view_char = view_char1 = view_num1 = view_num = Feature =  NULL

@@ -1571,7 +1571,7 @@ ks_plot <- function(train_pred, test_pred = NULL, target = NULL, score =  NULL,
         geom_point(aes(x = which.max(ks$`train_K-S`),
                      y = as.numeric(ks$`%train_cumG`[which.max(ks$`train_K-S`)])),
                  size = 2, shape = 21, fill = 'white', color = "#085A9C") +
-				   geom_abline() + geom_hline(yintercept = 1) + geom_hline(yintercept = 0) +
+		geom_hline(yintercept = 1) + geom_hline(yintercept = 0) +
         geom_segment(aes(x = which.max(ks$`train_K-S`),
                        y = as.numeric(ks$`%train_cumG`[which.max(ks$`train_K-S`)]) + 0.01,
                        xend = which.max(ks$`train_K-S`),
@@ -1625,7 +1625,7 @@ ks_plot <- function(train_pred, test_pred = NULL, target = NULL, score =  NULL,
         geom_point(aes(x = which.max(ks$`K-S`),
                      y = as.numeric(ks$`%Cumsum_0`[which.max(ks$`K-S`)])),
                  size = 2, shape = 21, fill = 'white', color = "#085A9C") +
-		geom_abline() + geom_hline(yintercept = 1) + geom_hline(yintercept = 0) +		 
+		geom_hline(yintercept = 1) + geom_hline(yintercept = 0) +
         geom_segment(aes(x = which.max(ks$`K-S`),
                        y = as.numeric(ks$`%Cumsum_0`[which.max(ks$`K-S`)]) + 0.01,
                        xend = which.max(ks$`K-S`),

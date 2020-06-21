@@ -1,3 +1,7 @@
+#creditmodel-1.2.2
+
+**In this version I have:**
+* Fixed some bugs in `get_ctree_rules`, `ks_plot`,`cross_table`.
 
 #creditmodel-1.2.1
 

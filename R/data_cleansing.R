@@ -309,7 +309,7 @@ entry_rate_na <- function(dat, nr = 0.98, note = FALSE) {
 
 
 
-#'  Filtering Low Variance Variables
+#' Filtering Low Variance Variables
 #'
 #' \code{low_variance_filter} is for removing variables with repeated values up to a certain percentage.
 #'
@@ -332,11 +332,14 @@ low_variance_filter = function(dat, lvp = 0.97, only_NA = FALSE, note = FALSE, e
 	dat = dat[which(colSums(is.na(dat)) != nrow(dat) | names(dat) %in% ex_cols)]
 	is_na = as.data.frame(abs(is.na(dat)))
 	dat = dat[which(apply(is_na, 2, function(x) sum(is.na(x)) / nrow(is_na)) < lvp | names(dat) %in% ex_cols)]
+	dat = as.data.table(dat)
+
 	if (!only_NA) {
 		n_row = nrow(dat)
-		low_variance = vapply(dat, function(x) max(table(x, useNA = "always")) / n_row,
+		low_variance = vapply(names(dat), function(x) max(dat[, .N / n_row, x][, "V1"]),
 						   FUN.VALUE = numeric(1))
-		dat = dat[which(low_variance < lvp | names(dat) %in% ex_cols)]
+		dat = dat[,low_variance < lvp,with = FALSE]
 	}
+	dat = quick_as_df(dat)
 	return(dat)
 }
