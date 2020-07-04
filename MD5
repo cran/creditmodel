@@ -1,13 +1,13 @@
-9b1a9a93115289718fe7f929bd65e594 *DESCRIPTION
+58846b8b25a59969f1b891de8c4e0dd8 *DESCRIPTION
 84fed12cd2f37ff1392c46f45025fbd6 *NAMESPACE
-7edf1fd661c5dfb2c264dd9254764556 *NEWS.md
+131423f1012e3f6475793eab667f3151 *NEWS.md
 36a9770094f97fb9105b1efaf185baf1 *R/creditmodel.r
-714f512b8429f3570c1862c434fe882e *R/data_anaylsis.R
+fe401e75e7ce67faf57c3a370cf90116 *R/data_anaylsis.R
 e14241c7e94e77ff04cfc9ab5a4d1aef *R/data_cleansing.R
 50fe51e169061d949eaa60795b23a46a *R/data_exploration.R
 ffff17ee0da92f164ab025d7a2869cfa *R/data_process_tools.R
-25add5f70d01f2181b0799583ba67a1b *R/data_transformation.R
-def042b14b67c05a3c40ff05e839b57b *R/data_visualization.R
+e9c011024d87e94ef7419ede3a544459 *R/data_transformation.R
+c78ad45543b103faebd297fae8a9081e *R/data_visualization.R
 ba4362b6710dd210f8ffe68a3fe109a6 *R/essential_algorithms.R
 d702593dc90f5d9db2fe8d6ea472a290 *R/example_data.r
 d580277bbe941da8ed30ce221f73f6e9 *R/model_training.R
@@ -23,7 +23,7 @@ ac7ea1cdb78745842336627d9ba22aa0 *build/vignette.rds
 ec29860513dc208c95f1cf2589b4e99e *data/lendingclub.rda
 5212c6567d6a0c82f4706a258092c171 *inst/doc/introduction.R
 09c6b5dc011922fe3d5b13b59618f1b5 *inst/doc/introduction.Rmd
-c8d87e7185d5e50d7333d709ada4b8b6 *inst/doc/introduction.html
+038d9b0109b6f639163966fbf707974b *inst/doc/introduction.html
 cb7abbc13fea745d0e571010e015ec40 *man/PCA_reduce.Rd
 a2fc68f9d2fff7ee234485b8ca7331cf *man/UCICreditCard.Rd
 dec0402c697b67e9aff38926335946e4 *man/add_variable_process.Rd
@@ -34,7 +34,7 @@ f4255d51ee723b562970f419458628f7 *man/as_percent.Rd
 1119ff01667a84d7209b1d1d84dc975b *man/auc_value.Rd
 31a58e79b4ea35c60a24546ad54693ee *man/char_cor_vars.Rd
 6e419b8a49d897d3c811bea29185a4d6 *man/char_to_num.Rd
-214303dc9efd4435aae5628c8065f07e *man/check_rules.Rd
+ba99a5b1114c35b80c0900143ba7f7fa *man/check_rules.Rd
 82db96c0ff2a8399f27239e35cff7cac *man/checking_data.Rd
 a6b8120d0726b9887bd303597785f8b1 *man/city_varieble.Rd
 e3739c0b0cc1f0fcf8d55c996ac23ee0 *man/city_varieble_process.Rd

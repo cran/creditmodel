@@ -600,8 +600,8 @@ get_ctree_rules = function(tree_fit = NULL, train_dat = NULL, target = NULL, tes
 #'
 #' \code{get_ctree_rules} This function is used to check rules.
 #' @param rules_list  A list of rules.
-#' @param target The name of target variable.
 #' @param test_dat  A data.frame of test.
+#' @param target The name of target variable, default is NULL.
 #' @param value  The name of value to gather.
 #' @return A data frame with tree rules and percent under each rule.
 #' @seealso
@@ -622,144 +622,165 @@ get_ctree_rules = function(tree_fit = NULL, train_dat = NULL, target = NULL, tes
 #' @importFrom dplyr group_by mutate summarize  summarise n  count %>% filter  left_join
 #' @export
 
-check_rules <- function(rules_list, test_dat, target, value = NULL) {
-	filter_s = sub_dat = test_rules_dt = test_pct = test_sum = test_ks = B = G =
-	X.test_1 = X.test_total = rules_no = rules = X.total_1 = test_total = hit_total = NULL
-	final_rules = data.frame(rules_no = 1:length(rules_list), rules = unlist(rules_list), stringsAsFactors = FALSE)
-	test_dat = checking_data(dat = test_dat)
-	test_dat$target = as.character(test_dat[, target])
-	test_rules = list()
 
-	if (is.null(value)) {
-		test_dat$value = 1
-	} else {
-		test_dat$value = test_dat[, value]
+check_rules = function (rules_list, test_dat, target = NULL, value = NULL)
+{
+    filter_s = sub_dat = test_rules_dt = test_pct = test_sum = test_ks = B = G = X.test_1 =
+		X.test_total = rules_no = rules = X.total_1 = test_total = hit_total = hit_0 = NULL
+    final_rules = data.frame(rules_no = 1:length(rules_list),
+        rules = unlist(rules_list), stringsAsFactors = FALSE)
+    test_dat = checking_data(dat = test_dat)
+	if(is.null(target)){
+	test_dat$target = ifelse((1:nrow(test_dat))%%2==0,"1","0")
+
+	} else{
+		test_dat$target = as.character(test_dat[, target])
 	}
 
-	for (i in 1:nrow(final_rules)) {
-		filter_s = as.character(final_rules[i, "rules"])
-		sub_dat = test_dat %>% dplyr::filter(eval(parse(text = filter_s)))
-		colnames(sub_dat) = iconv(colnames(sub_dat), from = "UTF-8", to = "GBK")
-		if (nrow(sub_dat) > 0) {
-			sub_dat$rules_no = final_rules[i, 'rules_no']
-			test_rules[[i]] = sub_dat[c("rules_no", "target", "value")]
+    if (is.null(value)) {
+        test_dat$value = 1
+    } else {
+		if(is.numeric(test_dat[, value])){
+		 test_dat$value = test_dat[, value]
+		}else{
+		stop("The type of value must be numeric!")
 		}
+
+    }
+	test_rules = list()
+    for (i in 1:nrow(final_rules)) {
+        filter_s = as.character(final_rules[i, "rules"])
+        sub_dat = test_dat %>% dplyr::filter(eval(parse(text = filter_s)))
+        colnames(sub_dat) = iconv(colnames(sub_dat), from = "UTF-8", to = "GBK")
+        if (nrow(sub_dat) > 0) {
+            sub_dat$rules_no = final_rules[i, "rules_no"]
+            test_rules[[i]] = sub_dat[c("rules_no", "target",
+                "value")]
+        }else{
+			sub_dat = test_dat
+			sub_dat$rules_no = 0
+            test_rules[[i]] = sub_dat[c("rules_no", "target",
+                "value")]
+		}
+    }
+
+    filter_all = as.character(paste("(", final_rules[,"rules"], ")", collapse = "|"))
+    dat_all = test_dat %>% dplyr::filter(eval(parse(text = filter_all)))
+	if(nrow(dat_all) == 0){
+		warning("The rules did not hit any samples!")
+		dat_all = test_dat
+		hit_0 = 1
 	}
-	filter_all = as.character(paste("(", final_rules[, "rules"], ")", collapse = '|'))
-	dat_all = test_dat %>% dplyr::filter(eval(parse(text = filter_all)))
-	dat_all_sub = subset(dat_all, target %in% list("0", "1", 0, 1))
-	dat_all_sub$target = ifelse(dat_all_sub[, "target"] %in% list("0", 0), "G", "B")
-	dat_all$target = ifelse(dat_all[, "target"] %in% list("0", 0), "G", "B")
 
-	dat_all_pct = dat_all %>%
-	dplyr::group_by(target) %>%
-	dplyr::summarise(n = sum(value, na.rm =	TRUE)) %>%
-	dplyr::mutate(test_1_pct = as_percent(n / sum(n), digits = 4))
-	dat_all_pct = as.data.table(dat_all_pct)
-	dat_all_sum = data.table::dcast(dat_all_pct[, c("target", "n"), with = FALSE], . ~ target, value.var = "n")
-	dat_all_sum = quick_as_df(dat_all_sum)
-	dat_all_sum[is.na(dat_all_sum)] = 0
-	dat_all_sub_pct = dat_all_sub %>%
-	dplyr::group_by(target) %>%
-	dplyr::summarise(n = sum(value, na.rm = TRUE)) %>%
-	 dplyr::mutate(test_1_pct = as_percent(n / sum(n), digits = 4))
-	dat_all_sub_pct = as.data.table(dat_all_sub_pct)
-	dat_all_sub_sum = data.table::dcast(dat_all_sub_pct[, c("target", "n"), with = FALSE], . ~ target, value.var = "n")
-	dat_all_sub_sum = quick_as_df(dat_all_sub_sum)
-	dat_all_sub_sum[is.na(dat_all_sub_sum)] = 0
+    dat_all_sub = subset(dat_all, target %in% list("0", "1", 0, 1))
+    dat_all_sub$target = ifelse(dat_all_sub[, "target"] %in% list("0", 0), "G", "B")
+    dat_all$target = ifelse(dat_all[, "target"] %in% list("0", 0), "G", "B")
+    dat_all_pct = dat_all %>% dplyr::group_by(target) %>%
+		dplyr::summarise(n = sum(value, na.rm = TRUE)) %>%
+		dplyr::mutate(test_1_pct = as_percent(n/sum(n),digits = 4))
+    dat_all_pct = as.data.table(dat_all_pct)
 
-	test_rules_dt = Reduce("rbind", test_rules)
-	test_rules_dt_sub = subset(test_rules_dt, target %in% list("0", "1", 0, 1))
-	test_rules_dt_sub$target = ifelse(test_rules_dt_sub[, "target"] %in% list("0", "0", 0), "G", "B")
-	tree_test_pct_sub = test_rules_dt_sub %>%
-	dplyr::group_by(rules_no, target) %>%
-	dplyr::summarise(n = sum(value, na.rm = TRUE)) %>%
-	dplyr::mutate(test_1_pct = as_percent(n / sum(n, na.rm = TRUE), digits = 4))
-	tree_test_pct_sub = as.data.table(tree_test_pct_sub)
-	test_sum_sub = data.table::dcast(tree_test_pct_sub[, c("rules_no", "target", "n"),
-		  with = FALSE], rules_no ~ target, value.var = "n")
-	test_sum_sub = quick_as_df(test_sum_sub)
-	test_sum_sub[is.na(test_sum_sub)] = 0
-
-	test_rules_dt$target = ifelse(test_rules_dt[, "target"] %in% list("0", 0), "G", "B")
-	test_pct = test_rules_dt %>%
-	dplyr::group_by(rules_no, target) %>%
-	dplyr::summarise(n = sum(value, na.rm = TRUE)) %>%
-	dplyr::mutate(test_1_pct = as_percent(n / sum(n), digits = 4))
-
-
-	test_pct = as.data.table(test_pct)
-	test_sum = data.table::dcast(test_pct[, c("rules_no", "target", "n"), with = FALSE],
-					rules_no ~ target, value.var = "n")
-	test_sum = quick_as_df(test_sum)
-	test_sum[is.na(test_sum)] = 0
-
-	test_tb = gather_data(test_dat, x_list = "value", ID = "target", sum)[, 2]
-	dt_rules = merge(final_rules[c('rules_no', 'rules')], test_sum_sub, all.x = TRUE)
-	dt_rules[is.na(dt_rules)] = 0
-	dt_rules = transform(dt_rules,
-					   test_total = sum(test_tb),
-					   total_1 = test_tb[2],
-					   `%total_1` = test_tb[2] / sum(test_tb),
-					   `%test_total` = round((G + B) / sum(test_tb), 4),
-					   hit_total =G + B,
-					   `%test_1` = round(B / ifelse(G + B > 0, G + B, 1), 4)
-					   )
-
-	dt_rules_k = within(dt_rules, {
-		X.total_1 = as_percent(X.total_1, digits = 4)
-		X.test_total = as_percent(X.test_total, digits = 4)
-		X.test_1 = as_percent(X.test_1, digits = 4)
-		lift = round((B / ifelse(G + B > 0, G + B, 1)) / (test_tb[2] / test_total), 2)
-		FN = G
-		TP = B
-		TN = test_tb[1] - G
-		FP = test_tb[2] - B
-		Accuracy = as_percent((TP + TN) / (FN + TP + TN + FP), digits = 4)
-		Recall = as_percent(TP / ifelse(TP + FN > 0, TP + FN, 1), digits = 4)
-		Precision = as_percent(TP / ifelse(TP + FP > 0, TP + FP, 1), digits = 4)
-		Specificity = as_percent(FP / ifelse(TN + FP > 0, TN + FP, 1), digits = 4)
-		F1_score = round(2 * TP / ifelse(2 * TP + FP + FN > 0, 2 * TP + FP + FN, 1), 4)
-		res_total = as_percent(1 - round((G + B) / sum(test_tb), 4), 4)
-
+    dat_all_sum = data.table::dcast(dat_all_pct[, c("target", "n"), with = FALSE],
+									. ~ target,
+									value.var = "n")
+    dat_all_sum = quick_as_df(dat_all_sum)
+    dat_all_sum[is.na(dat_all_sum)] = 0
+    dat_all_sub_pct = dat_all_sub %>% dplyr::group_by(target) %>%
+        dplyr::summarise(n = sum(value, na.rm = TRUE)) %>%
+		dplyr::mutate(test_1_pct = as_percent(n/sum(n), digits = 4))
+    dat_all_sub_pct = as.data.table(dat_all_sub_pct)
+    dat_all_sub_sum = data.table::dcast(dat_all_sub_pct[, c("target", "n"), with = FALSE],
+										. ~ target, value.var = "n")
+    dat_all_sub_sum = quick_as_df(dat_all_sub_sum)
+    dat_all_sub_sum[is.na(dat_all_sub_sum)] = 0
+    test_rules_dt = Reduce("rbind", test_rules)
+    test_rules_dt_sub = subset(test_rules_dt, target %in% list("0", "1", 0, 1))
+    test_rules_dt_sub$target = ifelse(test_rules_dt_sub[, "target"] %in%
+        list("0", "0", 0), "G", "B")
+    tree_test_pct_sub = test_rules_dt_sub %>% dplyr::group_by(rules_no,
+        target) %>% dplyr::summarise(n = sum(value, na.rm = TRUE)) %>%
+        dplyr::mutate(test_1_pct = as_percent(n/sum(n, na.rm = TRUE), digits = 4))
+    tree_test_pct_sub = as.data.table(tree_test_pct_sub)
+    test_sum_sub = data.table::dcast(tree_test_pct_sub[, c("rules_no", "target", "n"), with = FALSE],
+									 rules_no ~ target, value.var = "n")
+    test_sum_sub = quick_as_df(test_sum_sub)
+    test_sum_sub[is.na(test_sum_sub)] = 0
+    test_rules_dt$target = ifelse(test_rules_dt[, "target"] %in%
+        list("0", 0), "G", "B")
+    test_pct = test_rules_dt %>% dplyr::group_by(rules_no, target) %>%
+        dplyr::summarise(n = sum(value, na.rm = TRUE)) %>%
+		dplyr::mutate(test_1_pct = as_percent(n/sum(n), digits = 4))
+    test_pct = as.data.table(test_pct)
+    test_sum = data.table::dcast(test_pct[, c("rules_no", "target", "n"), with = FALSE],
+								 rules_no ~ target, value.var = "n")
+    test_sum = quick_as_df(test_sum)
+    test_sum[is.na(test_sum)] = 0
+    test_tb = gather_data(test_dat, x_list = "value", ID = "target",sum)[, 2]
+    dt_rules = merge(final_rules[c("rules_no", "rules")],test_sum_sub, all.x = TRUE)
+    dt_rules[is.na(dt_rules)] = 0
+    dt_rules = transform(dt_rules,
+						 test_total = sum(test_tb),
+						 total_1 = test_tb[2],
+						 `%total_1` = test_tb[2]/sum(test_tb),
+						 `%test_total` = round((G + B)/sum(test_tb), 4),
+						 hit_total = G + B,
+						 `%test_1` = round(B/ifelse(G + B > 0, G + B, 1), 4))
+    dt_rules_k = within(dt_rules, {
+        X.total_1 = as_percent(X.total_1, digits = 4)
+        X.test_total = as_percent(X.test_total, digits = 4)
+        X.test_1 = as_percent(X.test_1, digits = 4)
+        lift = round((B/ifelse(G + B > 0, G + B, 1))/(test_tb[2]/test_total), 2)
+        FN = G
+        TP = B
+        TN = test_tb[1] - G
+        FP = test_tb[2] - B
+        Accuracy = as_percent((TP + TN)/(FN + TP + TN + FP), digits = 4)
+        Recall = as_percent(TP/ifelse(TP + FN > 0, TP + FN, 1), digits = 4)
+        Precision = as_percent(TP/ifelse(TP + FP > 0, TP + FP, 1), digits = 4)
+        Specificity = as_percent(FP/ifelse(TN + FP > 0, TN + FP, 1), digits = 4)
+        F1_score = round(2 * TP/ifelse(2 * TP + FP + FN > 0, 2 * TP + FP + FN, 1), 4)
+        res_total = as_percent(1 - round((G + B)/sum(test_tb), 4), 4)
+    })
+    names(dt_rules_k) = c("rules_no", "rules", "hit_1","hit_0", "#total", "total_1", "%total_1",
+        "%hit", "#hit", "%hit_1", "%residue","F1_score", "Specificity", "Precision",
+        "Recall", "Accuracy", "FP", "TN", "TP", "FN", "Lift")
+    dt_rules_k = dt_rules_k[c("rules_no", "rules", "#total", "total_1", "%total_1", "#hit",
+        "%hit", "FN", "TP", "TN", "FP", "Recall", "Accuracy", "Precision",
+        "Specificity", "%residue", "F1_score", "Lift")]
+	if(!is.null(hit_0) && hit_0 == 1){
+		dat_all_sum$B =0
+		dat_all_sum$G =0
+		dat_all_sub_sum$G = 0
+		dat_all_sub_sum$B = 0
 	}
-  )
-
-	names(dt_rules_k) = c("rules_no", "rules", "hit_1", "hit_0",
-	"#total", "total_1", "%total_1", "%hit", "#hit",
-	 "%hit_1", "%residue", "F1_score", "Specificity", "Precision",
-	 "Recall", "Accuracy", "FP", "TN", "TP", "FN", "Lift")
-
-	dt_rules_k = dt_rules_k[c("rules_no", "rules", "#total", "total_1", "%total_1",
-	"#hit", "%hit", "FN", "TP", "TN", "FP", "Recall",
-	"Accuracy", "Precision", "Specificity", "%residue", "F1_score", "Lift")]
 	FN = dat_all_sub_sum$G
-	TP = dat_all_sub_sum$B
-	TN = test_tb[1] - dat_all_sub_sum$G
-	FP = test_tb[2] - dat_all_sub_sum$B
-	total = c("Total",
-			 "--",
-			 max(dt_rules_k$`#total`, na.rm = TRUE),
-			 max(dt_rules_k$total_1, na.rm = TRUE),
-			 as_percent(test_tb[2] / sum(test_tb), 4),
-			 dat_all_sum$B + dat_all_sum$G,
-			 as_percent((dat_all_sum$B + dat_all_sum$G) /
-			 max(dt_rules_k$`#total`, na.rm = TRUE), 4),
-			FN, TP, TN, FP,
-			as_percent(TP / ifelse(TP + FN > 0, TP + FN, 1), digits = 4),
-			as_percent((TP + TN) / (FN + TP + TN + FP), digits = 4),
-			as_percent(TP / ifelse(TP + FP > 0, TP + FP, 1), digits = 4),
-			as_percent(FP / ifelse(TN + FP > 0, TN + FP, 1), digits = 4),
-			as_percent(1 - (dat_all_sum$B + dat_all_sum$G) /
-			 max(dt_rules_k$`#total`, na.rm = TRUE), 4),
-			round(2 * TP / ifelse(2 * TP + FP + FN > 0, 2 * TP + FP + FN, 1), 4),
-			round((dat_all_sub_sum$B / ifelse(dat_all_sub_sum$G + dat_all_sub_sum$B > 0,
-												  dat_all_sub_sum$G + dat_all_sub_sum$B, 1)) /
-												  (test_tb[2] / sum(test_tb)), 2)
-		  )
-	dt_rules_k = rbind(dt_rules_k, total)
-	return(dt_rules_k)
+    TP = dat_all_sub_sum$B
+    TN = test_tb[1] - dat_all_sub_sum$G
+    FP = test_tb[2] - dat_all_sub_sum$B
+    total = c("Total", "--",
+			  max(dt_rules_k$`#total`,na.rm = TRUE),
+			  max(dt_rules_k$total_1, na.rm = TRUE),
+			  as_percent(test_tb[2]/sum(test_tb), 4),
+			  dat_all_sum$B +dat_all_sum$G,
+			  as_percent((dat_all_sum$B + dat_all_sum$G)/max(dt_rules_k$`#total`,na.rm = TRUE), 4),
+			  FN, TP, TN, FP,
+			  as_percent(TP/ifelse(TP + FN > 0, TP + FN, 1), digits = 4),
+			  as_percent((TP + TN)/(FN + TP + TN + FP), digits = 4),
+			  as_percent(TP/ifelse(TP + FP > 0, TP + FP, 1), digits = 4),
+			  as_percent(FP/ifelse(TN + FP > 0, TN + FP, 1), digits = 4),
+			  as_percent(1 - (dat_all_sum$B + dat_all_sum$G)/max(dt_rules_k$`#total`,na.rm = TRUE), 4),
+			  round(2 * TP/ifelse(2 * TP + FP + FN > 0, 2 * TP + FP + FN, 1), 4),
+			  round((dat_all_sub_sum$B/ifelse(dat_all_sub_sum$G + dat_all_sub_sum$B > 0,
+											  dat_all_sub_sum$G + dat_all_sub_sum$B,1))/(test_tb[2]/sum(test_tb)), 2))
+    dt_rules_k = rbind(dt_rules_k, total)
+	if(is.null(target)){
+		dt_rules_k = dt_rules_k[c("rules_no","rules", "#total","#hit","%hit","%residue")]
+	}
+    return(dt_rules_k)
 }
+
+
+
 
 #' rules_filter
 #'

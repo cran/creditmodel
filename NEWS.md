@@ -1,3 +1,9 @@
+# creditmodel-1.2.3
+
+**In this version I have:**
+* Fixed some bugs in `check_rules`, `time_transfer`.
+
+
 #creditmodel-1.2.2
 
 **In this version I have:**

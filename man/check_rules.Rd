@@ -4,14 +4,14 @@
 \alias{check_rules}
 \title{check rules}
 \usage{
-check_rules(rules_list, test_dat, target, value = NULL)
+check_rules(rules_list, test_dat, target = NULL, value = NULL)
 }
 \arguments{
 \item{rules_list}{A list of rules.}
 
 \item{test_dat}{A data.frame of test.}
 
-\item{target}{The name of target variable.}
+\item{target}{The name of target variable, default is NULL.}
 
 \item{value}{The name of value to gather.}
 }

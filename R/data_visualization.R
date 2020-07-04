@@ -133,7 +133,7 @@ get_plots <- function(dat_train, dat_test = NULL, x_list = NULL,
 #' @export
 
 
-plot_vars <- function(dat_train, x, target, dat_test = NULL,
+plot_vars = function(dat_train, x, target, dat_test = NULL,
 					  g_width = 8, breaks_list = NULL, breaks = NULL,
 					  pos_flag = list("1", 1, "bad", "positive"),
 					  equal_bins = TRUE, cut_bin = 'equal_depth', best = FALSE,
@@ -144,7 +144,7 @@ plot_vars <- function(dat_train, x, target, dat_test = NULL,
 					  dir_path = tempdir()) {
 
 	dat_train = checking_data(dat = dat_train, target = target)
-	dat_train = char_to_num(dat_train, char_list = x, note = FALSE)
+	#dat_train = char_to_num(dat_train, char_list = x, note = FALSE)
 	digits_x = min(ifelse(is.numeric(dat_train[, x]), digits_num(dat_train[, x]), 4), 4, na.rm = FALSE)
 	opt = options('warn' = -1, scipen = 200, digits = digits_x + 1) #
 
@@ -307,15 +307,15 @@ plot_vars <- function(dat_train, x, target, dat_test = NULL,
 							note = FALSE)
 		tar_var = paste0("%", target)
 		plot_2 <- ggplot(df_ae, aes(x = df_ae$bins,
-								y = de_percent(df_ae$`%total`, 3)
-	)) +
+								y = de_percent(df_ae$`%total`, 3))) +
   	  geom_bar(aes(fill = "%total"), stat = "identity", position = position_dodge(width = 0.7)) +
   	  geom_text(aes(y = de_percent(df_ae$`%total`, 3),
 					label = paste(df_ae$`%total`)),
 				position = position_dodge(width = 0.7),
 				size = ifelse(nrow(df_ae) > 10, 2.6,
 							  ifelse(nrow(df_ae) > 5, 2.8,
-									 ifelse(nrow(df_ae) > 3, 3, 3.2))), vjust = 1, hjust = 0.3, colour = "white") +
+									 ifelse(nrow(df_ae) > 3, 3, 3.2))), vjust = 1, hjust = 0.3,
+				colour = "white") +
   	  geom_line(aes(x = factor(df_ae[['bins']]),
 					y = de_percent(df_ae$bad_rate, 3) * max(de_percent(df_ae$`%total`, 3)) * 4,
 					color = tar_var
@@ -339,7 +339,8 @@ plot_vars <- function(dat_train, x, target, dat_test = NULL,
   	  annotate(geom = 'text',
 			   x = dim(df_ae)[1] / 3,
 			   y = max(c(de_percent(df_ae$`%total`, 3),
-						 de_percent(df_ae$bad_rate, 3) * max(de_percent(df_ae$`%total`, 3)) * 4)) + 0.09,
+						 de_percent(df_ae$bad_rate, 3) * max(de_percent(df_ae$`%total`, 3)) * 4))
+				   + 0.05,
 			   label = paste(paste("IV:", sum(df_ae$iv, na.rm = TRUE)))) +
   	  scale_fill_manual(values = c("%total" = love_color("light_cyan"))) +
   	  scale_color_manual(values = c(love_color("deep_orange"))) +
