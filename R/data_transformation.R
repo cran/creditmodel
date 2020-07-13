@@ -254,10 +254,8 @@ de_one_hot_encoding <- function(dat_one_hot, cat_vars = NULL, na_act = TRUE,note
 #' dat = time_transfer(dat = lendingclub,date_cols = "issue_d")
 #' class(dat[,"issue_d"])
 #' #transfer a group of variables with similar name.
-#' dat = time_transfer(dat = lendingclub,date_cols = "_d$")
-#' class(dat[,"issue_d"])
 #' #transfer all time variables.
-#' dat = time_transfer(dat = lendingclub,date_cols = NULL)
+#' dat = time_transfer(dat = lendingclub[1:3],date_cols = "_d$")
 #' class(dat[,"issue_d"])
 #' @export
 

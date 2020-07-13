@@ -614,7 +614,7 @@ get_ctree_rules = function(tree_fit = NULL, train_dat = NULL, target = NULL, tes
 #' dat_test = train_test$test
 #' dat_train$default.payment.next.month = as.numeric(dat_train$default.payment.next.month)
 #' rules_list = get_ctree_rules(tree_fit = NULL, train_dat = dat_train[, 8:26],
-#'                              target ="default.payment.next.month", test_dat = dat_test)[1:3,2]
+#'                              target ="default.payment.next.month", test_dat = dat_test)[10:12,2]
 #' check_rules(rules_list = rules_list, target = "default.payment.next.month",
 #' test_dat = dat_test, value = NULL)
 #'
@@ -730,44 +730,46 @@ check_rules = function (rules_list, test_dat, target = NULL, value = NULL)
         X.test_total = as_percent(X.test_total, digits = 4)
         X.test_1 = as_percent(X.test_1, digits = 4)
         lift = round((B/ifelse(G + B > 0, G + B, 1))/(test_tb[2]/test_total), 2)
-        FN = G
+        FP = G
         TP = B
         TN = test_tb[1] - G
-        FP = test_tb[2] - B
-        Accuracy = as_percent((TP + TN)/(FN + TP + TN + FP), digits = 4)
+        FN = test_tb[2] - B
+		Precision = as_percent(TP/ifelse(TP + FP > 0, TP + FP, 1), digits = 4)
         Recall = as_percent(TP/ifelse(TP + FN > 0, TP + FN, 1), digits = 4)
-        Precision = as_percent(TP/ifelse(TP + FP > 0, TP + FP, 1), digits = 4)
-        Specificity = as_percent(FP/ifelse(TN + FP > 0, TN + FP, 1), digits = 4)
+        Specificity = as_percent(TN/ifelse(TN + FP > 0, TN + FP, 1), digits = 4)
+		Accuracy = as_percent((TP + TN)/(FN + TP + TN + FP), digits = 4)
         F1_score = round(2 * TP/ifelse(2 * TP + FP + FN > 0, 2 * TP + FP + FN, 1), 4)
         res_total = as_percent(1 - round((G + B)/sum(test_tb), 4), 4)
+		FOR =  as_percent(FN/ifelse(TN + FN > 0, TN + FN, 1), digits = 4)
     })
     names(dt_rules_k) = c("rules_no", "rules", "hit_1","hit_0", "#total", "total_1", "%total_1",
-        "%hit", "#hit", "%hit_1", "%residue","F1_score", "Specificity", "Precision",
-        "Recall", "Accuracy", "FP", "TN", "TP", "FN", "Lift")
+        "%hit", "#hit", "%hit_1","FOR", "%residue","F1_score", "Accuracy",  "Specificity",
+        "Recall", "Precision" , "FN" ,"TN" ,"TP" ,"FP", "Lift")
     dt_rules_k = dt_rules_k[c("rules_no", "rules", "#total", "total_1", "%total_1", "#hit",
-        "%hit", "FN", "TP", "TN", "FP", "Recall", "Accuracy", "Precision",
-        "Specificity", "%residue", "F1_score", "Lift")]
+        "%hit", "FP", "TP", "TN", "FN","Precision", "Accuracy", "Recall",
+        "Specificity","FOR", "%residue", "F1_score", "Lift")]
 	if(!is.null(hit_0) && hit_0 == 1){
 		dat_all_sum$B =0
 		dat_all_sum$G =0
 		dat_all_sub_sum$G = 0
 		dat_all_sub_sum$B = 0
 	}
-	FN = dat_all_sub_sum$G
+	FP = dat_all_sub_sum$G
     TP = dat_all_sub_sum$B
     TN = test_tb[1] - dat_all_sub_sum$G
-    FP = test_tb[2] - dat_all_sub_sum$B
+    FN = test_tb[2] - dat_all_sub_sum$B
     total = c("Total", "--",
 			  max(dt_rules_k$`#total`,na.rm = TRUE),
 			  max(dt_rules_k$total_1, na.rm = TRUE),
 			  as_percent(test_tb[2]/sum(test_tb), 4),
 			  dat_all_sum$B +dat_all_sum$G,
 			  as_percent((dat_all_sum$B + dat_all_sum$G)/max(dt_rules_k$`#total`,na.rm = TRUE), 4),
-			  FN, TP, TN, FP,
-			  as_percent(TP/ifelse(TP + FN > 0, TP + FN, 1), digits = 4),
-			  as_percent((TP + TN)/(FN + TP + TN + FP), digits = 4),
+			  FP, TP, TN, FN,
 			  as_percent(TP/ifelse(TP + FP > 0, TP + FP, 1), digits = 4),
-			  as_percent(FP/ifelse(TN + FP > 0, TN + FP, 1), digits = 4),
+			  as_percent((TP + TN)/(FN + TP + TN + FP), digits = 4),
+			  as_percent(TP/ifelse(TP + FN > 0, TP + FN, 1), digits = 4),
+			  as_percent(TN/ifelse(TN + FP > 0, TN + FP, 1), digits = 4),
+			  as_percent(FN/ifelse(TN + FN > 0, TN + FN, 1), digits = 4),
 			  as_percent(1 - (dat_all_sum$B + dat_all_sum$G)/max(dt_rules_k$`#total`,na.rm = TRUE), 4),
 			  round(2 * TP/ifelse(2 * TP + FP + FN > 0, 2 * TP + FP + FN, 1), 4),
 			  round((dat_all_sub_sum$B/ifelse(dat_all_sub_sum$G + dat_all_sub_sum$B > 0,
@@ -778,7 +780,6 @@ check_rules = function (rules_list, test_dat, target = NULL, value = NULL)
 	}
     return(dt_rules_k)
 }
-
 
 
 

@@ -7,9 +7,9 @@
 data_cleansing(dat, target = NULL, obs_id = NULL, occur_time = NULL,
   pos_flag = NULL, x_list = NULL, ex_cols = NULL,
   miss_values = NULL, remove_dup = TRUE, outlier_proc = TRUE,
-  missing_proc = "median", low_var = 0.999, missing_rate = 0.98,
-  merge_cat = 30, note = TRUE, parallel = FALSE, save_data = FALSE,
-  file_name = NULL, dir_path = tempdir())
+  missing_proc = "median", low_var = 0.999, missing_rate = 0.999,
+  merge_cat = FALSE, note = TRUE, parallel = FALSE,
+  save_data = FALSE, file_name = NULL, dir_path = tempdir())
 }
 \arguments{
 \item{dat}{A data frame with x and target.}

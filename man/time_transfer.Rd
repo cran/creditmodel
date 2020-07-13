@@ -26,9 +26,7 @@ A data.frame with transfermed time variables.
 dat = time_transfer(dat = lendingclub,date_cols = "issue_d")
 class(dat[,"issue_d"])
 #transfer a group of variables with similar name.
-dat = time_transfer(dat = lendingclub,date_cols = "_d$")
-class(dat[,"issue_d"])
 #transfer all time variables.
-dat = time_transfer(dat = lendingclub,date_cols = NULL)
+dat = time_transfer(dat = lendingclub[1:3],date_cols = "_d$")
 class(dat[,"issue_d"])
 }

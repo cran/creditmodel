@@ -434,7 +434,7 @@ get_psi_plots <- function(dat_train, dat_test = NULL, x_list = NULL,
                                     ex_cols = ex_cols)
     }
     if(is.null(dat_test)){
-	train_test = train_test_split(dat_train,split_type = 'OOT',prop = 0.7,
+	train_test = train_test_split(dat_train,split_type = 'OOT',prop = 0.5,
                                     occur_time = occur_time)
       dat_train = train_test$train
       dat_test = train_test$test
@@ -461,77 +461,64 @@ get_psi_plots <- function(dat_train, dat_test = NULL, x_list = NULL,
 
 #' @rdname get_psi_plots
 #' @export
-psi_plot <- function(dat_train, x, dat_test = NULL,occur_time = NULL,
-                      g_width = 8,breaks_list = NULL,breaks = NULL,g = 10,
-                      plot_show = TRUE,
-                      save_data = FALSE,
-                      dir_path = tempdir()){
-
-  digits_x = ifelse(is.numeric(dat_train[, x]), digits_num(dat_train[, x]),4)
-  opt = options('warn' = -1, scipen = 200, stringsAsFactors = FALSE, digits = digits_x + 1) #
-    if(is.null(dat_test)) {
-      train_test = train_test_split(dat_train,split_type = 'OOT',prop = 0.7,
-                                    occur_time = occur_time)
-      dat_train = train_test$train
-      dat_test = train_test$test
+psi_plot = function (dat_train, x, dat_test = NULL, occur_time = NULL, g_width = 8, 
+    breaks_list = NULL, breaks = NULL, g = 10, plot_show = TRUE, 
+    save_data = FALSE, dir_path = tempdir()) 
+{
+    digits_x = ifelse(is.numeric(dat_train[, x]), digits_num(dat_train[, 
+        x]), 4)
+    opt = options(warn = -1, scipen = 200, stringsAsFactors = FALSE, 
+        digits = digits_x + 1)
+    if (is.null(dat_test)) {
+        train_test = train_test_split(dat_train, split_type = "OOT", 
+            prop = 0.5, occur_time = occur_time)
+        dat_train = train_test$train
+        dat_test = train_test$test
     }
-  dat_train$ae = "Expected"
-  dat_test$ae = "Actual"
-  xn = ae = NULL
+    dat_train$ae = "Expected"
+    dat_test$ae = "Actual"
+    xn = ae = NULL
+    df_ae <- get_psi(dat = dat_train, dat_test = dat_test, x = x, 
+        breaks_list = breaks_list, breaks = breaks, g = g, as_table = TRUE, 
+        note = FALSE, bins_no = TRUE)
 
-    df_ae <- get_psi(dat = dat_train, dat_test = dat_test,
-                        x = x,
-                        breaks_list = breaks_list,
-                        breaks = breaks,
-                         g = g, as_table = TRUE,
-                        note = FALSE, bins_no = TRUE)
-    plot_1 = plot_table(grid_table = df_ae[,-1],theme = c("cyan"),tile.color = "grey80", title = paste("PSI of", x))
-    ae_total <- data.table::melt(as.data.table(df_ae[c("Bins", "Ac_pct", "Ex_pct")]),
-                                 id.vars = c("Bins"),
-                                 variable.name = "actual_expected",
-                                 value.name = "value")
-
-
-    plot_2 <- ggplot(ae_total, aes(x = ae_total$Bins,
-                                   y = de_percent(ae_total$value, 4),
-                                   fill = ae_total$actual_expected)) +
-      geom_bar(stat = "identity", position = position_dodge(width = 0.7)) +
-      geom_text(aes(y = de_percent(ae_total$value, 4),
-                    label = paste(ae_total$value)),
-                position = position_dodge(width = 0.7),
-                size = ifelse(nrow(ae_total) > 10, 2.3,
-                              ifelse(nrow(ae_total) > 5, 2.5,
-                                     ifelse(nrow(ae_total) > 3, 2.8, 3))), vjust = 1, hjust = 0.3, colour = "white") +
-      annotate(geom = 'text',
-               x = dim(ae_total)[1] / 3,
-               y = max(c(de_percent(ae_total$value, 4), max(de_percent(ae_total$value, 4)) )) + 0.05,
-               label = paste('PSI:',sum(df_ae$PSI_i))) +
-      scale_fill_manual(values = c('Ac_pct' = love_color("shallow_cyan"),
-                                   'Ex_pct' = love_color("light_purple"))) +
-
-      ylim(c(-0.01, max(c(de_percent(ae_total$value, 4), max(de_percent(ae_total$value, 4)) )) + 0.05)) +
-      xlab(x) + ylab("Total Percent") +
-      ggtitle(paste(x," Distribution of Expected and Actual")) +
-      plot_theme(legend.position = "top",
-                 title_size = 9,
-                 axis_title_size = 8,
-                 angle = ifelse(nrow(ae_total) > 10, 60,
-                                ifelse(nrow(ae_total) > 5, 40,
-                                       ifelse(nrow(ae_total) > 3, 20, 10))),
-                 axis_size_x = ifelse(max(nchar(ae_total$Bins)) > 30, 5,
-                                      ifelse(max(nchar(ae_total$Bins)) > 20, 6,
-                                             ifelse(max(nchar(ae_total$Bins)) > 10, 7 ,8))))
-  if (save_data) {
-    ggsave(paste0(dir_path, paste(x, "png", sep = '.')),
-           plot = multi_grid(grobs = list(plot_1, plot_2), ncol = 2, nrow = 1),
-           width = g_width, height = g_width / 2, dpi = "retina")
-  }
-  if (plot_show) {
-    plot(multi_grid(grobs = list(plot_1, plot_2), ncol = 2, nrow = 1))
-  }
-  return(df_ae)
-  options(opt) # reset
+    ae_total <- data.table::melt(as.data.table(df_ae[c("Bins", 
+        "Ac_pct", "Ex_pct")]), id.vars = c("Bins"), 
+        variable.name = "actual_expected", value.name = "value")
+    plot_2 <- ggplot(ae_total, aes(x = ae_total$Bins, y = de_percent(ae_total$value, 
+        4), fill = ae_total$actual_expected)) + geom_bar(stat = "identity", 
+        position = position_dodge(width = 0.7)) + geom_text(aes(y = de_percent(ae_total$value, 
+        4), label = paste(ae_total$value)), position = position_dodge(width = 0.7), 
+        size = ifelse(nrow(ae_total) > 10, 2.3, ifelse(nrow(ae_total) > 
+            5, 2.5, ifelse(nrow(ae_total) > 3, 2.8, 3))), vjust = 1, 
+        hjust = 0.3, colour = "white") + annotate(geom = "text", 
+        x = dim(ae_total)[1]/3, y = max(c(de_percent(ae_total$value, 
+            4), max(de_percent(ae_total$value, 4)))) + 0.05, 
+        label = paste("PSI:", sum(df_ae$PSI_i))) + 
+		scale_fill_manual(values = c(Ac_pct = love_color("shallow_cyan"), 
+        Ex_pct = love_color("light_purple"))) + ylim(c(-0.01, 
+        max(c(de_percent(ae_total$value, 4), max(de_percent(ae_total$value, 
+            4)))) + 0.05)) + xlab(x) + ylab("Total Percent") + 
+        ggtitle(paste(x, " Distribution of Expected and Actual")) + 
+        plot_theme(legend.position = "top", title_size = 9, 
+            axis_title_size = 8, angle = ifelse(nrow(ae_total) > 
+                10, 60, ifelse(nrow(ae_total) > 5, 40, ifelse(nrow(ae_total) > 
+                3, 20, 10))), axis_size_x = ifelse(max(nchar(ae_total$Bins)) > 
+                30, 5, ifelse(max(nchar(ae_total$Bins)) > 20, 
+                6, ifelse(max(nchar(ae_total$Bins)) > 10, 7, 
+                  8))))
+    if (save_data) {
+        ggsave(paste0(dir_path, paste(x, "png", sep = ".")), 
+            plot = plot_2, width = g_width, height = g_width/2, 
+            dpi = "retina")
+    }
+    if (plot_show) {
+        plot(plot_2)
+    }
+    return(df_ae)
+    options(opt)
 }
+
 
 
 #' partial_dependence_plot
@@ -2141,64 +2128,71 @@ cohort_plot <- function(cohort_dat){
 #' plot_table(iv_dt)
 #' @export
 
-plot_table <- function(grid_table, theme = c("cyan", "grey", "green", "red", "blue", "purple"),
-					  title = NULL, title.size = 12, title.color = 'black', title.face = "bold", title.position = 'middle',
-					  subtitle = NULL, subtitle.size = 8, subtitle.color = 'black', subtitle.face = "plain",
-					  subtitle.position = 'middle',
-					  tile.color = 'white', tile.size = 1,
-					  colname.size = 3, colname.color = 'white', colname.face = 'bold',
-					  colname.fill.color = love_color("dark_cyan"),
-					  text.size = 3, text.color = love_color("dark_grey"),
-					  text.face = 'plain', text.fill.color = c('white', love_color("pale_grey"))
-) {
-	opt = options('warn' = -1, scipen = 200, stringsAsFactors = FALSE, digits = 6) #
-	grid_table = rbind(colnames(grid_table), as.data.frame(grid_table))
-	grid_table = cbind(rows = rownames(grid_table), as.data.frame(grid_table))
-	grid_table = as.data.table(grid_table)
-	table_1 = data.table::melt(grid_table, id = 1, measure = 2:ncol(grid_table), value.factor = TRUE)
-	grid_table = quick_as_df(grid_table)
-	table_1 = data.frame(table_1, ind = paste0("x", 1:nrow(table_1)))
-
-	table_theme = check_table_theme(theme = theme)
-	if (!is.null(table_theme$colname.fill.color) && !is.null(table_theme$text.fill.color)) {
-		colname.fill.color = table_theme$colname.fill.color
-		text.fill.color = table_theme$text.fill.color
-	}
-	plot_ele = get_plot_elements(table_1 = table_1, grid_table = grid_table, colname.fill.color = colname.fill.color,
-  text.fill.color = text.fill.color, colname.color = colname.color, text.color = text.color,
-  colname.face = colname.face, text.face = text.face, colname.size = colname.size, text.size = text.size)
-	fill_colors = plot_ele$fill_colors
-	text_colors = plot_ele$text_colors
-	fill_size = plot_ele$fill_size
-	fill_bold = plot_ele$fill_bold
-	value_width = plot_ele$value_width
-	nudge_y = plot_ele$nudge_y
-	table_2 = rearrange_table(table_1 = table_1, grid_table = grid_table, colname.face = colname.face,
-  colname.size = colname.size, text.size = text.size)
-	pl_tb = ggplot(table_2, aes(x = table_2$n_cumsum, y = table_2$rows)) +
-	geom_tile(aes(fill = table_2$ind, width = table_2$n_width), height = value_width,
-			  show.legend = FALSE, colour = tile.color, size = tile.size) +
-	geom_text(nudge_x = c(-(table_2$n_width[-c((nrow(table_2) - length(unique(table_2$rows)) + 1):nrow(table_2))] / 4
-	), table_2$n_width[c((nrow(table_2) - length(unique(table_2$rows)) + 1):nrow(table_2))] * 0)
-	, nudge_y = nudge_y, aes(label = table_2$value), size = fill_size,
-	colour = text_colors, fontface = fill_bold) +
-	labs(title = title, subtitle = subtitle, x = "", y = "") +
-	scale_fill_manual(limits = table_2$ind, values = fill_colors) +
-	scale_x_discrete(limits = c(1:nrow(table_2) - 1)) +
-	scale_y_discrete(limits = rev(unique(table_2$rows))) +
-	theme(
-	  legend.position = 'none', axis.ticks = element_blank(), axis.text = element_blank(),
-	  plot.title = element_text(face = title.face, size = title.size, color = title.color,
-								hjust = ifelse(title.position == 'middle', 0.5,
-											   ifelse(title.position == 'right', 1, 0)), vjust = 0),
-	  plot.subtitle = element_text(face = subtitle.face, size = subtitle.size, color = subtitle.color,
-								   hjust = ifelse(subtitle.position == 'middle', 0.5,
-												  ifelse(subtitle.position == 'right', 1, 0)), vjust = 0),
-	  rect = element_blank())
-	return(pl_tb)
-	options(opt)
-
+plot_table = function (grid_table, theme = c("cyan", "grey", "green",
+    "red", "blue", "purple"), title = NULL,
+    title.size = 12, title.color = "black", title.face = "bold",
+    title.position = "middle", subtitle = NULL, subtitle.size = 8,
+    subtitle.color = "black", subtitle.face = "plain",
+    subtitle.position = "middle", tile.color = "white",
+    tile.size = 1, colname.size = 3, colname.color = "white",
+    colname.face = "bold", colname.fill.color = love_color("dark_cyan"),
+    text.size = 3, text.color = love_color("dark_grey"),
+    text.face = "plain", text.fill.color = c("white",
+        love_color("pale_grey")))
+{
+    opt = options(warn = -1, scipen = 200, stringsAsFactors = FALSE,
+        digits = 6)
+    grid_table = rbind(colnames(grid_table), as.data.frame(grid_table))
+    grid_table = cbind(rows = rownames(grid_table), as.data.frame(grid_table))
+    grid_table = as.data.table(grid_table)
+    table_1 = data.table::melt(grid_table, id = 1, measure = 2:ncol(grid_table),
+        value.factor = TRUE)
+    grid_table = quick_as_df(grid_table)
+    table_1 = data.frame(table_1, ind = paste0("x", 1:nrow(table_1)))
+    table_theme = check_table_theme(theme = theme)
+    if (!is.null(table_theme$colname.fill.color) && !is.null(table_theme$text.fill.color)) {
+        colname.fill.color = table_theme$colname.fill.color
+        text.fill.color = table_theme$text.fill.color
+    }
+    plot_ele = get_plot_elements(table_1 = table_1, grid_table = grid_table,
+        colname.fill.color = colname.fill.color, text.fill.color = text.fill.color,
+        colname.color = colname.color, text.color = text.color,
+        colname.face = colname.face, text.face = text.face, colname.size = colname.size,
+        text.size = text.size)
+    fill_colors = plot_ele$fill_colors
+    text_colors = plot_ele$text_colors
+    fill_size = plot_ele$fill_size
+    fill_bold = plot_ele$fill_bold
+    value_width = plot_ele$value_width
+    nudge_y = plot_ele$nudge_y
+    table_2 = rearrange_table(table_1 = table_1, grid_table = grid_table,
+        colname.face = colname.face, colname.size = colname.size,
+        text.size = text.size)
+    pl_tb = ggplot(table_2, aes(x = table_2$n_cumsum, y = table_2$rows)) +
+        geom_tile(aes(fill = table_2$ind, width = table_2$n_width),
+            height = value_width, show.legend = FALSE, colour = tile.color,
+            size = tile.size) + geom_text(nudge_x = c(-(table_2$n_width[-c((nrow(table_2) -
+        length(unique(table_2$rows)) + 1):nrow(table_2))]/4),
+        table_2$n_width[c((nrow(table_2) - length(unique(table_2$rows)) +
+            1):nrow(table_2))] * 0), nudge_y = nudge_y, aes(label = table_2$value),
+        size = fill_size, colour = text_colors, fontface = fill_bold) +
+        labs(title = title, subtitle = subtitle, x = "",
+            y = "") + scale_fill_manual(limits = table_2$ind,
+        values = fill_colors) + scale_x_discrete(limits = c(1:max(table_2$n_cumsum) -
+        1)) + scale_y_discrete(limits = rev(unique(table_2$rows))) +
+        theme(legend.position = "none", axis.ticks = element_blank(),
+            axis.text = element_blank(), plot.title = element_text(face = title.face,
+                size = title.size, color = title.color, hjust = ifelse(title.position ==
+                  "middle", 0.5, ifelse(title.position ==
+                  "right", 1, 0)), vjust = 0), plot.subtitle = element_text(face = subtitle.face,
+                size = subtitle.size, color = subtitle.color,
+                hjust = ifelse(subtitle.position == "middle",
+                  0.5, ifelse(subtitle.position == "right",
+                    1, 0)), vjust = 0), rect = element_blank())
+    return(pl_tb)
+    options(opt)
 }
+
 
 
 rearrange_table <- function(table_1, grid_table, colname.face, colname.size, text.size) {

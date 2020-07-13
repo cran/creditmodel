@@ -7,8 +7,8 @@
 psi_iv_filter(dat, dat_test = NULL, target, x_list = NULL,
   breaks_list = NULL, pos_flag = NULL, ex_cols = NULL,
   occur_time = NULL, best = FALSE, equal_bins = TRUE, g = 10,
-  sp_values = NULL, tree_control = list(p = 0.05, cp = 1e-06, xval = 5,
-  maxdepth = 10), bins_control = list(bins_num = 10, bins_pct = 0.05,
+  sp_values = NULL, tree_control = list(p = 0.05, cp = 0.000001, xval =
+  5, maxdepth = 10), bins_control = list(bins_num = 10, bins_pct = 0.05,
   b_chi = 0.05, b_odds = 0.1, b_psi = 0.05, b_or = 0.15, mono = 0.3,
   odds_psi = 0.2, kc = 1), oot_pct = 0.7, psi_i = 0.1, iv_i = 0.01,
   cos_i = 0.7, vars_name = FALSE, note = TRUE, parallel = FALSE,

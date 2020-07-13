@@ -1,3 +1,8 @@
+# creditmodel-1.2.4
+
+**In this version I have:**
+* Fixed some bugs in `data_cleansing`,`plot_table`,`check_rules`.
+
 # creditmodel-1.2.3
 
 **In this version I have:**
@@ -36,8 +41,6 @@
 * New function `rules_filter` is used to filter or select samples by rules
 * Fixed some potential bugs in `char_to_num`, `merge_category`,`check_rules`,`get_ctree_rules`.
 
-swap_analysis
-rules_filter
 # creditmodel-1.1.8
 
 **In this version I have:**

@@ -5,10 +5,10 @@
 \alias{lr_params_search}
 \title{Logistic Regression & Scorecard Parameters}
 \usage{
-lr_params(tree_control = list(p = 0.02, cp = 1e-08, xval = 5, maxdepth =
-  10), bins_control = list(bins_num = 10, bins_pct = 0.05, b_chi = 0.02,
-  b_odds = 0.1, b_psi = 0.03, b_or = 0.15, mono = 0.2, odds_psi = 0.15, kc
-  = 1), f_eval = "ks", best_lambda = "lambda.ks",
+lr_params(tree_control = list(p = 0.02, cp = 0.00000001, xval = 5,
+  maxdepth = 10), bins_control = list(bins_num = 10, bins_pct = 0.05,
+  b_chi = 0.02, b_odds = 0.1, b_psi = 0.03, b_or = 0.15, mono = 0.2,
+  odds_psi = 0.15, kc = 1), f_eval = "ks", best_lambda = "lambda.ks",
   method = "random_search", iters = 10, lasso = TRUE,
   step_wise = TRUE, score_card = TRUE, sp_values = NULL,
   forced_in = NULL, obsweight = c(1, 1), thresholds = list(cor_p =
