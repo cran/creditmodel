@@ -5,13 +5,30 @@
 \alias{woe_trans}
 \title{WOE Transformation}
 \usage{
-woe_trans_all(dat, x_list = NULL, ex_cols = NULL, bins_table = NULL,
-  target = NULL, breaks_list = NULL, note = FALSE,
-  save_data = FALSE, parallel = FALSE, woe_name = FALSE,
-  file_name = NULL, dir_path = tempdir(), ...)
+woe_trans_all(
+  dat,
+  x_list = NULL,
+  ex_cols = NULL,
+  bins_table = NULL,
+  target = NULL,
+  breaks_list = NULL,
+  note = FALSE,
+  save_data = FALSE,
+  parallel = FALSE,
+  woe_name = FALSE,
+  file_name = NULL,
+  dir_path = tempdir(),
+  ...
+)
 
-woe_trans(dat, x, bins_table = NULL, target = NULL,
-  breaks_list = NULL, woe_name = FALSE)
+woe_trans(
+  dat,
+  x,
+  bins_table = NULL,
+  target = NULL,
+  breaks_list = NULL,
+  woe_name = FALSE
+)
 }
 \arguments{
 \item{dat}{A data.frame with independent variables.}

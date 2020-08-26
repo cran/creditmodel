@@ -7,14 +7,36 @@
 \code{get_iv}  is used to calculate Information Value (IV) of an independent variable.
 \code{get_iv_all} can loop through IV for all specified independent variables.}
 \usage{
-get_iv_all(dat, x_list = NULL, ex_cols = NULL, breaks_list = NULL,
-  target = NULL, pos_flag = NULL, best = TRUE, equal_bins = FALSE,
-  tree_control = NULL, bins_control = NULL, g = 10,
-  parallel = FALSE, note = FALSE)
+get_iv_all(
+  dat,
+  x_list = NULL,
+  ex_cols = NULL,
+  breaks_list = NULL,
+  target = NULL,
+  pos_flag = NULL,
+  best = TRUE,
+  equal_bins = FALSE,
+  tree_control = NULL,
+  bins_control = NULL,
+  g = 10,
+  parallel = FALSE,
+  note = FALSE
+)
 
-get_iv(dat, x, target = NULL, pos_flag = NULL, breaks = NULL,
-  breaks_list = NULL, best = TRUE, equal_bins = FALSE,
-  tree_control = NULL, bins_control = NULL, g = 10, note = FALSE)
+get_iv(
+  dat,
+  x,
+  target = NULL,
+  pos_flag = NULL,
+  breaks = NULL,
+  breaks_list = NULL,
+  best = TRUE,
+  equal_bins = FALSE,
+  tree_control = NULL,
+  bins_control = NULL,
+  g = 10,
+  note = FALSE
+)
 }
 \arguments{
 \item{dat}{A data.frame with independent variables and target variable.}

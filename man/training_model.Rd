@@ -4,21 +4,46 @@
 \alias{training_model}
 \title{Training model}
 \usage{
-training_model(model_name = "mymodel", dat, dat_test = NULL,
-  target = NULL, occur_time = NULL, obs_id = NULL, x_list = NULL,
-  ex_cols = NULL, pos_flag = NULL, prop = 0.7, split_type = if
-  (!is.null(occur_time)) "OOT" else "Random", preproc = TRUE,
-  low_var = 0.99, missing_rate = 0.98, merge_cat = 30,
-  remove_dup = TRUE, outlier_proc = TRUE, missing_proc = "median",
-  default_miss = list(-1, "missing"), miss_values = NULL,
-  one_hot = FALSE, trans_log = FALSE, feature_filter = list(filter =
-  c("IV", "PSI", "COR", "XGB"), iv_cp = 0.02, psi_cp = 0.1, xgb_cp = 0,
-  cv_folds = 1, hopper = FALSE), algorithm = list("LR", "XGB", "GBM",
-  "RF"), LR.params = lr_params(), XGB.params = xgb_params(),
-  GBM.params = gbm_params(), RF.params = rf_params(),
-  breaks_list = NULL, parallel = FALSE, cores_num = NULL,
-  save_pmml = FALSE, plot_show = FALSE, vars_plot = TRUE,
-  model_path = tempdir(), seed = 46, ...)
+training_model(
+  model_name = "mymodel",
+  dat,
+  dat_test = NULL,
+  target = NULL,
+  occur_time = NULL,
+  obs_id = NULL,
+  x_list = NULL,
+  ex_cols = NULL,
+  pos_flag = NULL,
+  prop = 0.7,
+  split_type = if (!is.null(occur_time)) "OOT" else "Random",
+  preproc = TRUE,
+  low_var = 0.99,
+  missing_rate = 0.98,
+  merge_cat = 30,
+  remove_dup = TRUE,
+  outlier_proc = TRUE,
+  missing_proc = "median",
+  default_miss = list(-1, "missing"),
+  miss_values = NULL,
+  one_hot = FALSE,
+  trans_log = FALSE,
+  feature_filter = list(filter = c("IV", "PSI", "COR", "XGB"), iv_cp = 0.02, psi_cp =
+    0.1, xgb_cp = 0, cv_folds = 1, hopper = FALSE),
+  algorithm = list("LR", "XGB", "GBM", "RF"),
+  LR.params = lr_params(),
+  XGB.params = xgb_params(),
+  GBM.params = gbm_params(),
+  RF.params = rf_params(),
+  breaks_list = NULL,
+  parallel = FALSE,
+  cores_num = NULL,
+  save_pmml = FALSE,
+  plot_show = FALSE,
+  vars_plot = TRUE,
+  model_path = tempdir(),
+  seed = 46,
+  ...
+)
 }
 \arguments{
 \item{model_name}{A string, name of the project. Default is "mymodel"}

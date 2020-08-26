@@ -4,9 +4,17 @@
 \alias{knn_nas_imp}
 \title{Imputate nas using KNN}
 \usage{
-knn_nas_imp(dat, x, nas_rate = NULL, mat_nas_shadow = NULL,
-  dt_nas_random = NULL, k = 10, scale = FALSE, method = "median",
-  miss_value_num = -1)
+knn_nas_imp(
+  dat,
+  x,
+  nas_rate = NULL,
+  mat_nas_shadow = NULL,
+  dt_nas_random = NULL,
+  k = 10,
+  scale = FALSE,
+  method = "median",
+  miss_value_num = -1
+)
 }
 \arguments{
 \item{dat}{A data.frame with independent variables.}

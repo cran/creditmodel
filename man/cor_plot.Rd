@@ -4,8 +4,14 @@
 \alias{cor_plot}
 \title{Correlation Plot}
 \usage{
-cor_plot(dat, dir_path = tempdir(), x_list = NULL, gtitle = NULL,
-  save_data = FALSE, plot_show = FALSE)
+cor_plot(
+  dat,
+  dir_path = tempdir(),
+  x_list = NULL,
+  gtitle = NULL,
+  save_data = FALSE,
+  plot_show = FALSE
+)
 }
 \arguments{
 \item{dat}{A data.frame with independent variables and target variable.}

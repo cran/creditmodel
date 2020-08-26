@@ -5,10 +5,24 @@
 \title{plot_oot_perf
 \code{plot_oot_perf} is for ploting performance of cross time samples in the future}
 \usage{
-plot_oot_perf(dat_test, x, occur_time, target, k = 3, g = 10,
-  period = "month", best = FALSE, equal_bins = TRUE, pl = "rate",
-  breaks = NULL, cut_bin = "equal_depth", gtitle = NULL,
-  perf_dir_path = NULL, save_data = FALSE, plot_show = TRUE)
+plot_oot_perf(
+  dat_test,
+  x,
+  occur_time,
+  target,
+  k = 3,
+  g = 10,
+  period = "month",
+  best = FALSE,
+  equal_bins = TRUE,
+  pl = "rate",
+  breaks = NULL,
+  cut_bin = "equal_depth",
+  gtitle = NULL,
+  perf_dir_path = NULL,
+  save_data = FALSE,
+  plot_show = TRUE
+)
 }
 \arguments{
 \item{dat_test}{A data frame of testing dataset with predicted prob or score.}

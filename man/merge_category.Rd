@@ -4,8 +4,7 @@
 \alias{merge_category}
 \title{Merge Category}
 \usage{
-merge_category(dat, char_list = NULL, ex_cols = NULL, m = 30,
-  note = TRUE)
+merge_category(dat, char_list = NULL, ex_cols = NULL, m = 30, note = TRUE)
 }
 \arguments{
 \item{dat}{A data frame with x and target.}

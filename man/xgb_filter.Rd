@@ -4,14 +4,28 @@
 \alias{xgb_filter}
 \title{Select Features using XGB}
 \usage{
-xgb_filter(dat_train, dat_test = NULL, target = NULL,
-  pos_flag = NULL, x_list = NULL, occur_time = NULL,
-  ex_cols = NULL, xgb_params = list(nrounds = 100, max_depth = 6, eta =
-  0.1, min_child_weight = 1, subsample = 1, colsample_bytree = 1, gamma =
-  0, scale_pos_weight = 1, early_stopping_rounds = 10, objective =
-  "binary:logistic"), f_eval = "auc", cv_folds = 1, cp = NULL,
-  seed = 46, vars_name = TRUE, note = TRUE, save_data = FALSE,
-  file_name = NULL, dir_path = tempdir(), ...)
+xgb_filter(
+  dat_train,
+  dat_test = NULL,
+  target = NULL,
+  pos_flag = NULL,
+  x_list = NULL,
+  occur_time = NULL,
+  ex_cols = NULL,
+  xgb_params = list(nrounds = 100, max_depth = 6, eta = 0.1, min_child_weight = 1,
+    subsample = 1, colsample_bytree = 1, gamma = 0, scale_pos_weight = 1,
+    early_stopping_rounds = 10, objective = "binary:logistic"),
+  f_eval = "auc",
+  cv_folds = 1,
+  cp = NULL,
+  seed = 46,
+  vars_name = TRUE,
+  note = TRUE,
+  save_data = FALSE,
+  file_name = NULL,
+  dir_path = tempdir(),
+  ...
+)
 }
 \arguments{
 \item{dat_train}{A data.frame with independent variables and target variable.}

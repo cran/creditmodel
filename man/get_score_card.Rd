@@ -4,8 +4,16 @@
 \alias{get_score_card}
 \title{Score Card}
 \usage{
-get_score_card(lg_model, target, bins_table, a = 600, b = 50,
-  file_name = NULL, dir_path = tempdir(), save_data = FALSE)
+get_score_card(
+  lg_model,
+  target,
+  bins_table,
+  a = 600,
+  b = 50,
+  file_name = NULL,
+  dir_path = tempdir(),
+  save_data = FALSE
+)
 }
 \arguments{
 \item{lg_model}{An object of glm model.}

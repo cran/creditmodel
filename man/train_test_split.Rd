@@ -4,10 +4,19 @@
 \alias{train_test_split}
 \title{Train-Test-Split}
 \usage{
-train_test_split(dat, prop = 0.7, split_type = "Random",
-  occur_time = NULL, cut_date = NULL, start_date = NULL,
-  save_data = FALSE, dir_path = tempdir(), file_name = NULL,
-  note = FALSE, seed = 43)
+train_test_split(
+  dat,
+  prop = 0.7,
+  split_type = "Random",
+  occur_time = NULL,
+  cut_date = NULL,
+  start_date = NULL,
+  save_data = FALSE,
+  dir_path = tempdir(),
+  file_name = NULL,
+  note = FALSE,
+  seed = 43
+)
 }
 \arguments{
 \item{dat}{A data.frame with independent variables and target variable.}

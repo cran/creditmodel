@@ -5,8 +5,14 @@
 \title{Loop Function.
 #' \code{loop_function} is an iterator to loop through}
 \usage{
-loop_function(func = NULL, args = list(data = NULL), x_list = NULL,
-  bind = "rbind", parallel = TRUE, as_list = FALSE)
+loop_function(
+  func = NULL,
+  args = list(data = NULL),
+  x_list = NULL,
+  bind = "rbind",
+  parallel = TRUE,
+  as_list = FALSE
+)
 }
 \arguments{
 \item{func}{A function.}

@@ -4,7 +4,12 @@
 \alias{time_vars_process}
 \title{Processing of Time or Date Variables}
 \usage{
-time_vars_process(df_tm = df_tm, x, enddate = NULL)
+time_vars_process(
+  df_tm = df_tm,
+  x,
+  enddate = NULL,
+  units = c("secs", "mins", "hours", "days", "weeks")
+)
 }
 \arguments{
 \item{df_tm}{A data.frame}
@@ -12,6 +17,8 @@ time_vars_process(df_tm = df_tm, x, enddate = NULL)
 \item{x}{Time variable.}
 
 \item{enddate}{End time.}
+
+\item{units}{Units of diff_time, "secs", "mins", "hours", "days", "weeks" is available.}
 }
 \description{
 This function is not intended to be used by end user.

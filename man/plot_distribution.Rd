@@ -5,11 +5,25 @@
 \alias{plot_distribution_x}
 \title{Plot Distribution}
 \usage{
-plot_distribution(dat, x_list = NULL, dir_path = tempdir(),
-  breaks_list = NULL, g = 10, m = 3, cut_bin = "equal_width")
+plot_distribution(
+  dat,
+  x_list = NULL,
+  dir_path = tempdir(),
+  breaks_list = NULL,
+  g = 10,
+  m = 3,
+  cut_bin = "equal_width"
+)
 
-plot_distribution_x(dat, x, breaks = NULL, g = 10, m = 3,
-  cut_bin = "equal_width", binwidth = NULL)
+plot_distribution_x(
+  dat,
+  x,
+  breaks = NULL,
+  g = 10,
+  m = 3,
+  cut_bin = "equal_width",
+  binwidth = NULL
+)
 }
 \arguments{
 \item{dat}{A data.frame with independent variables and target variable.}

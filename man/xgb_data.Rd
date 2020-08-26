@@ -4,8 +4,14 @@
 \alias{xgb_data}
 \title{XGboost data}
 \usage{
-xgb_data(dat_train, target, dat_test = NULL, x_list = NULL,
-  prop = 0.7, occur_time = NULL)
+xgb_data(
+  dat_train,
+  target,
+  dat_test = NULL,
+  x_list = NULL,
+  prop = 0.7,
+  occur_time = NULL
+)
 }
 \arguments{
 \item{dat_train}{data.frame of train data. Default is NULL.}

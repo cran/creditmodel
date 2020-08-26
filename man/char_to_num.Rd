@@ -4,12 +4,16 @@
 \alias{char_to_num}
 \title{character to number}
 \usage{
-char_to_num(dat, char_list = NULL, note = TRUE, ex_cols = NULL)
+char_to_num(dat, char_list = NULL, m = 0, p = 1, note = TRUE, ex_cols = NULL)
 }
 \arguments{
 \item{dat}{A data frame}
 
-\item{char_list}{The list of charecteristic variables that need to merge categories, Default is NULL. In case of NULL,merge categories for all variables of string type.}
+\item{char_list}{The list of charecteristic variables that need to merge categories, Default is NULL. In case of NULL, merge categories for all variables of string type.}
+
+\item{m}{The minimum number of categories.}
+
+\item{p}{The max percent of categories.}
 
 \item{note}{Logical, outputs info. Default is TRUE.}
 

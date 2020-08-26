@@ -4,8 +4,7 @@
 \alias{de_one_hot_encoding}
 \title{Recovery One-Hot Encoding}
 \usage{
-de_one_hot_encoding(dat_one_hot, cat_vars = NULL, na_act = TRUE,
-  note = FALSE)
+de_one_hot_encoding(dat_one_hot, cat_vars = NULL, na_act = TRUE, note = FALSE)
 }
 \arguments{
 \item{dat_one_hot}{A dat frame with the one hot encoding variables}

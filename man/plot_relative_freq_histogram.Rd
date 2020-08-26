@@ -4,8 +4,17 @@
 \alias{plot_relative_freq_histogram}
 \title{Plot Relative Frequency Histogram}
 \usage{
-plot_relative_freq_histogram(dat, x, y = NULL, x_breaks = NULL,
-  y_breaks = NULL, g = 10, cut_bin = "equal_width")
+plot_relative_freq_histogram(
+  dat,
+  x,
+  y = NULL,
+  x_breaks = NULL,
+  y_breaks = NULL,
+  reverse = ifelse(!is.null(y), TRUE, FALSE),
+  g = 10,
+  cut_bin = "equal_width",
+  fill_colors = c(love_color(type = "light")[1:8], love_color(type = "deep")[1:6])
+)
 }
 \arguments{
 \item{dat}{A data.frame with independent variables and target variable.}
@@ -18,9 +27,13 @@ plot_relative_freq_histogram(dat, x, y = NULL, x_breaks = NULL,
 
 \item{y_breaks}{Breaks points of y.}
 
+\item{reverse}{Logical,whether reverse the plot.}
+
 \item{g}{Number of initial breakpoints for equal frequency binning.}
 
 \item{cut_bin}{'equal_width' or 'equal_depth' to produce the breaks points.}
+
+\item{fill_colors}{Colors of bar.}
 }
 \description{
 You can use the \code{plot_relative_freq_histogram} to produce the relative frequency histogram plots.

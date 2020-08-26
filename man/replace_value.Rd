@@ -5,13 +5,25 @@
 \alias{replace_value_x}
 \title{Replace Value}
 \usage{
-replace_value(dat = dat, x_list = NULL, x_pattern = NULL,
-  replace_dat, MARGIN = 2, VALUE = if (MARGIN == 2)
-  colnames(replace_dat) else rownames(replace_dat), RE_NAME = TRUE,
-  parallel = FALSE)
+replace_value(
+  dat = dat,
+  x_list = NULL,
+  x_pattern = NULL,
+  replace_dat,
+  MARGIN = 2,
+  VALUE = if (MARGIN == 2) colnames(replace_dat) else rownames(replace_dat),
+  RE_NAME = TRUE,
+  parallel = FALSE
+)
 
-replace_value_x(dat, x, replace_dat, MARGIN = 2, VALUE = if (MARGIN ==
-  2) colnames(replace_dat) else rownames(replace_dat), RE_NAME = TRUE)
+replace_value_x(
+  dat,
+  x,
+  replace_dat,
+  MARGIN = 2,
+  VALUE = if (MARGIN == 2) colnames(replace_dat) else rownames(replace_dat),
+  RE_NAME = TRUE
+)
 }
 \arguments{
 \item{dat}{A data.frame.}

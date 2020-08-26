@@ -7,8 +7,7 @@
 \usage{
 char_cor_vars(dat, x)
 
-char_cor(dat, x_list = NULL, ex_cols = "date$", parallel = FALSE,
-  note = FALSE)
+char_cor(dat, x_list = NULL, ex_cols = "date$", parallel = FALSE, note = FALSE)
 }
 \arguments{
 \item{dat}{A data frame.}

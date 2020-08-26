@@ -5,13 +5,31 @@
 \alias{select_best_breaks}
 \title{Generates Best Binning Breaks}
 \usage{
-select_best_class(dat, x, target, breaks = NULL, occur_time = NULL,
-  oot_pct = 0.7, pos_flag = NULL, bins_control = NULL,
-  sp_values = NULL, ...)
+select_best_class(
+  dat,
+  x,
+  target,
+  breaks = NULL,
+  occur_time = NULL,
+  oot_pct = 0.7,
+  pos_flag = NULL,
+  bins_control = NULL,
+  sp_values = NULL,
+  ...
+)
 
-select_best_breaks(dat, x, target, breaks = NULL, pos_flag = NULL,
-  sp_values = NULL, occur_time = NULL, oot_pct = 0.7,
-  bins_control = NULL, ...)
+select_best_breaks(
+  dat,
+  x,
+  target,
+  breaks = NULL,
+  pos_flag = NULL,
+  sp_values = NULL,
+  occur_time = NULL,
+  oot_pct = 0.7,
+  bins_control = NULL,
+  ...
+)
 }
 \arguments{
 \item{dat}{A data frame with x and target.}

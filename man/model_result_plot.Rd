@@ -15,28 +15,75 @@
 \code{lift_plot} is for Lift Chart.
 \code{score_distribution_plot} is for ploting the score distribution.}
 \usage{
-model_result_plot(train_pred, score, target, test_pred = NULL,
-  gtitle = NULL, perf_dir_path = NULL, save_data = FALSE,
-  plot_show = TRUE, total = TRUE, g = 10, cut_bin = "equal_depth")
+model_result_plot(
+  train_pred,
+  score,
+  target,
+  test_pred = NULL,
+  gtitle = NULL,
+  perf_dir_path = NULL,
+  save_data = FALSE,
+  plot_show = TRUE,
+  total = TRUE,
+  g = 10,
+  cut_bin = "equal_depth"
+)
 
-perf_table(train_pred, test_pred = NULL, target = NULL, score = NULL,
-  g = 10, cut_bin = "equal_depth", breaks = NULL,
-  pos_flag = list("1", "1", "Bad", 1), total = FALSE)
+perf_table(
+  train_pred,
+  test_pred = NULL,
+  target = NULL,
+  score = NULL,
+  g = 10,
+  cut_bin = "equal_depth",
+  breaks = NULL,
+  pos_flag = list("1", "1", "Bad", 1),
+  total = FALSE
+)
 
-ks_plot(train_pred, test_pred = NULL, target = NULL, score = NULL,
-  gtitle = NULL, breaks = NULL, g = 10, cut_bin = "equal_depth",
-  perf_tb = NULL)
+ks_plot(
+  train_pred,
+  test_pred = NULL,
+  target = NULL,
+  score = NULL,
+  gtitle = NULL,
+  breaks = NULL,
+  g = 10,
+  cut_bin = "equal_depth",
+  perf_tb = NULL
+)
 
-lift_plot(train_pred, test_pred = NULL, target = NULL, score = NULL,
-  gtitle = NULL, breaks = NULL, g = 10, cut_bin = "equal_depth",
-  perf_tb = NULL)
+lift_plot(
+  train_pred,
+  test_pred = NULL,
+  target = NULL,
+  score = NULL,
+  gtitle = NULL,
+  breaks = NULL,
+  g = 10,
+  cut_bin = "equal_depth",
+  perf_tb = NULL
+)
 
-roc_plot(train_pred, test_pred = NULL, target = NULL, score = NULL,
-  gtitle = NULL)
+roc_plot(
+  train_pred,
+  test_pred = NULL,
+  target = NULL,
+  score = NULL,
+  gtitle = NULL
+)
 
-score_distribution_plot(train_pred, test_pred, target, score,
-  gtitle = NULL, breaks = NULL, g = 10, cut_bin = "equal_depth",
-  perf_tb = NULL)
+score_distribution_plot(
+  train_pred,
+  test_pred,
+  target,
+  score,
+  gtitle = NULL,
+  breaks = NULL,
+  g = 10,
+  cut_bin = "equal_depth",
+  perf_tb = NULL
+)
 }
 \arguments{
 \item{train_pred}{A data frame of training with predicted prob or score.}

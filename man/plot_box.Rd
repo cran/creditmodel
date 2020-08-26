@@ -4,9 +4,14 @@
 \alias{plot_box}
 \title{Plot Box}
 \usage{
-plot_box(dat, y, x = NULL, g = 5, colors_x = c(love_color(type =
-  "deep"), love_color(type = "light"), love_color(type = "shallow"),
-  love_color(type = "dark")))
+plot_box(
+  dat,
+  y,
+  x = NULL,
+  g = 5,
+  colors_x = c(love_color(type = "deep"), love_color(type = "light"), love_color(type =
+    "shallow"), love_color(type = "dark"))
+)
 }
 \arguments{
 \item{dat}{A data.frame with independent variables and target variable.}

@@ -4,8 +4,14 @@
 \alias{swap_analysis}
 \title{Swap Out/Swap In Analysis}
 \usage{
-swap_analysis(dat, new_rules, old_rules, target = NULL,
-  cross_type = "total_pct", value = NULL)
+swap_analysis(
+  dat,
+  new_rules,
+  old_rules,
+  target = NULL,
+  cross_type = "total_pct",
+  value = NULL
+)
 }
 \arguments{
 \item{dat}{A data.frame with independent variables.}

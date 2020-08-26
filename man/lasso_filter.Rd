@@ -4,11 +4,22 @@
 \alias{lasso_filter}
 \title{Variable selection by LASSO}
 \usage{
-lasso_filter(dat_train, dat_test = NULL, target = NULL,
-  x_list = NULL, pos_flag = NULL, ex_cols = NULL,
-  sim_sign = "negtive", best_lambda = "lambda.auc",
-  save_data = FALSE, plot.it = TRUE, seed = 46, file_name = NULL,
-  dir_path = tempdir(), note = FALSE)
+lasso_filter(
+  dat_train,
+  dat_test = NULL,
+  target = NULL,
+  x_list = NULL,
+  pos_flag = NULL,
+  ex_cols = NULL,
+  sim_sign = "negtive",
+  best_lambda = "lambda.auc",
+  save_data = FALSE,
+  plot.it = TRUE,
+  seed = 46,
+  file_name = NULL,
+  dir_path = tempdir(),
+  note = FALSE
+)
 }
 \arguments{
 \item{dat_train}{A data.frame with independent variables and target variable.}

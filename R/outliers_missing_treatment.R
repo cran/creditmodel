@@ -57,7 +57,7 @@ process_nas <- function(dat, x_list = NULL, class_var = FALSE, miss_values = lis
 										dt_nas_random = dt_nas_random)
 		}
 
-		dat[, na_vars] <- loop_function(func = process_nas_var, x_list = na_vars,
+		dat[na_vars] <- loop_function(func = process_nas_var, x_list = na_vars,
 										args = list(dat = dat, nas_rate = nas_rate,
 													mat_nas_shadow = mat_nas_shadow,
 													dt_nas_random = dt_nas_random,
@@ -66,7 +66,7 @@ process_nas <- function(dat, x_list = NULL, class_var = FALSE, miss_values = lis
 													method = method,
 													note = note, save_data = save_data,
 													file_name = file_name, dir_path = dir_path),
-										bind = "cbind", as_list = FALSE, parallel = parallel)
+										bind = "cbind", as_list = TRUE, parallel = parallel)
 		if (save_data) {
 			save_data(dat, dir_path = dir_path, file_name = ifelse(is.null(file_name), "data_missing_proc", paste(file_name, "data_missing_proc", sep = ".")),
 	append = FALSE, note = note)
@@ -75,7 +75,6 @@ process_nas <- function(dat, x_list = NULL, class_var = FALSE, miss_values = lis
 
 	return(dat)
 }
-
 #' missing Analysis
 #'
 #' #' \code{analysis_nas} is for understanding the reason for missing data and understand distribution of missing data so we can categorise it as: 
@@ -192,11 +191,18 @@ analysis_nas <- function(dat, class_var = FALSE, nas_rate = NULL, na_vars = NULL
 #' @rdname process_nas
 #' @export
 
-process_nas_var <- function(dat = dat, x, nas_rate = NULL,default_miss = list('missing',-1),
-							mat_nas_shadow = NULL, dt_nas_random = NULL, missing_type = NULL,
-							method = "median", note = FALSE, save_data = FALSE,
-							file_name = NULL, dir_path = tempdir(), ...) {
-	nas <- which(is.na(dat[, x]))
+process_nas_var = function(dat = dat, x,
+							missing_type = NULL,
+							method = "median",
+							nas_rate = NULL,
+							default_miss = list('missing',-1),
+							mat_nas_shadow = NULL,
+							dt_nas_random = NULL,
+							note = FALSE,
+							save_data = FALSE,
+							file_name = NULL,
+							dir_path = tempdir(), ...) {
+	nas = which(is.na(dat[, x]))
 	if (is.null(nas_rate)) {
 		nas_rate_x = length(nas) / length(dat[, x])
 	} else {
@@ -228,8 +234,13 @@ process_nas_var <- function(dat = dat, x, nas_rate = NULL,default_miss = list('m
 			missing_type = analysis_nas(dat, mat_nas_shadow = mat_nas_shadow, dt_nas_random = dt_nas_random)
 		}
 		missing_type_x = "No_NAs"
-		if (length(missing_type) > 0 && is.element(x, names(missing_type))) {
-			missing_type_x <- missing_type[x]
+		if (length(missing_type) > 0 &&is.data.frame(missing_type) && is.element(x, names
+			(missing_type))) {
+			missing_type_x = missing_type[x]
+		}else{
+		if(length(missing_type) > 0 && is.character(missing_type)){
+			missing_type_x =  missing_type[1]
+		}
 		}
 		nas_analysis = data.frame(Feature = x, miss_rate = as_percent(nas_rate_x, digits = 6),
 								  miss_type = missing_type_x)
@@ -243,19 +254,17 @@ process_nas_var <- function(dat = dat, x, nas_rate = NULL,default_miss = list('m
 		if (nas_rate_x > 0 & len_num > 0) {
 			if (!is.na(missing_type_x) && missing_type_x != "No_NAs") {
 				if (!is.element(class(dat[, x])[1], c('numeric', 'integer', 'double', 'Date'))) {
-					if ((missing_type_x == "IM" & (length(nas) > 30 | nas_rate_x > 0.01)) |
-						nas_rate_x > 0.1) {
+					if (missing_type_x == "IM") {
 						dat[nas, x] = miss_value_char
 					} else {
 						dat[, x] = knn_nas_imp(dat = dat, x, mat_nas_shadow = mat_nas_shadow,
 											   dt_nas_random = dt_nas_random,miss_value_num = miss_value_num)
 					}
 				} else {
-					if ((missing_type_x == "IM" & (length(nas) > 30 | nas_rate_x > 0.01)) | nas_rate_x > 0.1) {
+					if (missing_type_x == "IM") {
 						dat[nas, x] = miss_value_num
 					} else {
-						if ((missing_type_x == "MCAR" | length(nas) < 10 | nas_rate_x < 0.001) &
-							length(unique(is_not_na)) > 10) {
+						if (missing_type_x == "MCAR" ) {
 							set.seed(46)
 							dat[nas, x] = sample(is_not_na, size = length(nas), replace = TRUE)
 						} else {
@@ -267,8 +276,9 @@ process_nas_var <- function(dat = dat, x, nas_rate = NULL,default_miss = list('m
 			}
 		}
 	}
-	return(dat[x])
+	return(dat[,x])
 }
+
 
 
 #'  Imputate nas using KNN
@@ -293,7 +303,7 @@ dt_nas_random = NULL, k = 10, scale = FALSE, method = 'median', miss_value_num =
 	miss_value_num = -1
 	}
 	if (length(miss_x) > 0) {
-		n_row <- nrow(dat)
+		n_row = nrow(dat)
 		if (any(is.element(class(dat[, x]), c("integer", "numeric", "double")))) {
 			if (is.null(mat_nas_shadow)) {
 				mat_nas_shadow = get_shadow_nas(dat)
@@ -325,7 +335,7 @@ dt_nas_random = NULL, k = 10, scale = FALSE, method = 'median', miss_value_num =
 						na_distance = scale(no_miss_obs[, - 1], dm[i, - 1], FALSE)
 						na_distance = ifelse(na_distance > 0, 1, na_distance)
 						na_dist = sqrt(drop(na_distance ^ 2 %*% rep(1, ncol(na_distance))))
-						k_neighbors <- order(na_dist)[seq(k)]
+						k_neighbors = order(na_dist)[seq(k)]
 						if (method == "median") {
 							dat[i, x] = get_median(dat[base::setdiff(1:n_row, miss_x), x][k_neighbors])
 						} else {
@@ -554,7 +564,8 @@ analysis_outliers <- function(dat, target, x, lof = NULL) {
                                   silent = TRUE) / sum(table_x_lof))
         }
         ctb_na = ctb_y = matrix(0, ncol = 2, nrow = 2)
-        if (!is.null(target)) {
+        if (!is.null(target)&& is.numeric(dat[, target])) {
+		   
             corr_lof_y = cor(dat[, target], y = is_lof, method = "spearman")
             if (any(is.element(class(dm_x), c('Date', 'numeric', 'integer', 'double')))) {
                 corr_xy = cor(dat[, target],

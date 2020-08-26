@@ -7,15 +7,33 @@
 \alias{ranking_percent_dict_x}
 \title{Ranking Percent Process}
 \usage{
-ranking_percent_proc(dat, ex_cols = NULL, x_list = NULL,
-  rank_dict = NULL, pct = 0.01, parallel = FALSE, note = FALSE,
-  save_data = FALSE, file_name = NULL, dir_path = tempdir(), ...)
+ranking_percent_proc(
+  dat,
+  ex_cols = NULL,
+  x_list = NULL,
+  rank_dict = NULL,
+  pct = 0.01,
+  parallel = FALSE,
+  note = FALSE,
+  save_data = FALSE,
+  file_name = NULL,
+  dir_path = tempdir(),
+  ...
+)
 
 ranking_percent_proc_x(dat, x, rank_dict = NULL, pct = 0.01)
 
-ranking_percent_dict(dat, x_list = NULL, ex_cols = NULL, pct = 0.01,
-  parallel = FALSE, save_data = FALSE, file_name = NULL,
-  dir_path = tempdir(), ...)
+ranking_percent_dict(
+  dat,
+  x_list = NULL,
+  ex_cols = NULL,
+  pct = 0.01,
+  parallel = FALSE,
+  save_data = FALSE,
+  file_name = NULL,
+  dir_path = tempdir(),
+  ...
+)
 
 ranking_percent_dict_x(dat, x = NULL, pct = 0.01)
 }

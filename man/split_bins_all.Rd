@@ -4,9 +4,18 @@
 \alias{split_bins_all}
 \title{Split bins all}
 \usage{
-split_bins_all(dat, x_list = NULL, ex_cols = NULL,
-  breaks_list = NULL, bins_no = TRUE, note = FALSE,
-  save_data = FALSE, file_name = NULL, dir_path = tempdir(), ...)
+split_bins_all(
+  dat,
+  x_list = NULL,
+  ex_cols = NULL,
+  breaks_list = NULL,
+  bins_no = TRUE,
+  note = FALSE,
+  save_data = FALSE,
+  file_name = NULL,
+  dir_path = tempdir(),
+  ...
+)
 }
 \arguments{
 \item{dat}{A data.frame with independent variables.}

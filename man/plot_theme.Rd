@@ -4,10 +4,19 @@
 \alias{plot_theme}
 \title{plot_theme}
 \usage{
-plot_theme(legend.position = "top", angle = 30, legend_size = 7,
-  axis_size_y = 8, axis_size_x = 8, axis_title_size = 10,
-  title_size = 11, title_vjust = 0, title_hjust = 0,
-  linetype = "dotted", face = "bold")
+plot_theme(
+  legend.position = "top",
+  angle = 30,
+  legend_size = 7,
+  axis_size_y = 8,
+  axis_size_x = 8,
+  axis_title_size = 10,
+  title_size = 11,
+  title_vjust = 0,
+  title_hjust = 0,
+  linetype = "dotted",
+  face = "bold"
+)
 }
 \arguments{
 \item{legend.position}{see details at: code{legend.position}}

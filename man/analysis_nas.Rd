@@ -4,8 +4,15 @@
 \alias{analysis_nas}
 \title{missing Analysis}
 \usage{
-analysis_nas(dat, class_var = FALSE, nas_rate = NULL, na_vars = NULL,
-  mat_nas_shadow = NULL, dt_nas_random = NULL, ...)
+analysis_nas(
+  dat,
+  class_var = FALSE,
+  nas_rate = NULL,
+  na_vars = NULL,
+  mat_nas_shadow = NULL,
+  dt_nas_random = NULL,
+  ...
+)
 }
 \arguments{
 \item{dat}{A data.frame with independent variables and target variable.}

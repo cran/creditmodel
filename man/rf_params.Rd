@@ -4,8 +4,7 @@
 \alias{rf_params}
 \title{Random Forest Parameters}
 \usage{
-rf_params(ntree = 100, nodesize = 30, samp_rate = 0.5,
-  tune_rf = FALSE, ...)
+rf_params(ntree = 100, nodesize = 30, samp_rate = 0.5, tune_rf = FALSE, ...)
 }
 \arguments{
 \item{ntree}{Number of trees to grow. This should not be set to too small a number, to ensure that every input row gets predicted at least a few times.}

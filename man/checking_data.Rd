@@ -4,8 +4,13 @@
 \alias{checking_data}
 \title{Checking Data}
 \usage{
-checking_data(dat = NULL, target = NULL, occur_time = NULL,
-  note = FALSE, pos_flag = NULL)
+checking_data(
+  dat = NULL,
+  target = NULL,
+  occur_time = NULL,
+  note = FALSE,
+  pos_flag = NULL
+)
 }
 \arguments{
 \item{dat}{A data.frame with independent variables and target variable.}

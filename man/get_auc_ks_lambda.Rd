@@ -5,8 +5,15 @@
 \title{get_auc_ks_lambda
 \code{get_auc_ks_lambda} is for get best lambda required in lasso_filter. This function required in \code{lasso_filter}}
 \usage{
-get_auc_ks_lambda(lasso_model, x_test, y_test, save_data = FALSE,
-  plot_show = TRUE, file_name = NULL, dir_path = tempdir())
+get_auc_ks_lambda(
+  lasso_model,
+  x_test,
+  y_test,
+  save_data = FALSE,
+  plot_show = TRUE,
+  file_name = NULL,
+  dir_path = tempdir()
+)
 }
 \arguments{
 \item{lasso_model}{A lasso model genereted by glmnet.}

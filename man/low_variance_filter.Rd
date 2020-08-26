@@ -4,8 +4,13 @@
 \alias{low_variance_filter}
 \title{Filtering Low Variance Variables}
 \usage{
-low_variance_filter(dat, lvp = 0.97, only_NA = FALSE, note = FALSE,
-  ex_cols = NULL)
+low_variance_filter(
+  dat,
+  lvp = 0.97,
+  only_NA = FALSE,
+  note = FALSE,
+  ex_cols = NULL
+)
 }
 \arguments{
 \item{dat}{A data frame with x and target.}

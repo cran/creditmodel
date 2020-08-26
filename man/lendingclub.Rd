@@ -4,7 +4,9 @@
 \name{lendingclub}
 \alias{lendingclub}
 \title{Lending Club data}
-\format{A data frame with 63532 rows and 145 variables.}
+\format{
+A data frame with 63532 rows and 145 variables.
+}
 \description{
 This data contains complete loan data for all loans issued through the time period stated, including the current loan status (Current, Late, Fully Paid, etc.) and latest payment information.
  The data containing loan data through the "present" contains complete loan data for all loans issued through the previous completed calendar quarter(time period: 2018Q1:2018Q4).

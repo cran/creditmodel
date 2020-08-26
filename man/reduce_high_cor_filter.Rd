@@ -4,9 +4,16 @@
 \alias{reduce_high_cor_filter}
 \title{Filtering highly correlated variables with reduce method}
 \usage{
-reduce_high_cor_filter(dat, x_list = NULL, size = ncol(dat)/10,
-  p = 0.95, com_list = NULL, ex_cols = NULL, cor_class = TRUE,
-  parallel = FALSE)
+reduce_high_cor_filter(
+  dat,
+  x_list = NULL,
+  size = ncol(dat)/10,
+  p = 0.95,
+  com_list = NULL,
+  ex_cols = NULL,
+  cor_class = TRUE,
+  parallel = FALSE
+)
 }
 \arguments{
 \item{dat}{A data.frame with independent variables.}

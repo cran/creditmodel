@@ -4,8 +4,14 @@
 \alias{get_tree_breaks}
 \title{Getting the breaks for terminal nodes from decision tree}
 \usage{
-get_tree_breaks(dat, x, target, pos_flag = NULL, tree_control = list(p
-  = 0.02, cp = 0.000001, xval = 5, maxdepth = 10), sp_values = NULL)
+get_tree_breaks(
+  dat,
+  x,
+  target,
+  pos_flag = NULL,
+  tree_control = list(p = 0.02, cp = 1e-06, xval = 5, maxdepth = 10),
+  sp_values = NULL
+)
 }
 \arguments{
 \item{dat}{A data frame with x and target.}

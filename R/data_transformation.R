@@ -770,34 +770,73 @@ var_group_proc = function(dat, ID = NULL, group = NULL, num_var = NULL){
 #' @param  df_tm  A data.frame
 #' @param  x  Time variable.
 #' @param  enddate  End time.
+#' @param units  Units of diff_time, "secs", "mins", "hours", "days", "weeks" is available.
 #' @export
 #' @importFrom data.table  hour setnames
 
-time_vars_process = function(df_tm = df_tm, x, enddate = NULL) {
-	if (is_date(df_tm[[x]]) & x != enddate & (!is.null(enddate) && is_date(df_tm[[enddate]]))){
-		mydata <- within(df_tm, {
-			new = as.numeric(as.Date(df_tm[[enddate]]) - as.Date(df_tm[[x]]))
-			new2 = hour(round(as.POSIXct(df_tm[[x]])))
-			new3 = weekdays(round(as.POSIXct(df_tm[[x]])), abbreviate = TRUE)
-		})
-		new_name <- c(paste(x, "_to_", enddate, "_duration", sep = ""),
-					  paste(x, "hours", sep = "_"),
-					  paste(x, "weekdays", sep = "_"))
-		mydata = re_name(mydata, oldname =  c("new", "new2", "new3"),  newname = c(new_name))
-		return(mydata[, new_name])
+time_vars_process = function(df_tm = df_tm, x, enddate = NULL,
+							 units = c("secs", "mins", "hours", "days", "weeks")) {
+	if (is_date(df_tm[[x]]) & x != enddate & (!is.null(enddate) && is_date(df_tm[[enddate]])) &
+		length(units) > 0){
+		newname = c()
+		for(unit in units){
+			   if(length(unit) > 0 && is.element("days",unit)) {
+				   df_tm <- within(df_tm, {
+					   diff_days = floor(as.numeric(difftime(df_tm[[enddate]], df_tm[[x]],units = "days")))
+				   })
+				   newname[unit] = paste0(x, "_to_", enddate, "_diff_days")
+				   df_tm = re_name(df_tm, oldname =  c("diff_days"),  newname = newname[unit])
+			   }else{
+				      if(length(unit) > 0 && is.element("secs",unit)) {
+						  df_tm <- within(df_tm, {
+							  diff_secs = floor(as.numeric(difftime(df_tm[[enddate]], df_tm[[x]],units = "secs")))
+						  })
+						  newname[unit] = paste0(x, "_to_", enddate, "_diff_secs")
+						  df_tm = re_name(df_tm, oldname =  c("diff_secs"),  newname = newname[unit])
+					  }else{
+						     if(length(unit) > 0 && is.element("mins",unit)) {
+								 df_tm <- within(df_tm, {
+									 diff_mins = floor(as.numeric(difftime(df_tm[[enddate]], df_tm[[x]],units = "mins")))
+								 })
+								 newname[unit] = paste0(x, "_to_", enddate, "_diff_mins")
+								 df_tm = re_name(df_tm, oldname =  c("diff_mins"),  newname = newname[unit])
+							 }else{
+								    if(length(unit) > 0 && is.element("hours",unit)) {
+										df_tm <- within(df_tm, {
+											diff_hours = floor(as.numeric(difftime(df_tm[[enddate]], df_tm[[x]],units = "hours")))
+										})
+										newname[unit] = paste0(x, "_to_", enddate, "_diff_hours")
+										df_tm = re_name(df_tm, oldname =  c("diff_hours"),  newname = newname[unit])
+									}else{
+										   if(length(unit) > 0 && is.element("weeks",unit)) {
+											   df_tm <- within(df_tm, {
+												   diff_weeks = floor(as.numeric(difftime(df_tm[[enddate]], df_tm[[x]],units = "weeks")))
+											   })
+											   newname[unit] = paste0(x, "_to_", enddate, "_diff_weeks")
+											   df_tm = re_name(df_tm, oldname =  c("diff_weeks"),  newname = newname[unit])
+										}
+								 }
+						  }
+				   }
+			}
+		}
+		return(df_tm[newname])
 	}
 }
+
 
 #' time_variable
 #'
 #' This function is not intended to be used by end user.
 #'
-#' @param  dat  A data.frame.
-#' @param  date_cols  Time variables.
-#' @param  enddate  End time.
+#' @param dat A data.frame.
+#' @param date_cols Time variables.
+#' @param enddate End time.
+#' @param units Units of diff_time, "secs", "mins", "hours", "days", "weeks" is available.
 #' @export
 
-time_variable = function(dat, date_cols = NULL, enddate = NULL) {
+time_variable = function(dat, date_cols = NULL, enddate = NULL, 
+						 units = c("secs", "mins", "hours", "days", "weeks")) {
 	dat = checking_data(dat = dat)
 	date_cols1 = NULL
 	if (!is.null(date_cols)) {
@@ -810,7 +849,8 @@ time_variable = function(dat, date_cols = NULL, enddate = NULL) {
 	df_date <- df_date[!colAllnas(df_date)]
 	df_tm = df_date[sapply(df_date, is_date)]
 
-	time_vars_list <- lapply(date_cols1, function(x) time_vars_process(df_tm = df_tm, x, enddate = enddate))
+	time_vars_list <- lapply(date_cols1, function(x) time_vars_process(df_tm = df_tm, x, enddate 
+		= enddate,units = units))
 	index <- 0;
 	j <- 1
 	for (i in 1:length(time_vars_list)) {
@@ -823,6 +863,7 @@ time_variable = function(dat, date_cols = NULL, enddate = NULL) {
 	dat = cbind(dat, tm_vars_tbl)
 	return(dat)
 }
+
 
 
 
@@ -1283,8 +1324,10 @@ merge_category <- function(dat, char_list = NULL, ex_cols = NULL,  m = 30, note 
 #' \code{char_to_num} is  for transfering character variables which are actually numerical numbers containing strings  to numeric.
 #' @param dat A data frame
 #' @param ex_cols A list of excluded variables. Regular expressions can also be used to match variable names. Default is NULL.
-#' @param char_list The list of charecteristic variables that need to merge categories, Default is NULL. In case of NULL,merge categories for all variables of string type.
+#' @param char_list The list of charecteristic variables that need to merge categories, Default is NULL. In case of NULL, merge categories for all variables of string type.
 #' @param note Logical, outputs info. Default is TRUE.
+#' @param m The minimum number of categories.
+#' @param p The max percent of categories.
 #' @return  A data.frame
 #' @examples
 #' dat_sub = lendingclub[c('dti_joint',	'emp_length')]
@@ -1294,32 +1337,37 @@ merge_category <- function(dat, char_list = NULL, ex_cols = NULL,  m = 30, note 
 #' str(dat_sub)
 #' @export
 
-char_to_num <- function(dat, char_list = NULL, note = TRUE, ex_cols = NULL) {
-	opt = options(scipen = 200, "warn" = -1, stringsAsFactors = FALSE) # suppress warnings
-	if (note) cat_line(paste("-- Transfering character variables which are actually numerical to numeric"), col = love_color("dark_green"))
-	if (is.null(char_list)) {
-		char_list = get_names(dat = dat,
-						  types = c('factor', 'character'),
-						  ex_cols = ex_cols, get_ex = FALSE)
-	}
+char_to_num = function (dat, char_list = NULL, m = 0, p = 1, note = TRUE,
+						ex_cols = NULL) {
+    opt = options(scipen = 200, warn = -1, stringsAsFactors = FALSE)
+    if (note)
+        cat_line(paste("-- Transfering character variables which are actually numerical to numeric"),
+            col = love_color("dark_green"))
+    if (is.null(char_list)) {
+        char_list = get_names(dat = dat, types = c("factor",
+            "character"), ex_cols = ex_cols, get_ex = FALSE)
+    }
 
-	for (x in char_list) {
-		dt_x = table(as.character(dat[, x]), useNA = "no")
-		char_num = tryCatch({ as.numeric(names(dt_x)) },
-							error = function(e) {
-								cat("ERROR :", conditionMessage(e), "\n")
-							},
-							warning = function(w) {
-								as.numeric(names(dt_x))
-							})
-		char_num_ind = which(!is.na(char_num))
-		if (length(char_num_ind) > 0 && length(dt_x) > 1 && round(length(char_num_ind) / length(dt_x), 2) >= 0.8) {
-			dat[, x] = as.numeric(as.character(dat[, x]))
-		}
-	}
-	return(dat)
-	options(opt) # reset warnings
+    for (x in char_list) {
+        dt_x = table(as.character(dat[, x]), useNA = "no")
+        char_num = tryCatch({
+            as.numeric(names(dt_x))
+        }, error = function(e) {
+            cat("ERROR :", conditionMessage(e), "\n")
+        }, warning = function(w) {
+            as.numeric(names(dt_x))
+        })
+        char_num_ind = which(!is.na(char_num))
+        if (length(char_num_ind) > m && length(dt_x) > m && round(length(char_num_ind)/length
+			(dt_x),  2) >= p ) {
+            dat[, x] = as.numeric(as.character(dat[, x]))
+        }
+    }
+    return(dat)
+    options(opt)
 }
+
+
 
 
 #' Logarithmic transformation

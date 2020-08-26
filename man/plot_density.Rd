@@ -4,9 +4,18 @@
 \alias{plot_density}
 \title{Plot Density}
 \usage{
-plot_density(dat, x, y = NULL, m = 3, g = 5, y_breaks = NULL,
-  binwidth = NULL, hist = TRUE, colors_y = c(love_color(type =
-  "deep"), love_color(type = "light"), love_color(type = "shallow")))
+plot_density(
+  dat,
+  x,
+  y = NULL,
+  m = 3,
+  g = 5,
+  y_breaks = NULL,
+  binwidth = NULL,
+  hist = TRUE,
+  colors_y = c(love_color(type = "deep"), love_color(type = "light"), love_color(type =
+    "shallow"))
+)
 }
 \arguments{
 \item{dat}{A data.frame with independent variables and target variable.}

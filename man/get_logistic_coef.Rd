@@ -4,8 +4,12 @@
 \alias{get_logistic_coef}
 \title{get logistic coef}
 \usage{
-get_logistic_coef(lg_model, file_name = NULL, dir_path = tempdir(),
-  save_data = FALSE)
+get_logistic_coef(
+  lg_model,
+  file_name = NULL,
+  dir_path = tempdir(),
+  save_data = FALSE
+)
 }
 \arguments{
 \item{lg_model}{An object of logistic model.}

@@ -7,9 +7,16 @@
 \usage{
 partial_dependence_plot(model, x, x_train, n.trees = NULL)
 
-get_partial_dependence_plots(model, x_train, x_list, n.trees = NULL,
-  dir_path = getwd(), save_data = TRUE, plot_show = FALSE,
-  parallel = FALSE)
+get_partial_dependence_plots(
+  model,
+  x_train,
+  x_list,
+  n.trees = NULL,
+  dir_path = getwd(),
+  save_data = TRUE,
+  plot_show = FALSE,
+  parallel = FALSE
+)
 }
 \arguments{
 \item{model}{A data frame of training with predicted prob or score.}

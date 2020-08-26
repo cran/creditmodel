@@ -4,8 +4,12 @@
 \alias{address_varieble}
 \title{address_varieble}
 \usage{
-address_varieble(df, address_cols = NULL, address_pattern = NULL,
-  parallel = TRUE)
+address_varieble(
+  df,
+  address_cols = NULL,
+  address_pattern = NULL,
+  parallel = TRUE
+)
 }
 \arguments{
 \item{df}{A data.frame.}

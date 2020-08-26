@@ -409,7 +409,6 @@ get_median <- function(x, weight_avg = NULL) {
 #' \code{entropy_weight} is for calculating Entropy Weight.
 #'
 #' @param dat A data.frame with independent variables.
-#' @param ID  The name of ID variable.
 #' @param pos_vars Names or index of positive direction variables, the bigger the better.
 #' @param neg_vars Names or index of negative direction variables, the smaller the better.
 #' @return  A data.frame with weights of each variable.
@@ -421,22 +420,15 @@ get_median <- function(x, weight_avg = NULL) {
 #' Step4 Calculate redundancy.
 #' Step5 Calculate the weight of each index.
 #' @examples
-#' entropy_weight(dat = ewm_data,ID = "ID",
-#'               pos_vars = -c(7,11),
+#' entropy_weight(dat = ewm_data,
+#'               pos_vars = c(6,8,9,10),
 #'               neg_vars = c(7,11))
 #' @export
 
-entropy_weight = function(dat, ID = NULL, pos_vars, neg_vars) {
+entropy_weight = function(dat, pos_vars, neg_vars) {
 	dat = quick_as_df(dat)
-	if (!is.na(ID)) {
-		dat[, ID] = NULL
-	}
-	x_list = get_names(dat, types = c("numeric", "double", "integer", "integer64"))
-
-	if (length(x_list) < 2) stop("Number of numeric variables is less than 2.\n")
-	dat = dat[x_list]
-	dat_pos = apply(dat[, pos_vars], 2, min_max_norm)
-	dat_neg = apply(dat[, neg_vars], 2, max_min_norm)
+	dat_pos = apply(dat[pos_vars], 2, min_max_norm)
+	dat_neg = apply(dat[neg_vars], 2, max_min_norm)
 	dat_total = cbind(dat_pos, dat_neg)
 	dat_total = apply(dat_total, 2, p_ij)
 	dat_total = apply(dat_total, 2, e_ij)

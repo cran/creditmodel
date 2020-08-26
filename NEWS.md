@@ -1,3 +1,10 @@
+# creditmodel-1.2.5
+
+**In this version I have:**
+* Fixed some bugs in `plot_bar`,`missing_proc`,`char_to_num`.
+* Rewrite the logic of `time_variable` .
+* New function `plot_line` is for generating line plots.
+
 # creditmodel-1.2.4
 
 **In this version I have:**

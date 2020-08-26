@@ -5,22 +5,41 @@
 \alias{lr_params_search}
 \title{Logistic Regression & Scorecard Parameters}
 \usage{
-lr_params(tree_control = list(p = 0.02, cp = 0.00000001, xval = 5,
-  maxdepth = 10), bins_control = list(bins_num = 10, bins_pct = 0.05,
-  b_chi = 0.02, b_odds = 0.1, b_psi = 0.03, b_or = 0.15, mono = 0.2,
-  odds_psi = 0.15, kc = 1), f_eval = "ks", best_lambda = "lambda.ks",
-  method = "random_search", iters = 10, lasso = TRUE,
-  step_wise = TRUE, score_card = TRUE, sp_values = NULL,
-  forced_in = NULL, obsweight = c(1, 1), thresholds = list(cor_p =
-  0.8, iv_i = 0.02, psi_i = 0.1, cos_i = 0.5), ...)
+lr_params(
+  tree_control = list(p = 0.02, cp = 1e-08, xval = 5, maxdepth = 10),
+  bins_control = list(bins_num = 10, bins_pct = 0.05, b_chi = 0.02, b_odds = 0.1, b_psi
+    = 0.03, b_or = 0.15, mono = 0.2, odds_psi = 0.15, kc = 1),
+  f_eval = "ks",
+  best_lambda = "lambda.ks",
+  method = "random_search",
+  iters = 10,
+  lasso = TRUE,
+  step_wise = TRUE,
+  score_card = TRUE,
+  sp_values = NULL,
+  forced_in = NULL,
+  obsweight = c(1, 1),
+  thresholds = list(cor_p = 0.8, iv_i = 0.02, psi_i = 0.1, cos_i = 0.5),
+  ...
+)
 
-lr_params_search(method = "random_search", dat_train, target,
-  dat_test = NULL, occur_time = NULL, x_list = NULL, prop = 0.7,
-  iters = 10, tree_control = list(p = 0.02, cp = 0, xval = 1, maxdepth
-  = 10), bins_control = list(bins_num = 10, bins_pct = 0.02, b_chi =
-  0.02, b_odds = 0.1, b_psi = 0.05, b_or = 0.1, mono = 0.1, odds_psi =
-  0.03, kc = 1), thresholds = list(cor_p = 0.8, iv_i = 0.02, psi_i = 0.1,
-  cos_i = 0.6), step_wise = FALSE, lasso = FALSE, f_eval = "ks")
+lr_params_search(
+  method = "random_search",
+  dat_train,
+  target,
+  dat_test = NULL,
+  occur_time = NULL,
+  x_list = NULL,
+  prop = 0.7,
+  iters = 10,
+  tree_control = list(p = 0.02, cp = 0, xval = 1, maxdepth = 10),
+  bins_control = list(bins_num = 10, bins_pct = 0.02, b_chi = 0.02, b_odds = 0.1, b_psi
+    = 0.05, b_or = 0.1, mono = 0.1, odds_psi = 0.03, kc = 1),
+  thresholds = list(cor_p = 0.8, iv_i = 0.02, psi_i = 0.1, cos_i = 0.6),
+  step_wise = FALSE,
+  lasso = FALSE,
+  f_eval = "ks"
+)
 }
 \arguments{
 \item{tree_control}{the list of parameters to control cutting initial breaks by decision tree. See details at: \code{\link{get_tree_breaks}}}

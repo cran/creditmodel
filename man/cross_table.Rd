@@ -4,8 +4,14 @@
 \alias{cross_table}
 \title{cross_table}
 \usage{
-cross_table(dat, cross_x, cross_y = NULL, target = NULL,
-  value = NULL, cross_type = "total_sum")
+cross_table(
+  dat,
+  cross_x,
+  cross_y = NULL,
+  target = NULL,
+  value = NULL,
+  cross_type = "total_sum"
+)
 }
 \arguments{
 \item{dat}{A data.frame with independent variables.}
@@ -18,7 +24,7 @@ cross_table(dat, cross_x, cross_y = NULL, target = NULL,
 
 \item{value}{The name of the variable to sum. When this parameter is NULL, the default statistics is to sum frequency.}
 
-\item{cross_type}{Output form of the result of crosstable. Provide these four forms: "total_sum","total_pct","bad_sum","bad_pct" .}
+\item{cross_type}{Output form of the result of crosstable. Provide these forms: "total_sum","total_pct","total_mean","total_median","total_max","total_min","bad_sum","bad_pct".}
 }
 \value{
 A cross table.
@@ -29,6 +35,12 @@ A cross table.
 \examples{
 cross_table(dat = UCICreditCard, cross_x = "SEX",cross_y = "AGE",
  target = "default.payment.next.month", cross_type = "bad_pct",value = "LIMIT_BAL")
+cross_table(dat = UCICreditCard, cross_x = "SEX",cross_y = "AGE",
+ target = "default.payment.next.month", cross_type = "total_pct",value = "LIMIT_BAL")
+cross_table(dat = UCICreditCard, cross_x = "SEX",cross_y = "AGE",
+ target = "default.payment.next.month", cross_type = "total_mean",value = "LIMIT_BAL")
+cross_table(dat = UCICreditCard, cross_x = "SEX",cross_y = "AGE",
+ target = "default.payment.next.month", cross_type = "total_median",value = "LIMIT_BAL")
 cross_table(dat = UCICreditCard, cross_x = c("SEX", "MARRIAGE"), cross_y = "AGE",
 target = "default.payment.next.month", cross_type = "bad_pct",value = "LIMIT_BAL")
 }

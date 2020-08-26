@@ -5,14 +5,35 @@
 \alias{psi_plot}
 \title{Plot PSI(Population Stability Index)}
 \usage{
-get_psi_plots(dat_train, dat_test = NULL, x_list = NULL,
-  ex_cols = NULL, breaks_list = NULL, occur_time = NULL, g = 10,
-  plot_show = TRUE, save_data = FALSE, file_name = NULL,
-  parallel = FALSE, g_width = 8, dir_path = tempdir())
+get_psi_plots(
+  dat_train,
+  dat_test = NULL,
+  x_list = NULL,
+  ex_cols = NULL,
+  breaks_list = NULL,
+  occur_time = NULL,
+  g = 10,
+  plot_show = TRUE,
+  save_data = FALSE,
+  file_name = NULL,
+  parallel = FALSE,
+  g_width = 8,
+  dir_path = tempdir()
+)
 
-psi_plot(dat_train, x, dat_test = NULL, occur_time = NULL,
-  g_width = 8, breaks_list = NULL, breaks = NULL, g = 10,
-  plot_show = TRUE, save_data = FALSE, dir_path = tempdir())
+psi_plot(
+  dat_train,
+  x,
+  dat_test = NULL,
+  occur_time = NULL,
+  g_width = 8,
+  breaks_list = NULL,
+  breaks = NULL,
+  g = 10,
+  plot_show = TRUE,
+  save_data = FALSE,
+  dir_path = tempdir()
+)
 }
 \arguments{
 \item{dat_train}{A data.frame with independent variables.}

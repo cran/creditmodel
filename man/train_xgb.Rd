@@ -4,9 +4,19 @@
 \alias{train_xgb}
 \title{Training XGboost}
 \usage{
-train_xgb(seed_number = 1234, dtrain, nthread = 2, nfold = 1,
-  watchlist = NULL, nrounds = 100, f_eval = "ks",
-  early_stopping_rounds = 10, verbose = 0, params = NULL, ...)
+train_xgb(
+  seed_number = 1234,
+  dtrain,
+  nthread = 2,
+  nfold = 1,
+  watchlist = NULL,
+  nrounds = 100,
+  f_eval = "ks",
+  early_stopping_rounds = 10,
+  verbose = 0,
+  params = NULL,
+  ...
+)
 }
 \arguments{
 \item{seed_number}{Random number seed. Default is 1234.}

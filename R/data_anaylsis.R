@@ -1630,216 +1630,364 @@ get_psi <- function(dat, x, target = NULL, dat_test = NULL, occur_time = NULL, s
 #' @param cross_y Names of variables to cross.
 #' @param target The name of target variable.
 #' @param value The name of the variable to sum. When this parameter is NULL, the default statistics is to sum frequency.
-#' @param cross_type Output form of the result of crosstable. Provide these four forms: "total_sum","total_pct","bad_sum","bad_pct" .
+#' @param cross_type Output form of the result of crosstable. Provide these forms: "total_sum","total_pct","total_mean","total_median","total_max","total_min","bad_sum","bad_pct".
 #' @return  A cross table.
 #' @examples
 #' cross_table(dat = UCICreditCard, cross_x = "SEX",cross_y = "AGE",
 #'  target = "default.payment.next.month", cross_type = "bad_pct",value = "LIMIT_BAL")
+#' cross_table(dat = UCICreditCard, cross_x = "SEX",cross_y = "AGE",
+#'  target = "default.payment.next.month", cross_type = "total_pct",value = "LIMIT_BAL")
+#' cross_table(dat = UCICreditCard, cross_x = "SEX",cross_y = "AGE",
+#'  target = "default.payment.next.month", cross_type = "total_mean",value = "LIMIT_BAL")
+#' cross_table(dat = UCICreditCard, cross_x = "SEX",cross_y = "AGE",
+#'  target = "default.payment.next.month", cross_type = "total_median",value = "LIMIT_BAL")
 #' cross_table(dat = UCICreditCard, cross_x = c("SEX", "MARRIAGE"), cross_y = "AGE",
 #' target = "default.payment.next.month", cross_type = "bad_pct",value = "LIMIT_BAL")
 #' @importFrom data.table setDT .N := dcast merge.data.table as.data.table
 #' @export
 
 
-cross_table = function (dat, cross_x, cross_y = NULL, target = NULL, value = NULL,
-    cross_type = "total_sum")
-{
-    dat = checking_data(dat = dat, target = target)
-    dat = process_nas(dat[c(cross_x, cross_y, target, value)])
-    if (is.null(value)) {
-        dat$value = 1
-    } else {
-        dat$value = dat[, value]
-    }
-    crs_x = c("x", "y", "z", "a", "b",
-        "c")
-    crs_y = c("m", "n", "r", "o", "p",
-        "q")
-    len_crs_x = length(cross_x)
-    len_crs_y = length(cross_y)
-    if (len_crs_x > 0 & len_crs_x <= 6 & len_crs_y > 0 & len_crs_y <=
-        6) {
-        crs_x = crs_x[1:len_crs_x]
-        dat[, crs_x] = dat[, cross_x]
-        crs_y = crs_y[1:len_crs_y]
-        dat[, crs_y] = dat[, cross_y]
-    } else {
-        if (len_crs_x < 1) {
-            stop("corss_x  must have at least 1 variables.")
-        } else {
-            if (len_crs_x > 0 & len_crs_x <= 6 & len_crs_y <=
-                0) {
-                if (len_crs_x > 1 & len_crs_x <= 6 & len_crs_y <=
-                  0) {
-                  crs_y = crs_x[len_crs_x]
-                  dat[, crs_y] = dat[, cross_x[len_crs_x]]
-                  crs_x = crs_x[1:(len_crs_x - 1)]
-                  dat[, crs_x] = dat[, cross_x[(-len_crs_x)]]
-                } else {
-                  crs_y = crs_x[len_crs_x]
-                  dat[, crs_y] = dat[, cross_x[len_crs_x]]
-                  crs_x = crs_x[len_crs_x]
-                  dat[, crs_x] = dat[, cross_x[len_crs_x]]
-                }
-            } else {
-                stop("corss_x or cross_y must have less than or equal to 6 variables.")
-            }
+cross_table = function (dat, cross_x, cross_y = NULL, target = NULL, value = NULL, 
+                        cross_type = "total_sum") {
+  dat = checking_data(dat = dat, target = target)
+  dat = process_nas(dat[c(cross_x, cross_y, target, value)])
+  if (is.null(value)) {
+    dat$value = 1
+  }else {
+    dat$value = dat[, value]
+  }
+  crs_x = c("x", "y", "z", "a", "b", "c")
+  crs_y = c("m", "n", "r", "o", "p",  "q")
+  len_crs_x = length(cross_x)
+  len_crs_y = length(cross_y)
+  if (len_crs_x > 0 & len_crs_x <= 6 & len_crs_y > 0 & len_crs_y <= 6) {
+    crs_x = crs_x[1:len_crs_x]
+    dat[, crs_x] = dat[, cross_x]
+    crs_y = crs_y[1:len_crs_y]
+    dat[, crs_y] = dat[, cross_y]
+  }else {
+    if (len_crs_x < 1) {
+      stop("corss_x  must have at least 1 variables.")
+    }else {
+      if (len_crs_x > 0 & len_crs_x <= 6 & len_crs_y <=  0) {
+        if (len_crs_x > 1 & len_crs_x <= 6 & len_crs_y <= 0) {
+          crs_y = crs_x[len_crs_x]
+          dat[, crs_y] = dat[, cross_x[len_crs_x]]
+          crs_x = crs_x[1:(len_crs_x - 1)]
+          dat[, crs_x] = dat[, cross_x[(-len_crs_x)]]
+        }else {
+          crs_y = crs_x[len_crs_x]
+          dat[, crs_y] = dat[, cross_x[len_crs_x]]
+          crs_x = crs_x[len_crs_x]
+          dat[, crs_x] = dat[, cross_x[len_crs_x]]
         }
+      }else {
+        stop("corss_x or cross_y must have less than or equal to 6 variables.")
+      }
     }
-    x.Formula = as.formula(paste(paste(crs_x, collapse = " + "),
-        paste(crs_y, collapse = " + "), sep = " ~ "))
-    x_list = crs_x[which(sapply(dat[crs_x], function(i) is.numeric(i) &&
-        length(unique(i)) > 10))]
-    y_list = crs_y[which(sapply(dat[crs_y], function(i) is.numeric(i) &&
-        length(unique(i)) > 10))]
-    dat = split_bins_all(dat = dat, x_list = c(x_list))
-    dat = split_bins_all(dat = dat, x_list = c(y_list))
-    dat = as.data.table(dat)
-    . = NULL
-    value_dt = dat[, .(value = sum(value)), by = c(crs_x, crs_y)]
-    total_sum = data.table::dcast(value_dt, x.Formula, fun.aggregate = sum,
-        value.var = "value")
-    sum_x = apply(total_sum[, -crs_x[c(1:len_crs_x)], with = FALSE],
-        1, sum)
-    total_sum = cbind(total_sum, sum_x)
-    sum_y = apply(total_sum[, -crs_x[c(1:len_crs_x)], with = FALSE],
-        2, sum)
-    total_sum = rbind(total_sum, cbind(t(sum_y)), use.names = TRUE,
-        fill = TRUE)
-    total_sum = quick_as_df(total_sum)
-    total_sum[nrow(total_sum), crs_x] = "sum_y"
-    total_sum = as.data.table(total_sum)
+  }
+  x.Formula = as.formula(paste(paste(crs_x, collapse = " + "), 
+                               paste(crs_y, collapse = " + "), sep = " ~ "))
+  x_list = crs_x[which(sapply(dat[crs_x], function(i) is.numeric(i) && length(unique(i)) > 10))]
+  y_list = crs_y[which(sapply(dat[crs_y], function(i) is.numeric(i) && length(unique(i)) > 10))]
+  dat = split_bins_all(dat = dat, x_list = c(x_list))
+  dat = split_bins_all(dat = dat, x_list = c(y_list))
+  dat = as.data.table(dat)
+  . = NULL 
+  
+  value_dt = dat[, .(value = sum(value, na.rm = TRUE)), by = c(crs_x, crs_y)]
+  total_sum = data.table::dcast(value_dt, x.Formula, fun.aggregate = sum, 
+                                value.var = "value")
+  sum_x = apply(total_sum[, -crs_x[c(1:len_crs_x)], with = FALSE] ,1, sum)
+  total_sum = cbind(total_sum, sum_x)
+  sum_y = apply(total_sum[, -crs_x[c(1:len_crs_x)], with = FALSE] ,2, sum)
+  total_sum = rbind(total_sum, cbind(t(sum_y)), use.names = TRUE, fill = TRUE)
+  total_sum = quick_as_df(total_sum)
+  total_sum[nrow(total_sum), crs_x] = "sum_y"
+  total_sum = as.data.table(total_sum)
+  if(any(cross_type %alike% c("pct"))){
     total_value = sum(dat$value)
-    total_pct = sapply(total_sum[, -crs_x[c(1:len_crs_x)], with = FALSE]/total_value,
-        function(x) as_percent(x, 4))
-    if (len_crs_x > 1 & len_crs_y > 0) {
-        names(total_sum)[1:(len_crs_x)] = c(cross_x[1:(len_crs_x -
-            1)], paste(cross_x[(len_crs_x)], paste0(cross_y,
-            collapse = "/"), sep = "/"))
+    total_pct = sapply(total_sum[, -crs_x[c(1:len_crs_x)], with = FALSE]/total_value, function(x)
+      as_percent(x, 4))
+  }
+  if (len_crs_x > 1 & len_crs_y > 0) {
+    names(total_sum)[1:(len_crs_x)] = c(cross_x[1:(len_crs_x - 1)], 
+                                        paste(cross_x[(len_crs_x)],
+                                              paste0(cross_y, collapse = "/"), sep = "/"))
+  } else {
+    if (len_crs_x > 1 & len_crs_y == 0) {
+      names(total_sum)[1:(len_crs_x - 1)] = c(paste(cross_x[(len_crs_x - 1)], 
+                                                    paste0(cross_x[(len_crs_x)], collapse = "/"), 
+                                                    sep = "/"))
     } else {
-        if (len_crs_x > 1 & len_crs_y == 0) {
-            names(total_sum)[1:(len_crs_x - 1)] = c(paste(cross_x[(len_crs_x -
-                1)], paste0(cross_x[(len_crs_x)], collapse = "/"),
-                sep = "/"))
-        } else {
-            names(total_sum)[1:(len_crs_x)] = paste(cross_x[(len_crs_x)])
-        }
+      names(total_sum)[1:(len_crs_x)] = paste(cross_x[(len_crs_x)])
+    }
+  }
+  if(any(cross_type %alike% c("pct"))){
+    if (len_crs_x == 1 & len_crs_y < 1) {
+      total_pct = cbind(total_sum[, 1:(len_crs_x)], total_pct[ ,"sum_x"])
+      names(total_pct) = c(cross_x, cross_type)
+      total_pct = quick_as_df(total_pct)
+      total_pct[nrow(total_pct), 1] = "total"
+    } else {
+      if (len_crs_x > 1 & len_crs_y < 1) {
+        total_pct = cbind(total_sum[, 1:(len_crs_x - 1)] ,total_pct)
+      }else {
+        total_pct = cbind(total_sum[, 1:(len_crs_x)] ,total_pct)
+      }
+    }
+  }
+  
+  if (!is.null(target) && any(cross_type %alike% c("bad"))) {
+    dat$target = dat[, target, with = FALSE]
+    value_dt = dat[, .(value = sum(value, na.rm = TRUE)) ,by = c(crs_x, crs_y, "target")]
+    value_dt_n = dat[, .N, c(crs_x, crs_y)]
+    value_dt_1 = value_dt[target == 1]
+    value_dt_1 = merge(value_dt_n, value_dt_1, all.x = TRUE)
+    value_dt_1[is.na(value_dt_1)] = 0
+    bad_sum = data.table::dcast(value_dt_1, x.Formula, fun.aggregate = sum, value.var = "value")
+    sum_x = apply(bad_sum[, -crs_x[c(1:len_crs_x)], with = FALSE] ,1, sum)
+    bad_sum = cbind(bad_sum, sum_x)
+    sum_y = apply(bad_sum[, -crs_x[c(1:len_crs_x)], with = FALSE] ,2, sum)
+    bad_sum = rbind(bad_sum, cbind(t(sum_y)), use.names = TRUE, fill = TRUE)
+    bad_sum = quick_as_df(bad_sum)
+    bad_sum[nrow(bad_sum), crs_x] = "sum_y"
+    bad_sum = as.data.table(bad_sum)
+    if (len_crs_x > 1 & len_crs_y > 0) {
+      bad_pct = bad_sum[, -crs_x[c(1:(len_crs_x))], with = FALSE]/total_sum[ ,-names(total_sum)
+                                                                             [1:(len_crs_x)], with = FALSE]
+      bad_pct[is.na(bad_pct)] = 0
+      bad_pct = sapply(bad_pct, function(x) as_percent(x, 4))
+      names(bad_sum)[1:(len_crs_x)] = c(cross_x[1:(len_crs_x - 1)], 
+                                        paste(cross_x[(len_crs_x)], 
+                                              paste0(cross_y,  collapse = "/"), 
+                                              sep = "/"))
+    }else {
+      if (len_crs_x > 1 & len_crs_y == 0) {
+        bad_pct = bad_sum[, -crs_x[c(1:(len_crs_x - 1))], 
+                          with = FALSE]/total_sum[, -names(total_sum)[1:(len_crs_x - 1)], with = FALSE]
+        bad_pct[is.na(bad_pct)] = 0
+        bad_pct = sapply(bad_pct, function(x) as_percent(x, 
+                                                         4))
+        names(bad_sum)[1:(len_crs_x - 1)] = c(paste(cross_x[(len_crs_x - 1)], 
+                                                    paste0(cross_x[(len_crs_x)], collapse = "/"), 
+                                                    sep = "/"))
+      }else {
+        bad_pct = bad_sum[, -crs_x[c(1:(len_crs_x - 1))], 
+                          with = FALSE]/total_sum[, -names(total_sum)[1:(len_crs_x - 
+                                                                           1)], with = FALSE]
+        bad_pct[is.na(bad_pct)] = 0
+        bad_pct = sapply(bad_pct, function(x) as_percent(x, 4))
+        names(bad_sum)[1:(len_crs_x)] = paste(cross_x[(len_crs_x)])
+      }
     }
     if (len_crs_x == 1 & len_crs_y < 1) {
-        total_pct = cbind(total_sum[, 1:(len_crs_x)], total_pct[,
-            "sum_x"])
-
-        names(total_pct) = c(cross_x, cross_type)
-        total_pct = quick_as_df(total_pct)
-        total_pct[nrow(total_pct), 1] = "total"
-    } else {
-        if (len_crs_x > 1 & len_crs_y < 1) {
-            total_pct = cbind(total_sum[, 1:(len_crs_x - 1)],
-                total_pct)
-        } else {
-            total_pct = cbind(total_sum[, 1:(len_crs_x)], total_pct)
-        }
+      bad_pct = cbind(bad_sum[, 1:(len_crs_x)], bad_pct[, "sum_x"])
+      bad_sum = cbind(bad_sum[, 1:(len_crs_x)], bad_sum[, "sum_x"])
+      names(bad_sum) = c(cross_x, cross_type)
+      bad_sum = quick_as_df(bad_sum)
+      bad_sum[nrow(bad_sum), 1] = "total"
+      names(bad_pct) = c(cross_x, cross_type)
+      bad_pct = quick_as_df(bad_pct)
+      bad_pct[nrow(bad_pct), 1] = "total"
+    }else {
+      if (len_crs_x > 1 & len_crs_y < 1) {
+        bad_pct = cbind(bad_sum[, 1:(len_crs_x - 1)] ,bad_pct)
+      }else {
+        bad_pct = cbind(bad_sum[, 1:(len_crs_x)], bad_pct)
+      }
     }
-    if (!is.null(target)) {
-        dat$target = dat[, target, with = FALSE]
-        value_dt = dat[, .(value = sum(value, na.rm = TRUE)),
-            by = c(crs_x, crs_y, "target")]
-        value_dt_n = dat[, .N, c(crs_x, crs_y)]
-        value_dt_1 = value_dt[target == 1]
-        value_dt_1 = merge(value_dt_n, value_dt_1, all.x = TRUE)
-        value_dt_1[is.na(value_dt_1)] = 0
-        bad_sum = data.table::dcast(value_dt_1, x.Formula, fun.aggregate = sum,
-            value.var = "value")
-        sum_x = apply(bad_sum[, -crs_x[c(1:len_crs_x)], with = FALSE],
-            1, sum)
-        bad_sum = cbind(bad_sum, sum_x)
-        sum_y = apply(bad_sum[, -crs_x[c(1:len_crs_x)], with = FALSE],
-            2, sum)
-        bad_sum = rbind(bad_sum, cbind(t(sum_y)), use.names = TRUE,
-            fill = TRUE)
-        bad_sum = quick_as_df(bad_sum)
-        bad_sum[nrow(bad_sum), crs_x] = "sum_y"
-        bad_sum = as.data.table(bad_sum)
-        if (len_crs_x > 1 & len_crs_y > 0) {
-            bad_pct = bad_sum[, -crs_x[c(1:(len_crs_x))], with = FALSE]/total_sum[,
-                -names(total_sum)[1:(len_crs_x)], with = FALSE]
-            bad_pct[is.na(bad_pct)] = 0
-            bad_pct = sapply(bad_pct, function(x) as_percent(x,
-                4))
-            names(bad_sum)[1:(len_crs_x)] = c(cross_x[1:(len_crs_x -
-                1)], paste(cross_x[(len_crs_x)], paste0(cross_y,
-                collapse = "/"), sep = "/"))
-        } else {
-            if (len_crs_x > 1 & len_crs_y == 0) {
-                bad_pct = bad_sum[, -crs_x[c(1:(len_crs_x - 1))],
-                  with = FALSE]/total_sum[, -names(total_sum)[1:(len_crs_x -
-                  1)], with = FALSE]
-                bad_pct[is.na(bad_pct)] = 0
-                bad_pct = sapply(bad_pct, function(x) as_percent(x,
-                  4))
-                names(bad_sum)[1:(len_crs_x - 1)] = c(paste(cross_x[(len_crs_x -
-                  1)], paste0(cross_x[(len_crs_x)], collapse = "/"),
-                  sep = "/"))
-            } else {
-                bad_pct = bad_sum[, -crs_x[c(1:(len_crs_x - 1))],
-                  with = FALSE]/total_sum[, -names(total_sum)[1:(len_crs_x -
-                  1)], with = FALSE]
-                bad_pct[is.na(bad_pct)] = 0
-                bad_pct = sapply(bad_pct, function(x) as_percent(x,
-                  4))
-                names(bad_sum)[1:(len_crs_x)] = paste(cross_x[(len_crs_x)])
-            }
-        }
-        if (len_crs_x == 1 & len_crs_y < 1) {
-            bad_pct = cbind(bad_sum[, 1:(len_crs_x)], bad_pct[,"sum_x"])
-			bad_sum = cbind(bad_sum[, 1:(len_crs_x)], bad_sum[,"sum_x"])
-			names(bad_sum) = c(cross_x, cross_type)
-			bad_sum = quick_as_df(bad_sum)
-			bad_sum[nrow(bad_sum), 1] = "total"
-            names(bad_pct) = c(cross_x, cross_type)
-            bad_pct = quick_as_df(bad_pct)
-            bad_pct[nrow(bad_pct), 1] = "total"
-        } else {
-            if (len_crs_x > 1 & len_crs_y < 1) {
-                bad_pct = cbind(bad_sum[, 1:(len_crs_x - 1)],
-                  bad_pct)
-            } else {
-                bad_pct = cbind(bad_sum[, 1:(len_crs_x)], bad_pct)
-            }
-        }
-    }
-	if(len_crs_x == 1 & len_crs_y < 1){
-		total_sum = cbind(total_sum[, 1:(len_crs_x)], total_sum[, "sum_x"])
-		names(total_sum) = c(cross_x, cross_type)
-		total_sum = quick_as_df(total_sum)
-		total_sum[nrow(total_sum), 1] = "total"
-	}	
-    if (cross_type == "total_sum") {
-		if(len_crs_x == 1 & len_crs_y < 1){
-			total_sum = cbind(total_sum[, 1:(len_crs_x)], total_sum[, "sum_x"])
-			names(total_sum) = c(cross_x, cross_type)
-			total_sum = quick_as_df(total_sum)
-			total_sum[nrow(total_sum), 1] = "total"
-		}
-        cross_dt = total_sum
+  }
+  
+  if (any(cross_type %alike% "mean")) {
+    value_dt_mean = dat[, .(value = mean(value, na.rm = TRUE)), by = c(crs_x, crs_y)]
+    total_mean = data.table::dcast(value_dt_mean, x.Formula, fun.aggregate = sum, 
+                                   value.var = "value")
+    mean_x = apply(total_mean[, -crs_x[c(1:len_crs_x)], with = FALSE], 1, mean)
+    total_mean = cbind(total_mean, mean_x)	
+    
+    mean_y = apply(total_mean[, -crs_x[c(1:len_crs_x)], with = FALSE] ,2, mean)
+    total_mean = rbind(total_mean, cbind(t(mean_y)), use.names = TRUE, fill = TRUE)	
+    total_mean = quick_as_df(total_mean)	
+    total_mean[nrow(total_mean), crs_x] = "mean_y"
+    total_mean = as.data.table(total_mean)
+    if (len_crs_x > 1 & len_crs_y > 0) {
+      names(total_mean)[1:(len_crs_x)] = c(cross_x[1:(len_crs_x - 1)], 
+                                           paste(cross_x[(len_crs_x)], 
+                                                 paste0(cross_y, collapse = "/"), sep = "/"))
     } else {
-        if (cross_type == "total_pct") {
-            cross_dt = total_pct
+      if (len_crs_x > 1 & len_crs_y == 0) {
+        names(total_mean)[1:(len_crs_x - 1)] = c(paste(cross_x[(len_crs_x - 1)], 
+                                                       paste0(cross_x[(len_crs_x)], collapse = "/"), 
+                                                       sep = "/"))
+      } else {
+        names(total_mean)[1:(len_crs_x)] = paste(cross_x[(len_crs_x)])
+      }
+    }
+  }
+  
+  
+  
+  if (any(cross_type %alike% "median")) {
+    value_dt_median = dat[, .(value = median(value,na.rm = TRUE)), by = c(crs_x, crs_y)]
+    total_median = data.table::dcast(value_dt_median, x.Formula, fun.aggregate = sum, 
+                                     value.var = "value")
+    median_x = apply(total_median[, -crs_x[c(1:len_crs_x)], with = FALSE], 1, median)	
+    total_median = cbind(total_median, median_x)    
+    median_y = apply(total_median[, -crs_x[c(1:len_crs_x)], with = FALSE], 2, median)
+    total_median = rbind(total_median, cbind(t(median_y)), use.names = TRUE, fill = TRUE)
+    total_median = quick_as_df(total_median)	
+    total_median[nrow(total_median), crs_x] = "median_y"
+    total_median = as.data.table(total_median)
+    if (len_crs_x > 1 & len_crs_y > 0) {
+      names(total_median)[1:(len_crs_x)] = c(cross_x[1:(len_crs_x - 1)], 
+                                             paste(cross_x[(len_crs_x)], 
+                                                   paste0(cross_y, collapse = "/"), sep = "/"))
+    } else {
+      if (len_crs_x > 1 & len_crs_y == 0) {
+        names(total_median)[1:(len_crs_x - 1)] = c(paste(cross_x[(len_crs_x - 1)], 
+                                                         paste0(cross_x[(len_crs_x)], collapse = "/"), 
+                                                         sep = "/"))
+        
+      } else {
+        names(total_median)[1:(len_crs_x)] = paste(cross_x[(len_crs_x)])
+      }
+    }
+  }
+  
+  if (any(cross_type %alike% "max")) {
+    value_dt_max = dat[, .(value = max(value, na.rm = TRUE)), by = c(crs_x, crs_y)]
+    total_max = data.table::dcast(value_dt_max, x.Formula, fun.aggregate = sum, value.var = "value")
+    max_x = apply(total_max[, -crs_x[c(1:len_crs_x)], with = FALSE], 1, max)	  
+    
+    total_max = cbind(total_max, max_x)
+    
+    max_y = apply(total_max[, -crs_x[c(1:len_crs_x)], with = FALSE], 2, max)
+    total_max = rbind(total_max, cbind(t(max_y)), use.names = TRUE ,fill = TRUE)
+    total_max = quick_as_df(total_max)
+    total_max[nrow(total_max), crs_x] = "max_y"
+    total_max = as.data.table(total_max)
+    if (len_crs_x > 1 & len_crs_y > 0) {
+      
+      names(total_max)[1:(len_crs_x)] = c(cross_x[1:(len_crs_x - 1)], 
+                                          paste(cross_x[(len_crs_x)], 
+                                                paste0(cross_y, collapse = "/"), sep = "/"))
+      
+    } else {
+      if (len_crs_x > 1 & len_crs_y == 0) {
+        
+        names(total_max)[1:(len_crs_x - 1)] = c(paste(cross_x[(len_crs_x - 1)],
+                                                      paste0(cross_x[(len_crs_x)], collapse = "/"), 
+                                                      sep = "/"))
+      } else {
+        names(total_max)[1:(len_crs_x)] = paste(cross_x[(len_crs_x)])
+      }
+    }
+  }
+  
+  if (any(cross_type %alike% "min")) {
+    value_dt_min = dat[, .(value = min(value, na.rm = TRUE)), by = c(crs_x, crs_y)]
+    total_min = data.table::dcast(value_dt_min, x.Formula, fun.aggregate = sum, 
+                                  value.var = "value")
+    min_x = apply(total_min[, -crs_x[c(1:len_crs_x)], with = FALSE] ,1, min)
+    total_min = cbind(total_min, min_x)
+    min_y = apply(total_min[, -crs_x[c(1:len_crs_x)], with = FALSE], 2, min)
+    total_min = rbind(total_min, cbind(t(min_y)), use.names = TRUE ,fill = TRUE)
+    total_min = quick_as_df(total_min)
+    total_min[nrow(total_min), crs_x] = "min_y"
+    total_min = as.data.table(total_min)
+    if (len_crs_x > 1 & len_crs_y > 0) {
+      names(total_min)[1:(len_crs_x)] = c(cross_x[1:(len_crs_x - 1)], 
+                                          paste(cross_x[(len_crs_x)],
+                                                paste0(cross_y, collapse = "/"), sep = "/"))
+    } else {
+      if (len_crs_x > 1 & len_crs_y == 0) {
+        names(total_min)[1:(len_crs_x - 1)] = c(paste(cross_x[(len_crs_x - 1)], 
+                                                      paste0(cross_x[(len_crs_x)], collapse = "/"), 
+                                                      sep = "/"))
+      } else {
+        names(total_min)[1:(len_crs_x)] = paste(cross_x[(len_crs_x)])
+      }
+    }
+  }
+  
+  
+  if (cross_type == "total_sum") {
+    if (len_crs_x == 1 & len_crs_y < 1) {
+      total_sum = cbind(total_sum[, 1:(len_crs_x)], total_sum[, "sum_x"])
+      names(total_sum) = c(cross_x, cross_type)
+      total_sum = quick_as_df(total_sum)
+      total_sum[nrow(total_sum), 1] = "total_sum"
+    }
+    cross_dt = total_sum
+  }else {
+    if (cross_type == "total_pct") {
+      cross_dt = total_pct
+    } else {
+      if (cross_type == "bad_sum" & !is.null(target)) {
+        cross_dt = bad_sum
+      } else {
+        if (cross_type == "bad_pct" & !is.null(target)) {
+          cross_dt = bad_pct
         } else {
-            if (cross_type == "bad_sum" & !is.null(target)) {
-                cross_dt = bad_sum
+          if (any(cross_type %alike% "mean")) {
+            if (len_crs_x == 1 & len_crs_y < 1) {
+              total_mean = cbind(total_mean[, 1:(len_crs_x)], total_mean[ ,"mean_x"])
+              names(total_mean) = c(cross_x, cross_type)
+              total_mean = quick_as_df(total_mean)
+              total_mean[nrow(total_mean), 1] = "total_mean"
+            }
+            cross_dt = total_mean
+          } else {
+            if (any(cross_type %alike% "median")) {
+              if (len_crs_x == 1 & len_crs_y < 1) {
+                total_median = cbind(total_median[, 1:(len_crs_x)], total_median[ ,"median_x"])
+                names(total_median) = c(cross_x, cross_type)
+                total_median = quick_as_df(total_median)
+                total_median[nrow(total_median), 1] = "total_median"
+              }
+              cross_dt = total_median
             } else {
-                if (cross_type == "bad_pct" & !is.null(target)) {
-                  cross_dt = bad_pct
-                } else {
-                  cross_dt = total_sum
-					warning(paste("target is null, use default value: 'total_sum'"))
+              if (any(cross_type %alike% "max")) {
+                if (len_crs_x == 1 & len_crs_y < 1) {
+                  
+                  total_max = cbind(total_max[, 1:(len_crs_x)], total_max[ ,"max_x"])
+                  names(total_max) = c(cross_x, cross_type)
+                  total_max = quick_as_df(total_max)
+                  total_max[nrow(total_max), 1] = "total_max"
+                  
                 }
+                cross_dt = total_max
+                
+              } else {
+                if (any(cross_type %alike% "min")) {
+                  if (len_crs_x == 1 & len_crs_y < 1) {
+                    total_min = cbind(total_min[, 1:(len_crs_x)], total_min[ ,"min_x"])
+                    names(total_min) = c(cross_x, cross_type)
+                    total_min = quick_as_df(total_min)
+                    total_min[nrow(total_min), 1] = "total_min"
+                  }
+                  cross_dt = total_min
+                } else {
+                  if (len_crs_x == 1 & len_crs_y < 1) {
+                    total_sum = cbind(total_sum[, 1:(len_crs_x)], total_sum[ ,"sum_x"])
+                    names(total_sum) = c(cross_x, cross_type)
+                    total_sum = quick_as_df(total_sum)
+                    total_sum[nrow(total_sum), 1] = "total_sum"
+                  }
+                  cross_dt = total_sum
+                  warning(paste("target is null, use default value: 'total_sum'"))
+                }
+              }
             }
+          }
         }
+      }
     }
-    return(quick_as_df(cross_dt))
+  }
+  return(quick_as_df(cross_dt))
 }
+
 
 #' Swap Out/Swap In Analysis
 #'

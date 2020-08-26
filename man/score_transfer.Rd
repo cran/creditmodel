@@ -4,8 +4,15 @@
 \alias{score_transfer}
 \title{Score Transformation}
 \usage{
-score_transfer(model, tbl_woe, a = 600, b = 50, file_name = NULL,
-  dir_path = tempdir(), save_data = FALSE)
+score_transfer(
+  model,
+  tbl_woe,
+  a = 600,
+  b = 50,
+  file_name = NULL,
+  dir_path = tempdir(),
+  save_data = FALSE
+)
 }
 \arguments{
 \item{model}{A data frame with x and target.}

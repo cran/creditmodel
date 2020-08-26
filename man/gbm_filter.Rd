@@ -4,10 +4,22 @@
 \alias{gbm_filter}
 \title{Select Features using GBM}
 \usage{
-gbm_filter(dat, target = NULL, x_list = NULL, ex_cols = NULL,
-  pos_flag = NULL, GBM.params = gbm_params(), cores_num = 2,
-  vars_name = TRUE, note = TRUE, save_data = FALSE,
-  file_name = NULL, dir_path = tempdir(), seed = 46, ...)
+gbm_filter(
+  dat,
+  target = NULL,
+  x_list = NULL,
+  ex_cols = NULL,
+  pos_flag = NULL,
+  GBM.params = gbm_params(),
+  cores_num = 2,
+  vars_name = TRUE,
+  note = TRUE,
+  save_data = FALSE,
+  file_name = NULL,
+  dir_path = tempdir(),
+  seed = 46,
+  ...
+)
 }
 \arguments{
 \item{dat}{A data.frame with independent variables and target variable.}

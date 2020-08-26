@@ -7,17 +7,43 @@
 \alias{model_key_index}
 \title{ks_table & plot}
 \usage{
-ks_table(train_pred, test_pred = NULL, target = NULL, score = NULL,
-  g = 10, breaks = NULL, pos_flag = list("1", "1", "Bad", 1))
+ks_table(
+  train_pred,
+  test_pred = NULL,
+  target = NULL,
+  score = NULL,
+  g = 10,
+  breaks = NULL,
+  pos_flag = list("1", "1", "Bad", 1)
+)
 
-ks_table_plot(train_pred, test_pred, target = "target",
-  score = "score", g = 10, plot_show = TRUE, g_width = 12,
-  file_name = NULL, save_data = FALSE, dir_path = tempdir(),
-  gtitle = NULL)
+ks_table_plot(
+  train_pred,
+  test_pred,
+  target = "target",
+  score = "score",
+  g = 10,
+  plot_show = TRUE,
+  g_width = 12,
+  file_name = NULL,
+  save_data = FALSE,
+  dir_path = tempdir(),
+  gtitle = NULL
+)
 
-ks_psi_plot(train_pred, test_pred, target = "target", score = "score",
-  gtitle = NULL, plot_show = TRUE, g_width = 12, save_data = FALSE,
-  breaks = NULL, g = 10, dir_path = tempdir())
+ks_psi_plot(
+  train_pred,
+  test_pred,
+  target = "target",
+  score = "score",
+  gtitle = NULL,
+  plot_show = TRUE,
+  g_width = 12,
+  save_data = FALSE,
+  breaks = NULL,
+  g = 10,
+  dir_path = tempdir()
+)
 
 model_key_index(tb_pred)
 }

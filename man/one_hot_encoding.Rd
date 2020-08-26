@@ -4,8 +4,14 @@
 \alias{one_hot_encoding}
 \title{One-Hot Encoding}
 \usage{
-one_hot_encoding(dat, cat_vars = NULL, ex_cols = NULL,
-  merge_cat = TRUE, na_act = TRUE, note = FALSE)
+one_hot_encoding(
+  dat,
+  cat_vars = NULL,
+  ex_cols = NULL,
+  merge_cat = TRUE,
+  na_act = TRUE,
+  note = FALSE
+)
 }
 \arguments{
 \item{dat}{A dat frame.}

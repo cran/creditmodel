@@ -2709,39 +2709,330 @@ plot_density <- function(dat, x, y = NULL, m = 3, g = 5, y_breaks = NULL, binwid
 #' You can use the \code{plot_bar} to produce the barplot.
 #' @param dat A data.frame with independent variables and target variable.
 #' @param x The name of an independent variable.
+#' @param y The name of target variable. Default is NULL.
 #' @param g  Number of initial breakpoints for equal frequency binning.
-#' @param breaks Breaks points of x.
-#' @param cut_bin  'equal_width' or 'equal_depth'
+#' @param x_breaks Breaks points of x.
+#' @param y_breaks Breaks points of y.
+#' @param cut_bin  'equal_width' or 'equal_depth' to produce the breaks points.
+#' @param target The name of target variable.
+#' @param value The name of the variable to sum. When this parameter is NULL, the default statistics is to sum frequency.
+#' @param type Output form of the result of crosstable. Provide these forms: "total_sum","total_pct","total_mean","total_median","total_max","total_min","bad_sum","bad_pct".
+#' @param reverse Logical,whether reverse the plot.
+#' @param position Postion of bars, 'stack' or 'dodge' is available.
+#' @param dodge_width Width of width.
+#' @param theme theme of the plot
+#' @param fill_colors Colors of bar.
 #' @examples
 #' plot_bar(dat = lendingclub, x = "grade")
+#' plot_bar(dat = lendingclub, x = "grade", y= "dti_joint", g = 5,
+#'		 position = 'dodge', dodge_width = 0.9,
+#'		 reverse = FALSE,
+#'		 cut_bin = 'equal_width',
+#'  fill_colors = c(love_color(type = "line"),
+#'   love_color(type = "line")))
 #' @import ggplot2
 #' @importFrom dplyr group_by mutate summarize  summarise n  count %>% filter mutate_if distinct ungroup
 #' @export
 
 
-plot_bar <- function(dat, x, breaks = NULL, g = 10, cut_bin = 'equal_width') {
-    xs = percent = NULL
-	if (class(dat[, x]) %in% c("numeric", "double", "integer") && length(unique(dat[, x])) > g) {
-		if (is.null(breaks)) {
-			breaks = get_breaks(dat, x = x, g = g, equal_bins = TRUE, cut_bin = cut_bin)
-		}
-	} else {
-		dat[, x] = as.character(dat[, x])
-		dat = merge_category(dat = dat, char_list  = x, m = g, note = FALSE)
-		breaks = unique(dat[, x])
+plot_bar = function (dat, x, y = NULL,
+					   x_breaks = NULL,
+					   y_breaks = NULL,
+					   cut_bin = "equal_width",
+					   g = 10,
+					   target = NULL,
+					   value = NULL,
+					   type = "total_pct",
+					   reverse = FALSE,
+					   position  = 'dodge' ,
+					   dodge_width = 1,
+					   theme = plot_theme(legend.position = "top",
+										  title_size = 9,
+										  legend_size = 7,
+										  axis_title_size = 8),
+					   fill_colors = c(love_color(type = "light")[1:8],
+									   love_color(type = "deep")[1:6])) {
+
+
+    if (class(dat[, x]) %in% c("numeric", "double",
+        "integer") && length(unique(dat[, x])) > g) {
+        if (is.null(x_breaks)) {
+            x_breaks = get_breaks(dat, x = x, g = g, equal_bins = TRUE, cut_bin = cut_bin)
+        }
+    }else {
+        dat[, x] = as.character(dat[, x])
+        dat = merge_category(dat = dat, char_list = x, m = g,note = FALSE)
+        x_breaks = unique(dat[, x])
+    }
+    dat$x = split_bins(dat = dat, x = x, breaks = x_breaks, bins_no = TRUE)
+	position_x =  position_dodge(width = dodge_width)
+	if(position == "stack"){
+		position_x =  position_stack()
+	}
+	reverse_x = NULL
+	 vjust = 1
+	 hjust = 0.3
+	if(reverse){
+		reverse_x = coord_flip(xlim = NULL, ylim = NULL,expand = FALSE, clip = "off")
+		 vjust = 0
+		 hjust = 1
 	}
 
-	dat[["xs"]] = split_bins(dat = dat, x = x, breaks = breaks)
-	data1 = dat %>% dplyr::count(xs) %>% mutate(percent = n / sum(n))
-	barchart = ggplot(data1, aes(x = xs, y = percent)) +
-	  geom_bar(stat = 'identity', fill = love_color(type = "line")[2]) +
-	  geom_text(aes(label = paste(round(percent, 3) * 100, "%")),
-				size = 2.5, vjust = 1, hjust = 0.5,
-				color = love_color(type = "line")[4], position = position_stack()) +
-			  guides(fill = guide_legend(reverse = TRUE)) +
-				 ggtitle(paste("Frequency of", x)) +
-			  xlab(x) + ylab("percent") + plot_theme(axis_size_x = 6)
-	return(barchart)
+    if (!is.null(y)) {
+        if (class(dat[, y]) %in% c("numeric", "double",
+            "integer") && length(unique(dat[, y])) > g) {
+            if (is.null(y_breaks)) {
+                y_breaks = get_breaks(dat, x = y, g = g, equal_bins = TRUE,
+                  cut_bin = cut_bin)
+            }
+        } else {
+            dat[, y] = as.character(dat[, y])
+            dat = merge_category(dat = dat, char_list = y, m = g,
+                note = FALSE)
+            y_breaks = unique(dat[, y])
+        }
+             dat$y = split_bins(dat = dat, x = y, breaks = y_breaks,
+            bins_no = TRUE)
+
+		crs_dt = cross_table(dat, cross_x = "x",cross_y = "y",target = target ,value = value,
+		            cross_type = type)
+		if(type == "total_pct"){
+		crs_dt_v = as.data.frame(t(apply(crs_dt[-nrow(crs_dt), -c(1,ncol(crs_dt))],1,
+											 function(x)
+			de_percent(x,4)
+			/de_percent(crs_dt[nrow (crs_dt),-c(1,ncol(crs_dt))],4))))
+		crs_dt = crs_dt[-nrow(crs_dt),-ncol(crs_dt)]
+		crs_dt_v = cbind(crs_dt[,1],crs_dt_v)
+		names(crs_dt_v) = names(crs_dt)
+		crs_dt_v = as.data.table(crs_dt_v)
+		data1 = data.table:: melt(data = crs_dt_v,id.vars=c("x"),variable.name="y",value.name="v")
+		 label_v = as.character(as_percent(data1$v,4))
+		}else{
+		crs_dt_v = crs_dt[-nrow(crs_dt),-ncol(crs_dt)]
+		crs_dt_v = as.data.table(crs_dt_v)
+		data1 = data.table:: melt(data = crs_dt_v,id.vars=c("x"),variable.name="y",value.name="v")
+		label_v = as.character(data1$v)
+		}
+		if(any(grepl("bad_pct",type))){
+		yv =  de_percent(data1$v,digits = 4)
+		}else{
+		yv = data1$v
+		}
+        relative_freq_hist <- ggplot(data1, aes(x = data1$x, y = yv,fill = data1$y)) +
+			geom_bar(stat = "identity", position = position_x) +
+			geom_text(aes(y = yv,label = label_v),
+					  size = ifelse(length(data1$x) > 10, 2.1,
+									ifelse(length(data1$x) > 5, 2.5,
+										   ifelse(length(data1$x) > 3, 3, 3.3))),
+					  vjust =vjust, hjust = hjust, colour = "white",
+					  position =position_x) +
+			reverse_x +
+            guides(fill = guide_legend(reverse = TRUE)) +
+			ggtitle(paste("Distribution of",x, "-",y)) +
+			ylab(type) +
+			xlab(y) +
+			scale_fill_manual(values = fill_colors) +
+			theme
+    } else {
+        crs_dt = cross_table(dat, cross_x = "x",cross_y = NULL,target = target ,value = value,
+		            cross_type = type)
+		crs_dt = crs_dt[-nrow(crs_dt),]
+		crs_dt = as.data.table(crs_dt)
+		data1 = data.table:: melt(data = crs_dt,id.vars=c("x"),variable.name="y",value.name="v")
+	    if(any(grepl("pct",type))){
+		yv =  de_percent(data1$v,digits = 4)
+		}else{
+		yv = data1$v
+		}
+        relative_freq_hist = ggplot(data1, aes(x = data1$x,
+            y = yv)) + geom_bar(stat = "identity",
+            position = position_x, fill = fill_colors[1]) +
+			geom_text(aes(label = data1$v),
+					  size = ifelse(length(data1$x) > 10, 2.1,
+										 ifelse(length(data1$x) > 5, 2.5,
+												ifelse(length(data1$x) > 3, 3, 3.3))),
+					  vjust = vjust,
+					  hjust = hjust,
+					  colour = "white",
+					  position = position_x) +
+			reverse_x +
+			guides(fill = guide_legend(reverse = TRUE)) +
+            ggtitle(paste("Distribution of", x)) +
+			ylab(type) +
+			xlab(x) +
+			scale_fill_manual(values = fill_colors) +
+			theme
+    }
+    return(relative_freq_hist)
+}
+
+
+#' Plot Line
+#'
+#' You can use the \code{plot_bar} to produce the barplot.
+#' @param dat A data.frame with independent variables and target variable.
+#' @param x The name of an independent variable.
+#' @param y The name of target variable. Default is NULL.
+#' @param g  Number of initial breakpoints for equal frequency binning.
+#' @param x_breaks Breaks points of x.
+#' @param y_breaks Breaks points of y.
+#' @param cut_bin  'equal_width' or 'equal_depth' to produce the breaks points.
+#' @param target The name of target variable.
+#' @param value The name of the variable to sum. When this parameter is NULL, the default statistics is to sum frequency.
+#' @param type Output form of the result of crosstable. Provide these forms: "total_sum","total_pct","total_mean","total_median","total_max","total_min","bad_sum","bad_pct".
+#' @param reverse Logical,whether reverse the plot.
+#' @param theme theme of the plot
+#' @param fill_colors Colors of bar.
+#' @examples
+#' plot_line(dat = lendingclub, x = "grade")
+#' plot_line(dat = lendingclub, x = "grade", 
+#'    y = "mort_acc",type = "bad_pct",g = 5, cut_bin = 
+#'	 "equal_depth",target = "loan_status")
+#' @import ggplot2
+#' @importFrom dplyr group_by mutate summarize  summarise n  count %>% filter mutate_if distinct ungroup
+#' @export
+
+
+plot_line = function (dat, x, y = NULL,
+					   x_breaks = NULL,
+					   y_breaks = NULL,
+					   cut_bin = "equal_width",
+					   g = 10,
+					   target = NULL,
+					   value = NULL,
+					   type = "total_pct",
+					   reverse = FALSE,
+					   theme = plot_theme(legend.position = "right",
+										  title_size = 9,
+										  legend_size = 7,
+										  axis_title_size = 8),
+					   fill_colors = c(love_color(type = "light")[1:8],
+									   love_color(type = "deep")[1:6]))
+{
+
+    if (class(dat[, x]) %in% c("numeric", "double",
+        "integer") && length(unique(dat[, x])) > g) {
+        if (is.null(x_breaks)) {
+            x_breaks = get_breaks(dat, x = x, g = g, equal_bins = TRUE, cut_bin = cut_bin)
+        }
+    }else {
+        dat[, x] = as.character(dat[, x])
+        dat = merge_category(dat = dat, char_list = x, m = g,note = FALSE)
+        x_breaks = unique(dat[, x])
+    }
+    dat$x = split_bins(dat = dat, x = x, breaks = x_breaks, bins_no = TRUE)
+
+	reverse_x = NULL
+	 vjust = 1
+	 hjust = 0.3
+	if(reverse){
+		reverse_x = coord_flip(xlim = NULL, ylim = NULL,expand = FALSE, clip = "off")
+		 vjust = 0
+		 hjust = 1
+	}
+
+    if (!is.null(y)) {
+        if (class(dat[, y]) %in% c("numeric", "double",
+            "integer") && length(unique(dat[, y])) > g) {
+            if (is.null(y_breaks)) {
+                y_breaks = get_breaks(dat, x = y, g = g, equal_bins = TRUE,
+                  cut_bin = cut_bin)
+            }
+        } else {
+            dat[, y] = as.character(dat[, y])
+            dat = merge_category(dat = dat, char_list = y, m = g,
+                note = FALSE)
+            y_breaks = unique(dat[, y])
+        }
+
+        dat$y = split_bins(dat = dat, x = y, breaks = y_breaks,
+            bins_no = TRUE)
+		crs_dt = cross_table(dat, cross_x = "x",cross_y = "y",target = target ,value = value,
+		            cross_type = type)
+		if(type == "total_pct"){
+		crs_dt_v = as.data.frame(t(apply(crs_dt[-nrow(crs_dt), -c(1,ncol(crs_dt))],1,
+											 function(x)
+			de_percent(x,4)
+			/de_percent(crs_dt[nrow (crs_dt),-c(1,ncol(crs_dt))],4))))
+		crs_dt = crs_dt[-nrow(crs_dt),-ncol(crs_dt)]
+		crs_dt_v = cbind(crs_dt[,1],crs_dt_v)
+		names(crs_dt_v) = names(crs_dt)
+		crs_dt_v = as.data.table(crs_dt_v)
+		data1 = data.table::melt(data = crs_dt_v,id.vars=c("x"),variable.name="y",value.name="v")
+		 label_v = as.character(as_percent(data1$v,4))
+		}else{
+		crs_dt_v = as.data.table(crs_dt[-nrow(crs_dt),-ncol(crs_dt)])
+		
+		data1 = data.table:: melt(data = crs_dt_v,id.vars=c("x"),variable.name="y",value.name="v")
+		label_v = as.character(data1$v)
+		}
+
+		if(any(grepl("bad_pct",type))){
+		yv =  de_percent(data1$v,digits = 4)
+		}else{
+		yv = data1$v
+		}
+
+        relative_freq_hist = ggplot(data1, aes(x = data1$x, y = yv)) +
+			geom_line(aes(group = data1$y,
+						  colour = data1$y), size = 1.3) +
+			geom_point(aes(
+						   color = data1$y),
+					   size = 1.3,
+					   shape = 21,
+					   fill = "white") +
+			geom_text(aes(
+						  label = label_v),
+					  size = ifelse(length(data1$x) > 10, 2.1,
+									ifelse(length(data1$x) > 5, 2.5,
+										   ifelse(length(data1$x) > 3, 3, 3.3))),
+					  vjust =vjust,
+					  hjust = hjust,
+					  colour = "grey20") +
+			reverse_x +
+            guides(fill = guide_legend(reverse = TRUE)) +
+			ggtitle(paste("Distribution of",x, "-", y)) +
+			ylab(type) +
+			xlab(y) +
+			scale_fill_manual(values = fill_colors) +
+			 scale_colour_manual(values = fill_colors) +
+			theme
+    }else{
+		crs_dt = cross_table(dat, cross_x = "x",cross_y = NULL,target = target ,value = value,
+		            cross_type = type)
+		crs_dt = crs_dt[-nrow(crs_dt),]
+		crs_dt = as.data.table(crs_dt)
+		data1 = data.table:: melt(data = crs_dt,id.vars=c("x"),variable.name="y",value.name="v")
+	    if(any(grepl("pct",type))){
+		yv =  de_percent(data1$v,digits = 4)
+		}else{
+		yv = data1$v
+		}
+
+
+
+        relative_freq_hist = ggplot(data1, aes(x = data1$x,
+            y = yv , fill = data1$x)) +
+			geom_line(group =1,color = fill_colors[1], size = 1.3) +
+			geom_point( size = 1.3,
+					   shape = 21,
+					   fill = "white") +
+			geom_text(aes(label = as.character(data1$v)),
+					  size = ifelse(length(data1$x) > 10, 2.1,
+										 ifelse(length(data1$x) > 5, 2.5,
+												ifelse(length(data1$x) > 3, 3, 3.3))),
+					  vjust = vjust,
+					  hjust = hjust,
+					  colour = "grey20") +
+			reverse_x +
+			guides(fill = guide_legend(reverse = TRUE)) +
+            ggtitle(paste("Distribution of", x)) +
+			ylab(type) +
+			xlab(x) +
+			scale_fill_manual(values = fill_colors) +
+			theme
+    }
+    return(relative_freq_hist)
 }
 
 
@@ -2755,6 +3046,8 @@ plot_bar <- function(dat, x, breaks = NULL, g = 10, cut_bin = 'equal_width') {
 #' @param x_breaks Breaks points of x.
 #' @param y_breaks Breaks points of y.
 #' @param cut_bin  'equal_width' or 'equal_depth' to produce the breaks points.
+#' @param reverse Logical,whether reverse the plot.
+#' @param fill_colors Colors of bar.
 #' @examples
 #' plot_relative_freq_histogram(dat = lendingclub, x = "grade", y = "dti_joint", g = 7,
 #'		cut_bin = 'equal_width')
@@ -2763,76 +3056,96 @@ plot_bar <- function(dat, x, breaks = NULL, g = 10, cut_bin = 'equal_width') {
 #' @export
 
 
+plot_relative_freq_histogram = function (dat, x, y = NULL, x_breaks = NULL, y_breaks = NULL,
+										 reverse = ifelse(!is.null(y),TRUE,FALSE),
+										 g = 10,
+										 cut_bin = "equal_width",
+										 fill_colors = c(love_color(type = "light")[1:8],
+														 love_color(type = "deep")[1:6])) {
 
-plot_relative_freq_histogram <- function(dat, x, y = NULL, x_breaks = NULL, y_breaks = NULL, g = 10, cut_bin = 'equal_width') {
-	#relative frequency histogram
-	dat = char_to_num(dat[c(x,y)], note = FALSE)
-	if (class(dat[, x]) %in% c("numeric", "double", "integer") && length(unique(dat[, x])) > g) {
-		if (is.null(x_breaks)) {
-			x_breaks = get_breaks(dat, x = x, g = g, equal_bins = TRUE, cut_bin = cut_bin)
-		}
-	} else {
-		dat[, x] = as.character(dat[, x])
-		dat = merge_category(dat = dat, char_list  = x, m = g, note = FALSE)
-		x_breaks = unique(dat[, x])
-	}
-	dat$x = split_bins(dat = dat, x = x, breaks = x_breaks, bins_no = TRUE)
 
-	if (!is.null(y)) {
-		if (class(dat[, y]) %in% c("numeric", "double", "integer") && length(unique(dat[, y])) > g) {
-			if (is.null(y_breaks)) {
-				y_breaks = get_breaks(dat, x = y, g = g, equal_bins = TRUE, cut_bin = cut_bin)
-			}
-		} else {
-			dat[, y] = as.character(dat[, y])
-			dat = merge_category(dat = dat, char_list = y, m = g, note = FALSE)
-			y_breaks = unique(dat[, y])
-		}
-		dat$x = factor(dat[["x"]], levels = rev(sort(unique(dat[["x"]]))))
-		dat$y = split_bins(dat = dat, x = y, breaks = y_breaks, bins_no = TRUE)
-		dat$y = factor(dat[["y"]], levels = rev(sort(unique(dat[["y"]]))))
-		data1 = dat %>%
-  	  dplyr::group_by(y) %>% dplyr::count(y, x) %>%
-  	  dplyr::mutate(percent = n / sum(n))
-		data1$xn = factor(data1$x, levels = rev(unique(data1$x)))
-		data1$target = factor(data1$y, levels = rev(unique(data1$y)))
-		relative_freq_hist <- ggplot(data1, aes(x = data1$y, y = data1$percent, fill = data1$x)) +
-  	  geom_bar(stat = "identity", position = position_stack()) +
-  	  geom_text(aes(label = paste(as_percent(data1$percent, digits = 3))),
-				size = ifelse(length(data1$x) > 10, 2.1,
-							  ifelse(length(data1$x) > 5, 2.5,
-									 ifelse(length(data1$x) > 3, 3, 3.3))), vjust = 0, hjust = 1, colour = 'white', position = position_stack()) +
-									 coord_flip(xlim = NULL, ylim = NULL, expand = FALSE, clip = "off") +
-									 guides(fill = guide_legend(reverse = TRUE)) +
-									 ggtitle(paste("Relative Frequency of", x, "-",y)) +
-			 ylab(x) + xlab(y) +
-								  scale_fill_manual(values = c(love_color(type = "deep")[1:6], love_color(type = "light")[1:8])) +
-								  plot_theme(legend.position = "right", title_size = 9, legend_size = 7,
-							  axis_title_size = 8)
-	} else {
-		dat$y = "1"
-		dat$x = factor(dat[["x"]], levels = sort(unique(dat[["x"]])))
-		data1 = dat %>%
-  	  dplyr::group_by(y) %>% dplyr::count(y, x) %>%
-  	  dplyr::mutate(percent = n / sum(n))
-		data1$xn = factor(data1$x, levels = rev(unique(data1$x)))
-		data1$target = factor(data1$y, levels = rev(unique(data1$y)))
-		relative_freq_hist <- ggplot(data1, aes(x = data1$y, y = data1$percent, fill = data1$x)) +
-  	  geom_bar(stat = "identity", position = position_stack()) +
-  	  geom_text(aes(label = paste(as_percent(data1$percent, digits = 3))),
-				size = ifelse(length(data1$x) > 10, 2.1,
-							  ifelse(length(data1$x) > 5, 2.5,
-									 ifelse(length(data1$x) > 3, 3, 3.3))), vjust = 1, hjust = 0, colour = 'white', position = position_stack()) +
-									 guides(fill = guide_legend(reverse = FALSE)) +
-									 ggtitle(paste("Relative Frequency of", x,"-",y)) +
-			 ylab("percent") + xlab(x) +
-								  scale_fill_manual(values = c(love_color(type = "deep")[1:6], love_color(type = "light")[1:8])) +
-								  plot_theme(legend.position = "right", title_size = 9, legend_size = 7,
-							  axis_title_size = 8)
-	}
-	return(relative_freq_hist)
+    if (class(dat[, x]) %in% c("numeric", "double",
+        "integer") && length(unique(dat[, x])) > g) {
+        if (is.null(x_breaks)) {
+            x_breaks = get_breaks(dat, x = x, g = g, equal_bins = TRUE, cut_bin = cut_bin)
+        }
+    }else {
+        dat[, x] = as.character(dat[, x])
+        dat = merge_category(dat = dat, char_list = x, m = g,note = FALSE)
+        x_breaks = unique(dat[, x])
+    }
+    dat$x = split_bins(dat = dat, x = x, breaks = x_breaks, bins_no = TRUE)
+    if (!is.null(y)) {
+        if (class(dat[, y]) %in% c("numeric", "double",
+            "integer") && length(unique(dat[, y])) > g) {
+            if (is.null(y_breaks)) {
+                y_breaks = get_breaks(dat, x = y, g = g, equal_bins = TRUE,
+                  cut_bin = cut_bin)
+            }
+        } else {
+            dat[, y] = as.character(dat[, y])
+            dat = merge_category(dat = dat, char_list = y, m = g,
+                note = FALSE)
+            y_breaks = unique(dat[, y])
+        }
+        dat$x = factor(dat[["x"]], levels = rev(sort(unique(dat[["x"]]))))
+        dat$y = split_bins(dat = dat, x = y, breaks = y_breaks,
+            bins_no = TRUE)
+        dat$y = factor(dat[["y"]], levels = rev(sort(unique(dat[["y"]]))))
+        data1 = dat %>% dplyr::group_by(y) %>% dplyr::count(y,
+            x) %>% dplyr::mutate(percent = n/sum(n))
+        data1$xn = factor(data1$x, levels = rev(unique(data1$x)))
+        data1$target = factor(data1$y, levels = rev(unique(data1$y)))
+        relative_freq_hist <- ggplot(data1, aes(x = data1$y,
+            y = data1$percent, fill = data1$x)) +
+			geom_bar(stat = "identity",
+					 position = position_stack()) +
+			geom_text(aes(label = paste(as_percent(data1$percent, digits = 3))),
+					  size = ifelse(length(data1$x) > 10, 2.1,
+									ifelse(length(data1$x) > 5, 2.5,
+										   ifelse(length(data1$x) > 3, 3, 3.3))),
+					  vjust = 0, hjust = 1, colour = "white",
+					  position = position_stack()) +
+			coord_flip(xlim = NULL, ylim = NULL,expand = FALSE, clip = "off") +
+            guides(fill = guide_legend(reverse = reverse)) +
+			ggtitle(paste("Relative Frequency of",x, "-", y)) +
+			ylab(x) +
+			xlab(y) +
+			scale_fill_manual(values = fill_colors) +
+			plot_theme(legend.position = "right",
+					   title_size = 9,
+					   legend_size = 7,
+					   axis_title_size = 8)
+    } else {
+        dat$y = "1"
+        dat$x = factor(dat[["x"]], levels = sort(unique(dat[["x"]])))
+        data1 = dat %>% dplyr::group_by(y) %>% dplyr::count(y,
+            x) %>% dplyr::mutate(percent = n/sum(n))
+        data1$xn = factor(data1$x, levels = rev(unique(data1$x)))
+        data1$target = factor(data1$y, levels = rev(unique(data1$y)))
+        relative_freq_hist <- ggplot(data1, aes(x = data1$y,
+            y = data1$percent, fill = data1$x)) + geom_bar(stat = "identity",
+            position = position_stack()) +
+			geom_text(aes(label = paste(as_percent(data1$percent,digits = 3))),
+					  size = ifelse(length(data1$x) > 10, 2.1,
+										 ifelse(length(data1$x) > 5, 2.5,
+												ifelse(length(data1$x) > 3, 3, 3.3))),
+					  vjust = 1,
+					  hjust = 0,
+					  colour = "white",
+					  position = position_stack()) +
+			guides(fill = guide_legend(reverse = reverse)) +
+            ggtitle(paste("Relative Frequency of", x, "-", y)) +
+			ylab("percent") +
+			xlab(x) +
+			scale_fill_manual(values = fill_colors) +
+			plot_theme(legend.position = "right",
+					   title_size = 9,
+					   legend_size = 7,
+					   axis_title_size = 8)
+    }
+    return(relative_freq_hist)
 }
-
 
 
 #' Plot Distribution
@@ -2878,11 +3191,11 @@ plot_distribution <- function(dat, x_list = NULL, dir_path = tempdir(), breaks_l
 		}
 		if (class(dat[, x]) %in% c("numeric", "double", "integer") && length(unique(dat[, x])) > 10) {
 			densitychart = plot_density(dat = dat, x = x, m = m)
-			barchart = plot_bar(dat = dat, x = x, g = g, breaks = breaks, cut_bin = cut_bin)
+			barchart = plot_bar(dat = dat, x = x, g = g, x_breaks = breaks, cut_bin = cut_bin)
 			distri_plot = multi_grid(grobs = list(densitychart, barchart), ncol = 2, nrow = 1)
 		} else {
 			relative_freqchart = plot_relative_freq_histogram(dat = dat, x = x)
-			barchart = plot_bar(dat = dat, x = x, g = g, breaks = breaks, cut_bin = cut_bin)
+			barchart = plot_bar(dat = dat, x = x, g = g, x_breaks = breaks, cut_bin = cut_bin)
 			distri_plot = multi_grid(grobs = list(relative_freqchart, barchart), ncol = 2, nrow = 1)
 		}
 		ggsave(paste0(dir_path, "/", x, ".png"),
@@ -2902,11 +3215,11 @@ plot_distribution_x <- function(dat, x, breaks = NULL, g = 10, m = 3, cut_bin = 
 	if (class(dat[, x]) %in% c("numeric", "double", "integer") && length(unique(dat[, x])) > 10) {
 
 		densitychart = plot_density(dat = dat, x = x, m = m, binwidth = binwidth)
-		barchart = plot_bar(dat = dat, x = x, g = g, breaks = breaks, cut_bin = cut_bin)
+		barchart = plot_bar(dat = dat, x = x, g = g, x_breaks = breaks, cut_bin = cut_bin)
 		distri_plot = multi_grid(grobs = list(densitychart, barchart), ncol = 2, nrow = 1)
 	} else {
 		relative_freqchart = plot_relative_freq_histogram(dat = dat, x = x)
-		barchart = plot_bar(dat = dat, x = x, g = g, breaks = breaks, cut_bin = cut_bin)
+		barchart = plot_bar(dat = dat, x = x, g = g, x_breaks = breaks, cut_bin = cut_bin)
 		distri_plot = multi_grid(grobs = list(relative_freqchart, barchart), ncol = 2, nrow = 1)
 	}
 	return(plot(distri_plot))

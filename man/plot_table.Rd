@@ -4,16 +4,30 @@
 \alias{plot_table}
 \title{plot_table}
 \usage{
-plot_table(grid_table, theme = c("cyan", "grey", "green", "red", "blue",
-  "purple"), title = NULL, title.size = 12, title.color = "black",
-  title.face = "bold", title.position = "middle", subtitle = NULL,
-  subtitle.size = 8, subtitle.color = "black",
-  subtitle.face = "plain", subtitle.position = "middle",
-  tile.color = "white", tile.size = 1, colname.size = 3,
-  colname.color = "white", colname.face = "bold",
-  colname.fill.color = love_color("dark_cyan"), text.size = 3,
-  text.color = love_color("dark_grey"), text.face = "plain",
-  text.fill.color = c("white", love_color("pale_grey")))
+plot_table(
+  grid_table,
+  theme = c("cyan", "grey", "green", "red", "blue", "purple"),
+  title = NULL,
+  title.size = 12,
+  title.color = "black",
+  title.face = "bold",
+  title.position = "middle",
+  subtitle = NULL,
+  subtitle.size = 8,
+  subtitle.color = "black",
+  subtitle.face = "plain",
+  subtitle.position = "middle",
+  tile.color = "white",
+  tile.size = 1,
+  colname.size = 3,
+  colname.color = "white",
+  colname.face = "bold",
+  colname.fill.color = love_color("dark_cyan"),
+  text.size = 3,
+  text.color = love_color("dark_grey"),
+  text.face = "plain",
+  text.fill.color = c("white", love_color("pale_grey"))
+)
 }
 \arguments{
 \item{grid_table}{A data.frame or table}

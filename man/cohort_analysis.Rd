@@ -6,13 +6,33 @@
 \title{cohort_analysis
 \code{cohort_analysis} is for cohort(vintage) analysis.}
 \usage{
-cohort_analysis(dat, obs_id = NULL, occur_time = NULL, MOB = NULL,
-  period = "monthly", status = NULL, amount = NULL, by_out = "cnt",
-  start_date = NULL, end_date = NULL, dead_status = 30)
+cohort_analysis(
+  dat,
+  obs_id = NULL,
+  occur_time = NULL,
+  MOB = NULL,
+  period = "monthly",
+  status = NULL,
+  amount = NULL,
+  by_out = "cnt",
+  start_date = NULL,
+  end_date = NULL,
+  dead_status = 30
+)
 
-cohort_table(dat, obs_id = NULL, occur_time = NULL, MOB = NULL,
-  period = "monthly", status = NULL, amount = NULL, by_out = "cnt",
-  start_date = NULL, end_date = NULL, dead_status = 30)
+cohort_table(
+  dat,
+  obs_id = NULL,
+  occur_time = NULL,
+  MOB = NULL,
+  period = "monthly",
+  status = NULL,
+  amount = NULL,
+  by_out = "cnt",
+  start_date = NULL,
+  end_date = NULL,
+  dead_status = 30
+)
 }
 \arguments{
 \item{dat}{A data.frame contained id, occur_time, mob, status ...}

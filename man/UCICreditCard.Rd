@@ -4,7 +4,9 @@
 \name{UCICreditCard}
 \alias{UCICreditCard}
 \title{UCI Credit Card data}
-\format{A data frame with 30000 rows and 26 variables.}
+\format{
+A data frame with 30000 rows and 26 variables.
+}
 \source{
 \url{http://archive.ics.uci.edu/ml/datasets/default+of+credit+card+clients}
 }

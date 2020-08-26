@@ -4,13 +4,31 @@
 \alias{feature_selector}
 \title{Feature Selection Wrapper}
 \usage{
-feature_selector(dat_train, dat_test = NULL, x_list = NULL,
-  target = NULL, pos_flag = NULL, occur_time = NULL,
-  ex_cols = NULL, filter = c("IV", "PSI", "XGB", "COR"),
-  cv_folds = 1, iv_cp = 0.01, psi_cp = 0.1, xgb_cp = 0,
-  cor_cp = 0.98, breaks_list = NULL, hopper = FALSE,
-  vars_name = TRUE, parallel = FALSE, note = TRUE, seed = 46,
-  save_data = FALSE, file_name = NULL, dir_path = tempdir(), ...)
+feature_selector(
+  dat_train,
+  dat_test = NULL,
+  x_list = NULL,
+  target = NULL,
+  pos_flag = NULL,
+  occur_time = NULL,
+  ex_cols = NULL,
+  filter = c("IV", "PSI", "XGB", "COR"),
+  cv_folds = 1,
+  iv_cp = 0.01,
+  psi_cp = 0.1,
+  xgb_cp = 0,
+  cor_cp = 0.98,
+  breaks_list = NULL,
+  hopper = FALSE,
+  vars_name = TRUE,
+  parallel = FALSE,
+  note = TRUE,
+  seed = 46,
+  save_data = FALSE,
+  file_name = NULL,
+  dir_path = tempdir(),
+  ...
+)
 }
 \arguments{
 \item{dat_train}{A data.frame with independent variables and target variable.}

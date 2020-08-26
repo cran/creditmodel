@@ -5,15 +5,29 @@
 \alias{derived_ts}
 \title{Derivation of Behavioral Variables}
 \usage{
-derived_ts_vars(dat, grx = NULL, td = NULL, ID = NULL,
-  ex_cols = NULL, x_list = NULL, der = c("cvs", "sums", "means",
-  "maxs", "max_mins", "time_intervals", "cnt_intervals", "total_pcts",
-  "cum_pcts", "partial_acfs"), parallel = TRUE, note = TRUE)
+derived_ts_vars(
+  dat,
+  grx = NULL,
+  td = NULL,
+  ID = NULL,
+  ex_cols = NULL,
+  x_list = NULL,
+  der = c("cvs", "sums", "means", "maxs", "max_mins", "time_intervals",
+    "cnt_intervals", "total_pcts", "cum_pcts", "partial_acfs"),
+  parallel = TRUE,
+  note = TRUE
+)
 
-derived_ts(dat, grx_x = NULL, x_list = NULL, td = NULL, ID = NULL,
-  ex_cols = NULL, der = c("cvs", "sums", "means", "maxs", "max_mins",
-  "time_intervals", "cnt_intervals", "total_pcts", "cum_pcts",
-  "partial_acfs"))
+derived_ts(
+  dat,
+  grx_x = NULL,
+  x_list = NULL,
+  td = NULL,
+  ID = NULL,
+  ex_cols = NULL,
+  der = c("cvs", "sums", "means", "maxs", "max_mins", "time_intervals",
+    "cnt_intervals", "total_pcts", "cum_pcts", "partial_acfs")
+)
 }
 \arguments{
 \item{dat}{A data.frame contained only predict variables.}

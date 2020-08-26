@@ -5,17 +5,37 @@
 \alias{process_nas_var}
 \title{missing Treatment}
 \usage{
-process_nas(dat, x_list = NULL, class_var = FALSE,
-  miss_values = list(-1, "missing"), default_miss = list(-1,
-  "missing"), parallel = FALSE, ex_cols = NULL, method = "median",
-  note = FALSE, save_data = FALSE, file_name = NULL,
-  dir_path = tempdir(), ...)
+process_nas(
+  dat,
+  x_list = NULL,
+  class_var = FALSE,
+  miss_values = list(-1, "missing"),
+  default_miss = list(-1, "missing"),
+  parallel = FALSE,
+  ex_cols = NULL,
+  method = "median",
+  note = FALSE,
+  save_data = FALSE,
+  file_name = NULL,
+  dir_path = tempdir(),
+  ...
+)
 
-process_nas_var(dat = dat, x, nas_rate = NULL,
-  default_miss = list("missing", -1), mat_nas_shadow = NULL,
-  dt_nas_random = NULL, missing_type = NULL, method = "median",
-  note = FALSE, save_data = FALSE, file_name = NULL,
-  dir_path = tempdir(), ...)
+process_nas_var(
+  dat = dat,
+  x,
+  missing_type = NULL,
+  method = "median",
+  nas_rate = NULL,
+  default_miss = list("missing", -1),
+  mat_nas_shadow = NULL,
+  dt_nas_random = NULL,
+  note = FALSE,
+  save_data = FALSE,
+  file_name = NULL,
+  dir_path = tempdir(),
+  ...
+)
 }
 \arguments{
 \item{dat}{A data.frame with independent variables.}
@@ -46,13 +66,13 @@ process_nas_var(dat = dat, x, nas_rate = NULL,
 
 \item{x}{The name of variable to process.}
 
+\item{missing_type}{Type of missing, genereted by code{\link{analysis_nas}}}
+
 \item{nas_rate}{A list contains nas rate of each variable.}
 
 \item{mat_nas_shadow}{A shadow matrix of variables which contain nas.}
 
 \item{dt_nas_random}{A data.frame with random nas imputation.}
-
-\item{missing_type}{Type of missing, genereted by code{\link{analysis_nas}}}
 }
 \value{
 A dat frame with no NAs.

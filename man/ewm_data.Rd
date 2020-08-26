@@ -4,7 +4,9 @@
 \name{ewm_data}
 \alias{ewm_data}
 \title{Entropy Weight Method Data}
-\format{A data frame with 10 rows and 13 variables.}
+\format{
+A data frame with 10 rows and 13 variables.
+}
 \description{
 This data is for Entropy Weight Method examples.
 }

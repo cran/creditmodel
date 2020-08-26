@@ -5,15 +5,33 @@
 \alias{get_bins_table}
 \title{Table of Binning}
 \usage{
-get_bins_table_all(dat, x_list = NULL, target = NULL,
-  pos_flag = NULL, dat_test = NULL, ex_cols = NULL,
-  breaks_list = NULL, parallel = FALSE, note = FALSE,
-  bins_total = TRUE, save_data = FALSE, file_name = NULL,
-  dir_path = tempdir())
+get_bins_table_all(
+  dat,
+  x_list = NULL,
+  target = NULL,
+  pos_flag = NULL,
+  dat_test = NULL,
+  ex_cols = NULL,
+  breaks_list = NULL,
+  parallel = FALSE,
+  note = FALSE,
+  bins_total = TRUE,
+  save_data = FALSE,
+  file_name = NULL,
+  dir_path = tempdir()
+)
 
-get_bins_table(dat, x, target = NULL, pos_flag = NULL,
-  dat_test = NULL, breaks = NULL, breaks_list = NULL,
-  bins_total = TRUE, note = FALSE)
+get_bins_table(
+  dat,
+  x,
+  target = NULL,
+  pos_flag = NULL,
+  dat_test = NULL,
+  breaks = NULL,
+  breaks_list = NULL,
+  bins_total = TRUE,
+  note = FALSE
+)
 }
 \arguments{
 \item{dat}{A data.frame with independent variables and target variable.}

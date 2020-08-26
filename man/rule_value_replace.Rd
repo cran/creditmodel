@@ -4,8 +4,12 @@
 \alias{rule_value_replace}
 \title{rule_value_replace}
 \usage{
-rule_value_replace(dat, rules_list, VALUE = 1:length(rules_list),
-  x_name = "x_level")
+rule_value_replace(
+  dat,
+  rules_list,
+  VALUE = 1:length(rules_list),
+  x_name = "x_level"
+)
 }
 \arguments{
 \item{dat}{A data.frame.}

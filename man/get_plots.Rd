@@ -5,18 +5,47 @@
 \alias{plot_vars}
 \title{Plot Independent Variables Distribution}
 \usage{
-get_plots(dat_train, dat_test = NULL, x_list = NULL, target = NULL,
-  ex_cols = NULL, breaks_list = NULL, pos_flag = NULL,
-  equal_bins = FALSE, cut_bin = "equal_depth", best = TRUE, g = 20,
-  tree_control = NULL, bins_control = NULL, plot_show = TRUE,
-  save_data = FALSE, file_name = NULL, parallel = FALSE,
-  g_width = 8, dir_path = tempdir())
+get_plots(
+  dat_train,
+  dat_test = NULL,
+  x_list = NULL,
+  target = NULL,
+  ex_cols = NULL,
+  breaks_list = NULL,
+  pos_flag = NULL,
+  equal_bins = FALSE,
+  cut_bin = "equal_depth",
+  best = TRUE,
+  g = 20,
+  tree_control = NULL,
+  bins_control = NULL,
+  plot_show = TRUE,
+  save_data = FALSE,
+  file_name = NULL,
+  parallel = FALSE,
+  g_width = 8,
+  dir_path = tempdir()
+)
 
-plot_vars(dat_train, x, target, dat_test = NULL, g_width = 8,
-  breaks_list = NULL, breaks = NULL, pos_flag = list("1", 1, "bad",
-  "positive"), equal_bins = TRUE, cut_bin = "equal_depth",
-  best = FALSE, g = 10, tree_control = NULL, bins_control = NULL,
-  plot_show = TRUE, save_data = FALSE, dir_path = tempdir())
+plot_vars(
+  dat_train,
+  x,
+  target,
+  dat_test = NULL,
+  g_width = 8,
+  breaks_list = NULL,
+  breaks = NULL,
+  pos_flag = list("1", 1, "bad", "positive"),
+  equal_bins = TRUE,
+  cut_bin = "equal_depth",
+  best = FALSE,
+  g = 10,
+  tree_control = NULL,
+  bins_control = NULL,
+  plot_show = TRUE,
+  save_data = FALSE,
+  dir_path = tempdir()
+)
 }
 \arguments{
 \item{dat_train}{A data.frame with independent variables and target variable.}

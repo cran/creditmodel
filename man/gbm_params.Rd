@@ -4,9 +4,16 @@
 \alias{gbm_params}
 \title{GBM Parameters}
 \usage{
-gbm_params(n.trees = 1000, interaction.depth = 6, shrinkage = 0.01,
-  bag.fraction = 0.5, train.fraction = 0.7, n.minobsinnode = 30,
-  cv.folds = 5, ...)
+gbm_params(
+  n.trees = 1000,
+  interaction.depth = 6,
+  shrinkage = 0.01,
+  bag.fraction = 0.5,
+  train.fraction = 0.7,
+  n.minobsinnode = 30,
+  cv.folds = 5,
+  ...
+)
 }
 \arguments{
 \item{n.trees}{Integer specifying the total number of trees to fit. This is equivalent to the number of iterations and the number of basis functions in the additive expansion. Default is 100.}

@@ -5,9 +5,17 @@
 \alias{check_data_format}
 \title{Read data}
 \usage{
-read_data(path, pattern = NULL, encoding = "unknown", header = TRUE,
-  sep = "auto", stringsAsFactors = FALSE, select = NULL,
-  drop = NULL, nrows = Inf)
+read_data(
+  path,
+  pattern = NULL,
+  encoding = "unknown",
+  header = TRUE,
+  sep = "auto",
+  stringsAsFactors = FALSE,
+  select = NULL,
+  drop = NULL,
+  nrows = Inf
+)
 
 check_data_format(path)
 }

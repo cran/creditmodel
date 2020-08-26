@@ -4,8 +4,13 @@
 \alias{city_varieble}
 \title{city_varieble}
 \usage{
-city_varieble(df = df, city_cols = NULL, city_pattern = NULL,
-  city_class = city_class, parallel = TRUE)
+city_varieble(
+  df = df,
+  city_cols = NULL,
+  city_pattern = NULL,
+  city_class = city_class,
+  parallel = TRUE
+)
 }
 \arguments{
 \item{df}{A data.frame.}

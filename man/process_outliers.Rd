@@ -5,13 +5,33 @@
 \alias{outliers_kmeans_lof}
 \title{Outliers Treatment}
 \usage{
-process_outliers(dat, target, ex_cols = NULL, kc = 3, kn = 5,
-  x_list = NULL, parallel = FALSE, note = FALSE, process = TRUE,
-  save_data = FALSE, file_name = NULL, dir_path = tempdir())
+process_outliers(
+  dat,
+  target,
+  ex_cols = NULL,
+  kc = 3,
+  kn = 5,
+  x_list = NULL,
+  parallel = FALSE,
+  note = FALSE,
+  process = TRUE,
+  save_data = FALSE,
+  file_name = NULL,
+  dir_path = tempdir()
+)
 
-outliers_kmeans_lof(dat, x, target = NULL, kc = 3, kn = 5,
-  note = FALSE, process = TRUE, save_data = FALSE,
-  file_name = NULL, dir_path = tempdir())
+outliers_kmeans_lof(
+  dat,
+  x,
+  target = NULL,
+  kc = 3,
+  kn = 5,
+  note = FALSE,
+  process = TRUE,
+  save_data = FALSE,
+  file_name = NULL,
+  dir_path = tempdir()
+)
 }
 \arguments{
 \item{dat}{Dataset with independent variables and target variable.}

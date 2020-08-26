@@ -5,19 +5,50 @@
 \alias{get_psi_iv}
 \title{Calculate IV & PSI}
 \usage{
-get_psi_iv_all(dat, dat_test = NULL, x_list = NULL, target,
-  ex_cols = NULL, pos_flag = NULL, breaks_list = NULL,
-  occur_time = NULL, oot_pct = 0.7, equal_bins = FALSE,
-  cut_bin = "equal_depth", tree_control = NULL, bins_control = NULL,
-  bins_total = FALSE, best = TRUE, g = 10, as_table = TRUE,
-  note = FALSE, parallel = FALSE, bins_no = TRUE)
+get_psi_iv_all(
+  dat,
+  dat_test = NULL,
+  x_list = NULL,
+  target,
+  ex_cols = NULL,
+  pos_flag = NULL,
+  breaks_list = NULL,
+  occur_time = NULL,
+  oot_pct = 0.7,
+  equal_bins = FALSE,
+  cut_bin = "equal_depth",
+  tree_control = NULL,
+  bins_control = NULL,
+  bins_total = FALSE,
+  best = TRUE,
+  g = 10,
+  as_table = TRUE,
+  note = FALSE,
+  parallel = FALSE,
+  bins_no = TRUE
+)
 
-get_psi_iv(dat, dat_test = NULL, x, target, pos_flag = NULL,
-  breaks = NULL, breaks_list = NULL, occur_time = NULL,
-  oot_pct = 0.7, equal_bins = FALSE, cut_bin = "equal_depth",
-  tree_control = NULL, bins_control = NULL, bins_total = FALSE,
-  best = TRUE, g = 10, as_table = TRUE, note = FALSE,
-  bins_no = TRUE)
+get_psi_iv(
+  dat,
+  dat_test = NULL,
+  x,
+  target,
+  pos_flag = NULL,
+  breaks = NULL,
+  breaks_list = NULL,
+  occur_time = NULL,
+  oot_pct = 0.7,
+  equal_bins = FALSE,
+  cut_bin = "equal_depth",
+  tree_control = NULL,
+  bins_control = NULL,
+  bins_total = FALSE,
+  best = TRUE,
+  g = 10,
+  as_table = TRUE,
+  note = FALSE,
+  bins_no = TRUE
+)
 }
 \arguments{
 \item{dat}{A data.frame with independent variables and target variable.}

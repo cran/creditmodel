@@ -4,7 +4,12 @@
 \alias{time_variable}
 \title{time_variable}
 \usage{
-time_variable(dat, date_cols = NULL, enddate = NULL)
+time_variable(
+  dat,
+  date_cols = NULL,
+  enddate = NULL,
+  units = c("secs", "mins", "hours", "days", "weeks")
+)
 }
 \arguments{
 \item{dat}{A data.frame.}
@@ -12,6 +17,8 @@ time_variable(dat, date_cols = NULL, enddate = NULL)
 \item{date_cols}{Time variables.}
 
 \item{enddate}{End time.}
+
+\item{units}{Units of diff_time, "secs", "mins", "hours", "days", "weeks" is available.}
 }
 \description{
 This function is not intended to be used by end user.

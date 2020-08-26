@@ -4,8 +4,7 @@
 \alias{derived_interval}
 \title{derived_interval}
 \usage{
-derived_interval(dat_s, interval_type = c("cnt_interval",
-  "time_interval"))
+derived_interval(dat_s, interval_type = c("cnt_interval", "time_interval"))
 }
 \arguments{
 \item{dat_s}{A data.frame contained only predict variables.}

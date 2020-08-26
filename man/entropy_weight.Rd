@@ -4,12 +4,10 @@
 \alias{entropy_weight}
 \title{Entropy Weight Method}
 \usage{
-entropy_weight(dat, ID = NULL, pos_vars, neg_vars)
+entropy_weight(dat, pos_vars, neg_vars)
 }
 \arguments{
 \item{dat}{A data.frame with independent variables.}
-
-\item{ID}{The name of ID variable.}
 
 \item{pos_vars}{Names or index of positive direction variables, the bigger the better.}
 
@@ -30,7 +28,7 @@ Step4 Calculate redundancy.
 Step5 Calculate the weight of each index.
 }
 \examples{
-entropy_weight(dat = ewm_data,ID = "ID",
-              pos_vars = -c(7,11),
+entropy_weight(dat = ewm_data,
+              pos_vars = c(6,8,9,10),
               neg_vars = c(7,11))
 }

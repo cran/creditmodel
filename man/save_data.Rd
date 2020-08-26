@@ -4,9 +4,16 @@
 \alias{save_data}
 \title{Save data}
 \usage{
-save_data(..., files = list(...),
-  file_name = as.character(substitute(list(...))), dir_path = getwd(),
-  note = FALSE, as_list = FALSE, row_names = FALSE, append = FALSE)
+save_data(
+  ...,
+  files = list(...),
+  file_name = as.character(substitute(list(...))),
+  dir_path = getwd(),
+  note = FALSE,
+  as_list = FALSE,
+  row_names = FALSE,
+  append = FALSE
+)
 }
 \arguments{
 \item{...}{datasets}

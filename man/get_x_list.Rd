@@ -4,8 +4,13 @@
 \alias{get_x_list}
 \title{Get X List.}
 \usage{
-get_x_list(dat_train = NULL, dat_test = NULL, x_list = NULL,
-  ex_cols = NULL, note = FALSE)
+get_x_list(
+  dat_train = NULL,
+  dat_test = NULL,
+  x_list = NULL,
+  ex_cols = NULL,
+  note = FALSE
+)
 }
 \arguments{
 \item{dat_train}{A data.frame with independent variables.}

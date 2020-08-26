@@ -5,14 +5,36 @@
 \alias{high_cor_filter}
 \title{high_cor_filter}
 \usage{
-fast_high_cor_filter(dat, p = 0.95, x_list = NULL, com_list = NULL,
-  ex_cols = NULL, save_data = FALSE, cor_class = TRUE,
-  vars_name = TRUE, parallel = FALSE, note = FALSE,
-  file_name = NULL, dir_path = tempdir(), ...)
+fast_high_cor_filter(
+  dat,
+  p = 0.95,
+  x_list = NULL,
+  com_list = NULL,
+  ex_cols = NULL,
+  save_data = FALSE,
+  cor_class = TRUE,
+  vars_name = TRUE,
+  parallel = FALSE,
+  note = FALSE,
+  file_name = NULL,
+  dir_path = tempdir(),
+  ...
+)
 
-high_cor_filter(dat, com_list = NULL, x_list = NULL, ex_cols = NULL,
-  onehot = TRUE, parallel = FALSE, p = 0.7, file_name = NULL,
-  dir_path = tempdir(), save_data = FALSE, note = FALSE, ...)
+high_cor_filter(
+  dat,
+  com_list = NULL,
+  x_list = NULL,
+  ex_cols = NULL,
+  onehot = TRUE,
+  parallel = FALSE,
+  p = 0.7,
+  file_name = NULL,
+  dir_path = tempdir(),
+  save_data = FALSE,
+  note = FALSE,
+  ...
+)
 }
 \arguments{
 \item{dat}{A data.frame with independent variables.}

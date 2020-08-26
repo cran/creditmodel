@@ -4,8 +4,13 @@
 \alias{high_cor_selector}
 \title{Compare the two highly correlated variables}
 \usage{
-high_cor_selector(cor_mat, p = 0.95, x_list = NULL, com_list = NULL,
-  retain = TRUE)
+high_cor_selector(
+  cor_mat,
+  p = 0.95,
+  x_list = NULL,
+  com_list = NULL,
+  retain = TRUE
+)
 }
 \arguments{
 \item{cor_mat}{A correlation matrix.}

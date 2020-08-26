@@ -4,8 +4,13 @@
 \alias{remove_duplicated}
 \title{Remove Duplicated Observations}
 \usage{
-remove_duplicated(dat = dat, obs_id = NULL, occur_time = NULL,
-  target = NULL, note = FALSE)
+remove_duplicated(
+  dat = dat,
+  obs_id = NULL,
+  occur_time = NULL,
+  target = NULL,
+  note = FALSE
+)
 }
 \arguments{
 \item{dat}{A data frame with x and target.}

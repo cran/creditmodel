@@ -4,8 +4,12 @@
 \alias{data_exploration}
 \title{Data Exploration}
 \usage{
-data_exploration(dat, save_data = FALSE, file_name = NULL,
-  dir_path = tempdir())
+data_exploration(
+  dat,
+  save_data = FALSE,
+  file_name = NULL,
+  dir_path = tempdir()
+)
 }
 \arguments{
 \item{dat}{A data.frame with x and target.}

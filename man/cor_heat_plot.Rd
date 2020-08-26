@@ -4,8 +4,12 @@
 \alias{cor_heat_plot}
 \title{Correlation Heat Plot}
 \usage{
-cor_heat_plot(cor_mat, low_color = love_color("deep_red"),
-  high_color = love_color("light_cyan"), title = "Correlation Matrix")
+cor_heat_plot(
+  cor_mat,
+  low_color = love_color("deep_red"),
+  high_color = love_color("light_cyan"),
+  title = "Correlation Matrix"
+)
 }
 \arguments{
 \item{cor_mat}{A correlation matrix.}
