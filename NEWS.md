@@ -1,3 +1,8 @@
+# creditmodel-1.2.6
+
+**In this version I have:**
+* Fixed some bugs in `cohort_analysis`,`time_transfer`,`get_ctree_rules`.
+
 # creditmodel-1.2.5
 
 **In this version I have:**

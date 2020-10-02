@@ -113,165 +113,197 @@ customer_segmentation <- function(dat, x_list = NULL, ex_cols = NULL,
 #' @param start_date The earliest occurrence time of observations.
 #' @param end_date The latest occurrence time of observations.
 #' @param dead_status Status of dead observations.
+#' @param due_day The name of the variable that represents the time at the end of MOB.
+#' @param all_due All observations are due.
+#' @param group A group of observations.
 #' @importFrom dplyr group_by mutate summarize  summarise n  count %>% filter left_join
 #' @importFrom data.table dcast melt fread fwrite
 #' @export
 
-cohort_analysis <- function(dat, obs_id = NULL, occur_time = NULL, MOB = NULL,
-         period = "monthly", status = NULL, amount = NULL, by_out = "cnt",
-         start_date = NULL, end_date = NULL, dead_status = 30) {
+cohort_analysis = function (dat, 
+                            obs_id = NULL, 
+                            occur_time = NULL, 
+                            MOB = NULL, 
+                            group = NULL,
+                            due_day = NULL,
+                            period = "monthly", 
+                            status = NULL, 
+                            amount = NULL, 
+                            by_out = "cnt", 
+                            start_date = NULL, 
+                            end_date = NULL, 
+                            dead_status = 30,
+                            all_due = TRUE){
   dat = checking_data(dat = dat, occur_time = occur_time)
   dat = time_transfer(dat, date_cols = occur_time)
-  ID = Cohort_Period = Cohort_Group = sta = amt = NULL
-  Cohort_Group= Cohort_Period =Events= Events_rate= Opening_Total= Retention_Total =cohor_dat= final_Events =m_a= max_age=NULL
+  ID = Cohort_Period = Cohort_Group = sta = amt = due = is_due = NULL
+  Cohort_Group = Cohort_Period = Events = Events_rate = Opening_Total = Retention_Total = cohor_dat = final_Events = m_a = max_age = NULL
   if (!is.null(occur_time) && is.null(start_date)) {
     start_date = date_cut(dat_time = dat[, occur_time], pct = 0)
   }
   if (!is.null(occur_time) && is.null(end_date)) {
     end_date = date_cut(dat_time = dat[, occur_time], pct = 1)
   }
-  dat = dat[which(dat[, occur_time] >= start_date & dat[, occur_time] <= end_date),]
-  if (period == "weekly") {
-    dat$Cohort_Group <- cut(dat[, occur_time], breaks = "week")
-  } else {
-    if(period == "monthly"){
-      dat$Cohort_Group = cut(dat[, occur_time], breaks = "month")
-    }else{
-
-      dat$Cohort_Group = cut(dat[, occur_time], breaks = "day")
+  if(!is.null(group)){
+    dat$Cohort_Group = as.character(dat[,group])
+  }else{
+    if(!is.null(occur_time)){
+      dat[, occur_time] = as.Date(dat[, occur_time])
+      dat = dat[which(dat[, occur_time] >= start_date & dat[, occur_time] <= 
+                        end_date), ]
+      if (period == "weekly") {
+        dat$Cohort_Group = gsub("-01$","",cut(dat[, occur_time], breaks = "week"))
+      }else{
+        if (period == "monthly") {
+          dat$Cohort_Group = gsub("-01$","",cut(dat[, occur_time], breaks = "month"))
+        }else{
+          dat$Cohort_Group = "all"
+        }
+      }
     }
-
   }
   if (!is.null(MOB)) {
     dat$Cohort_Period = as.numeric(dat[, MOB])
-  } else {
+  }else {
     if (!is.null(obs_id)) {
       dat$ID = dat[, obs_id]
-      dat = dat %>%
-        dplyr::group_by(ID) %>%
-        dplyr::mutate(Cohort_Period = seq(1, length(ID)) - 1,max_age = max(Cohort_Period) ) %>%
-        dplyr::ungroup() %>%
-        dplyr::group_by(Cohort_Group) %>% dplyr::mutate(m_a = median(max_age)) %>%
-        dplyr::ungroup() %>%
-        dplyr::filter(Cohort_Period <= m_a) %>%
-        dplyr::select(-m_a,-max_age)%>% as.data.frame
-
-    } else {
+      dat = dat %>% dplyr::group_by(ID) %>% dplyr::mutate(Cohort_Period = seq(1, 
+                                                                              length(ID)), 
+                                                          max_age = max(Cohort_Period)) %>% 
+        dplyr::ungroup() %>% dplyr::group_by(Cohort_Group) %>% 
+        dplyr::mutate(m_a = median(max_age)) %>% dplyr::ungroup() %>% 
+        dplyr::filter(Cohort_Period <= m_a) %>% dplyr::select(-m_a, 
+                                                              -max_age) %>% as.data.frame()
+    }else {
       stop("MOB & obs_id  are both missing.\n")
     }
   }
-
-  dat <- dat %>% filter(Cohort_Period != 'NA') %>% as.data.frame
-
+  dat = dat %>% filter(Cohort_Period != "NA") %>% as.data.frame()
   if (!is.null(status)) {
     dat$sta = dat[, status]
-  if (by_out == "amt" && !is.null(amount)) {
-    #amount
-    dat$amt = as.numeric(dat[, amount])
-    dat1 = dat %>%
-      dplyr::group_by(Cohort_Group, Cohort_Period) %>%
-      dplyr::summarise(Retention_Total = round(sum(amt, na.rm = TRUE), 0))
-
-    if (length(unique(dat$sta)) > 1) {
-      if (!is.null(dead_status)) {
-        if (is.numeric(dead_status)) {
-          dat$sta = as.numeric(dat$sta)
-          dat2 = dat %>%
-            dplyr::filter(sta > dead_status) %>%
-            dplyr::group_by(Cohort_Group, Cohort_Period) %>%
-            dplyr::summarise( Events = round(sum(amt, na.rm = TRUE), 0))
-        } else {
-          if (is.character(dead_status)) {
-            if (is.element(dead_status, unique(dat$sta))) {
-              dat2 = dat %>%
-                dplyr::filter(status == dead_status) %>%
-                dplyr::group_by(Cohort_Group, Cohort_Period) %>%
-                dplyr::summarise(Events = round(sum(amt, na.rm = TRUE), 0))
-            } else {
-              stop("dead_status is not one of status.\n")
-            }
-          } else {
-            stop("dead_status is neither numeric nor character.\n")
-          }
-        }
-      } else {
-        stop("dead_status is missing.\n")
-      }
-    } else {
-      stop("the unique value of status is less than one.\n")
-    }
-
-  } else {
-    #count
-    dat1 = dat %>% dplyr::group_by(Cohort_Group, Cohort_Period) %>%
-      dplyr::count(Cohort_Group, Cohort_Period,name = "Retention_Total") %>%
-      as.data.frame
-
-    if (length(unique(dat$sta)) > 1) {
-      if (!is.null(dead_status)) {
-        if (is.numeric(dead_status)) {
-          dat$sta = as.numeric(dat$sta)
-          dat2 = dat %>%
-            dplyr::filter(sta > dead_status) %>%
-            dplyr::group_by(Cohort_Group, Cohort_Period) %>%
-            dplyr::count(Cohort_Group, Cohort_Period,name = "Events") %>%
-            as.data.frame
-        } else {
-          if (is.character(dead_status)) {
-            if (is.element(dead_status, unique(dat$sta))) {
-              dat2 = dat %>%
-                dplyr::filter(sta == dead_status) %>%
-                dplyr::group_by(Cohort_Group, Cohort_Period) %>%
-                dplyr::count(Cohort_Group, Cohort_Period, name = "Events") %>%
-                as.data.frame
-            } else {
-              stop("dead_status is not one of status.\n")
-            }
-          } else {
-            stop("dead_status is neither numeric nor character.\n")
-          }
-        }
-      } else {
-        stop("dead_status is missing.\n")
-      }
-
-    } else {
-      stop("the unique value of status is less than one.\n")
-    }
-
-  }
-  dat3 = dplyr::left_join(dat1, dat2, by = c("Cohort_Group","Cohort_Period"))
-  dat4 = dat3 %>% group_by(Cohort_Group)%>% filter(Cohort_Period == min(Cohort_Period))  %>%
-    summarise(Opening_Total = Retention_Total )   %>%
-    ungroup
-  dat5 = dat3 %>% group_by(Cohort_Group) %>% filter(Cohort_Period == max(Cohort_Period))  %>%
-    summarise(final_Events = Events ) %>%
-    ungroup
-  dat6 = merge(dat4, dat5, by = c("Cohort_Group"), all.x =TRUE) %>%
-    mutate(Current_rate = round(final_Events/Opening_Total,4))
-  dat7 = merge(dat3, dat6,by = c("Cohort_Group"), all.x =TRUE) %>%
-    mutate(Events_rate = round(Events/Opening_Total, 4),
-           Retention_rate = round(Retention_Total/Opening_Total, 4))
-
-  }else{
-    if (by_out == "amt" && !is.null(amount)) {
-      #amount
-      dat$amt = as.numeric(dat[, amount])
-      dat1 = dat %>%
-        dplyr::group_by(Cohort_Group, Cohort_Period) %>%
-        dplyr::summarise(Retention_Total = round(sum(amt, na.rm = TRUE), 0))
+    if(!is.null(due_day)){
+      dat = dat %>%  mutate(due = as.numeric(max(due_day,na.rm = TRUE) - due_day)) %>%
+        group_by(Cohort_Group,Cohort_Period) %>% 
+        mutate(is_due = ifelse(due > dead_status ,1,0)) %>%  
+        group_by(Cohort_Group,Cohort_Period) %>%    
+        mutate(is_all_due = ifelse(all(is_due == 1),1,0)) %>%  ungroup()
     }else{
-      #count
-      dat1 = dat %>% dplyr::group_by(Cohort_Group, Cohort_Period) %>%
-        dplyr::count(Cohort_Group, Cohort_Period,name = "Retention_Total") %>%
-        as.data.frame
+      dat$is_due = 1
     }
-    dat4 = dat1 %>% group_by(Cohort_Group)%>% filter(Cohort_Period == min(Cohort_Period))  %>%
-      summarise(Opening_Total = Retention_Total )   %>%
-      ungroup
-    dat7 = merge(dat1, dat4,by = c("Cohort_Group"), all.x =TRUE) %>%
-      mutate(Retention_rate = round(Retention_Total/Opening_Total, 4))
-
+    if(all_due){
+      fil_list = list("is_due>0 & is_all_due > 0")
+      sta_fil_list = list("is_due>0 & is_all_due > 0 & sta > dead_status ")
+    }else{
+      fil_list = list("is_due > 0" )
+      sta_fil_list = list("is_due > 0 & sta > dead_status")
+    }
+    
+    if (by_out == "amt" && !is.null(amount)) {
+      dat$amt = as.numeric(unlist(dat[,amount]))
+      
+      dat1 = dat  %>% rules_filter(rules_list = fil_list,drop = FALSE) %>% 
+        dplyr::group_by(Cohort_Group, Cohort_Period) %>% 
+        dplyr::summarise(Retention_Total = round(sum(amt,na.rm = TRUE), 0))
+      if (length(unique(dat$sta)) > 1) {
+        if (!is.null(dead_status)) {
+          if (is.numeric(dead_status)) {
+            dat$sta = as.numeric(unlist(dat$sta))
+            dat2 = dat %>%  rules_filter(rules_list = sta_fil_list,drop = FALSE) %>% 
+              dplyr::group_by(Cohort_Group, Cohort_Period) %>% 
+              dplyr::summarise(Events = round(sum(amt,na.rm = TRUE), 0))
+          } else {
+            if (is.character(dead_status)) {
+              if (is.element(dead_status, unique(dat$sta))) {
+                dat2 = dat %>% dplyr::filter(status ==dead_status) %>% 
+                  dplyr::group_by(Cohort_Group, Cohort_Period) %>%
+                  dplyr::summarise(Events = round(sum(amt,na.rm = TRUE), 0))
+              }else {
+                stop("dead_status is not one of status.\n")
+              }
+            }else {
+              stop("dead_status is neither numeric nor character.\n")
+            }
+          }
+        } else {
+          stop("dead_status is missing.\n")
+        }
+      } else {
+        stop("the unique value of status is less than one.\n")
+      }
+    } else {
+      
+      dat1 = dat %>% rules_filter(rules_list = fil_list,drop = FALSE)  %>% dplyr::group_by(Cohort_Group, Cohort_Period) %>% 
+        dplyr::count(Cohort_Group, Cohort_Period, name = "Retention_Total") %>% 
+        as.data.frame()
+      if (length(unique(dat$sta)) > 1) {
+        if (!is.null(dead_status)){
+          if (is.numeric(dead_status)){
+            dat$sta = as.numeric(dat$sta)
+            dat2 = dat %>% rules_filter(rules_list = sta_fil_list,drop = FALSE)  %>% 
+              dplyr::group_by(Cohort_Group, Cohort_Period) %>% 
+              dplyr::count(Cohort_Group, Cohort_Period, 
+                           name = "Events") %>% as.data.frame(stringsAsFactors = FALSE)
+          }
+          else {
+            if (is.character(dead_status)) {
+              if (is.element(dead_status, unique(dat$sta))) {
+                dat2 = dat %>% dplyr::filter(sta == dead_status) %>% 
+                  dplyr::group_by(Cohort_Group, Cohort_Period) %>% 
+                  dplyr::count(Cohort_Group, Cohort_Period, 
+                               name = "Events") %>% as.data.frame(stringsAsFactors = FALSE)
+              }
+              else {
+                stop("dead_status is not one of status.\n")
+              }
+            }
+            else {
+              stop("dead_status is neither numeric nor character.\n")
+            }
+          }
+        }
+        else {
+          stop("dead_status is missing.\n")
+        }
+      }
+      else {
+        stop("the unique value of status is less than one.\n")
+      }
+    }
+    dat3 = dplyr::left_join(dat1, dat2, by = c("Cohort_Group", 
+                                               "Cohort_Period"))
+    dat4 = dat3 %>% group_by(Cohort_Group) %>% filter(Cohort_Period == 
+                                                        min(Cohort_Period,na.rm = TRUE)) %>% 
+      summarise(Opening_Total = Retention_Total) %>% 
+      ungroup()
+    dat5 = dat3 %>% group_by(Cohort_Group) %>% filter(Cohort_Period == 
+                                                        max(Cohort_Period,na.rm = TRUE)) %>%
+      summarise(final_Events = Events) %>% 
+      ungroup()
+    dat6 = merge(dat4, dat5, by = c("Cohort_Group"), 
+                 all.x = TRUE) %>% mutate(Current_rate = round(final_Events/Opening_Total, 
+                                                               4))
+    dat7 = merge(dat3, dat6, by = c("Cohort_Group"), 
+                 all.x = TRUE) %>% mutate(Events_rate = round(Events/Opening_Total, 
+                                                              4), 
+                                          Retention_rate = round(Retention_Total/Opening_Total,  4))
+  } else {
+    if (by_out == "amt" && !is.null(amount)) {
+      dat$amt = as.numeric(dat[, amount])
+      dat1 = dat %>% dplyr::group_by(Cohort_Group, Cohort_Period) %>% 
+        dplyr::summarise(Retention_Total = round(sum(amt, 
+                                                     na.rm = TRUE), 0))
+    }else {
+      dat1 = dat %>% dplyr::group_by(Cohort_Group, Cohort_Period) %>% 
+        dplyr::count(Cohort_Group, Cohort_Period, name = "Retention_Total") %>% 
+        as.data.frame()
+    }
+    dat4 = dat1 %>% group_by(Cohort_Group) %>% filter(Cohort_Period == 
+                                                        min(Cohort_Period)) %>% summarise(Opening_Total = Retention_Total) %>% 
+      ungroup()
+    dat7 = merge(dat1, dat4, by = c("Cohort_Group"), 
+                 all.x = TRUE) %>% 
+      mutate(Retention_rate = round(Retention_Total/Opening_Total,  4)) %>% 
+      as.data.frame(stringsAsFactors = FALSE)
   }
   return(dat7)
 }
@@ -281,29 +313,40 @@ cohort_analysis <- function(dat, obs_id = NULL, occur_time = NULL, MOB = NULL,
 #' @rdname cohort_analysis
 #' @export
 
-cohort_table <- function(dat, obs_id = NULL, occur_time = NULL, MOB = NULL,
-                        period = "monthly", status = NULL, amount = NULL, by_out = "cnt",
-                        start_date = NULL, end_date = NULL, dead_status = 30){
-  Cohort_Group= Cohort_Period =Events= Events_rate= Opening_Total= Retention_Total =cohor_dat= final_Events =m_a= max_age=NULL
-  dat1 = cohort_analysis(dat = dat , obs_id = obs_id,
-                         occur_time = occur_time, MOB = MOB,
-                         period =period, status = status,
-                         amount = amount, by_out = by_out,
-                         start_date = start_date, end_date = end_date,
-                         dead_status = dead_status)
-	if(!is.null(status)){
-	  value_var = "Events_rate"
-	}else{
-	 value_var = "Retention_rate"
-	}
+cohort_table = function (dat, 
+                            obs_id = NULL, 
+                            occur_time = NULL, 
+                            MOB = NULL, 
+                            group = NULL,
+                            due_day = NULL,
+                            period = "monthly", 
+                            status = NULL, 
+                            amount = NULL, 
+                            by_out = "cnt", 
+                            start_date = NULL, 
+                            end_date = NULL, 
+                            dead_status = 30,
+                            all_due = TRUE) 
+{
+  Cohort_Group = Cohort_Period = Events = Events_rate = Opening_Total = Retention_Total = cohor_dat = final_Events = m_a = max_age = NULL
+  dat1 = cohort_analysis(dat = dat, obs_id = obs_id, occur_time = occur_time, group = group,
+                         MOB = MOB, period = period, due_day = due_day,status = status, amount = amount, 
+                         by_out = by_out, start_date = start_date, end_date = end_date, 
+                         dead_status = dead_status,all_due = all_due)
+  if (!is.null(status)) {
+    value_var = "Events_rate"
+  }
+  else {
+    value_var = "Retention_rate"
+  }
   dat1 = as.data.table(dat1)
-  dat4 = data.table::dcast(dat1, Cohort_Group ~ Cohort_Period,
-                           value.var = value_var) %>% as.data.frame()
-  dat4[-1] = data.frame(lapply(dat4[-1], function(x){
+  dat4 = data.table::dcast(dat1, Cohort_Group ~ Cohort_Period, 
+                           value.var = value_var) %>% as.data.frame(stringsAsFactors = FALSE)
+  dat4[-1] = data.frame(lapply(dat4[-1], function(x) {
     x = as_percent(x, 4)
     sub("NA|NaN|Inf", "", as.character(x))
   }), stringsAsFactors = FALSE)
- return(dat4)
+  return(dat4)
 }
 
 #' Parse desision tree rules
@@ -334,264 +377,278 @@ cohort_table <- function(dat, obs_id = NULL, occur_time = NULL, MOB = NULL,
 #' @importFrom rpart rpart rpart.control
 #' @export
 
-get_ctree_rules = function(tree_fit = NULL, train_dat = NULL, target = NULL, test_dat = NULL, tree_control = list(p = 0.05, cp = 0.0001,
-											   xval = 1, maxdepth = 10), seed = 46) {
-	opt = options(scipen = 200, stringsAsFactors = FALSE, digits = 6) #
-	rules_list = split_rule = terminal_nodes = nodes_no = depth = node_rules = NULL
-
-	if (is.null(tree_fit)) {
-		cp = ifelse(!is.null(tree_control[["cp"]]), tree_control[["cp"]], 0.00001)
-		xval = ifelse(!is.null(tree_control[["xval"]]), tree_control[["xval"]], 5)
-		maxdepth = ifelse(!is.null(tree_control[["maxdepth"]]), tree_control[["maxdepth"]], 10)
-		p = ifelse(!is.null(tree_control[["p"]]), tree_control[["p"]], 0.02)
-		set.seed(seed)
-		trcontrol <- rpart.control(minbucket = round(nrow(train_dat) * p),
-							   cp = cp,
-							   xval = xval,
-							   maxdepth = maxdepth)
-
-		Formula <- as.formula(paste(target, ".", sep = ' ~ '))
-		tree_fit = rpart(data = train_dat, Formula
-					 , control = trcontrol
-					 , parms = list(split = "information"))
-	}
-
-	if (!is.null(tree_fit) && class(tree_fit)[1] == "rpart") {
-		rules_list = capture.output(tree_fit)[-c(1:5)]
-		split_rule = strsplit(rules_list, ")|;")
-		terminal_nodes = sapply(split_rule, function(x) x[[1]][1])
-		node_rules$tree_nodes = 1:length(terminal_nodes)
-		nodes_no = as.numeric(row.names(tree_fit$frame))
-		node_rules$depth = floor(log(nodes_no, base = 2) + 1e-07) + 1
-		rownam = 1:length(terminal_nodes)
-		tree_rules = sapply(1:length(terminal_nodes), function(x) as.character(split_rule[x][[1]][2]))
-		#split node rules
-		tree_rules_split = strsplit(tree_rules, "\\s{1,10}")
-
-		node_rules$tree_rules = sapply(tree_rules_split, function(x) {
-			x = x[which(x != "")]
-			y = NULL
-			if (any(grepl("<", x))) {
-				y = paste(x[1], x[2])
-			} else {
-				if (any(grepl("=", x)) & !any(grepl(">=", x))) {
-					x_1 = strsplit(x, "=")[[1]]
-					z = strsplit(x_1[2], split = '\\,')
-					if (length(unlist(z)) > 1) {
-						y = paste(x_1[1], "%in%", z)
-						y = gsub("\"", "'", y)
-					} else {
-						y = paste0(x_1[1], '==', "'", z, "'")
-					}
-				} else {
-					y = x[1]
-
-				}
-			}
-			y
-		})
-		node_rules = as.data.frame(node_rules)
-		terminal_tree_nodes = which(grepl("\\*", rules_list))
-		tree_where = data.frame(tree_nodes = as.integer(tree_fit$where), target = as.character(unlist(tree_fit$y)))
-		target = as.character(tree_fit$terms[[2]])
-
-	} else {
-		if (class(tree_fit)[1] == "BinaryTree") {
-			rules_list = capture.output(tree_fit@tree)
-			split_rule = strsplit(rules_list, ")|;")
-			tree_nodes = sapply(split_rule, function(x) x[[1]][1])
-			depth = (nchar(gsub("\\d{1,4}", "", tree_nodes))) / 2 + 1
-			tree_rules = sapply(1:length(split_rule), function(x) as.character(split_rule[x][[1]][2]))
-			node_rules = data.frame(tree_nodes = as.integer(tree_nodes),
-							  depth = depth, tree_rules = as.character(tree_rules),
-							  row.names = 1:length(tree_nodes), stringsAsFactors = FALSE)
-
-			node_rules$tree_rules = sapply(tree_rules, function(x) {
-				x = x[which(x != "")]
-				y = NULL
-				if (any(grepl("<", x))) {
-					y = paste(x[1], x[2])
-				} else {
-					if (any(grepl("==", x)) & !any(grepl(">=", x))) {
-						x_1 = strsplit(x, "==")[[1]]
-						x_1 = gsub("\\{|\\}| ", "", x_1)
-						z = strsplit(x_1[2], split = '\\,')
-						if (length(unlist(z)) > 1) {
-							y = paste(x_1[1], "%in%", z)
-							y = gsub("\"", "'", y)
-						} else {
-							y = paste0(x_1[1], '==', "'", z, "'")
-						}
-					} else {
-						y = x[1]
-					}
-				}
-				y
-			})
-
-			terminal_tree_nodes = which(!grepl("*>[:digit:]*|*<=[:digit:]*|==", rules_list))
-			rownam = as.integer(rownames(node_rules))
-			node_rules[terminal_tree_nodes, "tree_rules"] = ""
-			tree_where = data.frame(tree_nodes = as.integer(tree_fit@where),
-							  target = as.character(unlist(tree_fit@responses@variables)))
-			target = names(tree_fit@responses@variables)
-		} else {
-			stop("Support only rpart tree & ctree (party package).\n")
-		}
-	}
-	terminal_rules = train_sum = rule_no = c_rules = final_rules = train_ks = dt_rules = dt_rules_k = NULL
-	for (i in terminal_tree_nodes) {
-		inds = ifelse(any(node_rules$tree_rules == "root"), 2, 1)
-		c_rules = sapply(inds:node_rules$depth[i], function(j) {
-			rule_no = which(rownam == max(which(node_rules$depth == j & rownam <= rownam[i])))
-			node_rules$tree_rules[rule_no]
-		})
-		c_rules = c_rules[c_rules != ""]
-		str_rules = strsplit(gsub(" ", "", c_rules), "*>[:digit:]*|*<=[:digit:]*|==|%in%|*>=[:digit:]*|*<[:digit:]*")
-		str_rules = t(quick_as_df(str_rules))
-		rules_order = order(str_rules[, 1])
-		str_rules = str_rules[rules_order,]
-		c_rules = c_rules[rules_order]
-		same_1 = list()
-		if (length(nrow(str_rules)) > 0) {
-			for (i_1 in 1:nrow(str_rules)) {
-				same_1[[i_1]] = which(str_rules[i_1, 1] == str_rules[, 1] & !grepl("<=|<", c_rules))
-			}
-			same_1 = unique(same_1)
-			t_noes = c()
-
-			for (i_2 in 1:length(same_1)) {
-
-				if (length(same_1[[i_2]]) > 0) {
-					t_noes[i_2] = max(same_1[[i_2]])
-				}
-			}
-			t_noes = t_noes[!is.na(t_noes)]
-			same_2 = list()
-			for (i_1 in 1:nrow(str_rules)) {
-				same_2[[i_1]] = which(str_rules[i_1, 1] == str_rules[, 1] & grepl("<=|<", c_rules))
-			}
-			same_2 = unique(same_2)
-			t_noes_2 = c()
-			for (i_3 in 1:length(same_2)) {
-
-				if (length(same_2[[i_3]]) > 0) {
-					t_noes_2[i_3] = max(same_2[[i_3]])
-				}
-			}
-			t_noes_2 = t_noes_2[!is.na(t_noes_2)]
-			c_rules = c_rules[sort(c(t_noes, t_noes_2))]
-		}
-
-		if (class(tree_fit)[1] == "BinaryTree") {
-			c_rules = gsub("==", " == ", c_rules)
-			c_rules = gsub("^ | $| NA$", "", c_rules)
-		} else {
-			c_rules = gsub("==", " == ", c_rules)
-			c_rules = gsub("<", " <", c_rules)
-			c_rules = gsub(">=", " >= ", c_rules)
-		}
-		terminal_rules[i] = paste0(terminal_rules[i], c_rules, collapse = " & ", sep = "")
-		terminal_rules[i] = gsub("NA", "", terminal_rules[i])
-	}
-	#final_rules
-	final_rules = cbind(node_rules, terminal_rules)[terminal_tree_nodes, c("tree_nodes", "terminal_rules")]
-	#1_percent
-	X.train_total = X.train_1 = X.test_total = X.test_1 = tree = train_total = test_total = G = B = `%train` = `#train` = NULL
-	#train
-	tree_where$target = ifelse(tree_where[, "target"] %in% list("0", "0", 0), "G", "B")
-	tree_where_pct = tree_where %>%
-	dplyr::group_by(tree_nodes) %>%
-	dplyr::count(tree_nodes, target) %>%
-	dplyr::mutate(train_1_pct = as_percent(n / sum(n), digits = 4))
-	tree_where_pct = as.data.table(tree_where_pct)
-	train_sum = data.table::dcast(tree_where_pct[, c("tree_nodes", "target", "n"), with = FALSE],
-					 tree_nodes ~ target, value.var = "n")
-	train_sum = quick_as_df(train_sum)
-	train_sum[is.na(train_sum)] <- 0
-	train_ks <- transform(train_sum,
-						train_total = G + B,
-						`%train_total` = round((G + B) / sum(G + B), 3),
-						`%train_1` = round(B / (G + B), 3)
-  )
-	dt_rules = merge(final_rules, train_ks)
-	dt_rules = dt_rules[order(dt_rules$X.train_1),]
-	dt_rules_k = transform(dt_rules,
-						 X.train_total = as_percent(X.train_total, digits = 3),
-						 X.train_1 = as_percent(X.train_1, digits = 3),
-						 `%train_cumsum` = as_percent(cumsum(train_total) / sum(train_total), digits = 4),
-						 `%train_cum_1_rate` = as_percent(cumsum(B) / cumsum(train_total), digits = 4),
-						 `%train_cum_1` = as_percent(cumsum(B) / sum(B), digits = 4),
-						 `%train_cum_0` = as_percent(cumsum(G) / sum(G), digits = 4),
-						 train_KS = round(abs(cumsum(B) / sum(B) - cumsum(G) / sum(G)), 2),
-						 train_Lift = round(X.train_1 / (sum(B,na.rm = TRUE)/sum(train_total, na.rm = TRUE)),2)
-  )
-
-	names(dt_rules_k) = c("tree_nodes", "tree_rules", "train_1", "train_0",
-						"#train", "%train", "%train_1", "%train_cumsum", "%train_cum_1_rate",
-						"%train_cum_1", "%train_cum_0", "train_KS","train_Lift")
-	dt_rules_k = dt_rules_k[c("tree_nodes", "tree_rules", "#train", "%train", "%train_cumsum", "train_0", "train_1", "%train_1", "%train_cum_1_rate", "%train_cum_0", "%train_cum_1", "train_KS","train_Lift")]
-
-	if (!is.null(test_dat)) {
-		test_dat = checking_data(dat = test_dat)
-		test_dat$target = test_dat[, target]
-		test_rules = list()
-		filter_s = sub_dat = test_rules_dt = tree_test_pct = test_sum = test_ks = dt_rules_ts = dt_rules_ts1 = NULL
-		for (i in 1:nrow(final_rules)) {
-			filter_s = as.character(final_rules[i, 2])
-
-			sub_dat = test_dat %>% dplyr::filter(eval(parse(text = filter_s)))
-			colnames(sub_dat) <- iconv(colnames(sub_dat), from = "UTF-8", to = "GBK")
-			if (nrow(sub_dat) > 0) {
-				sub_dat$tree_nodes = final_rules[i, 1]
-				test_rules[[i]] = sub_dat[c("tree_nodes", "target")]
-			}
-		}
-
-		test_rules_dt = Reduce("rbind", test_rules)
-		test_rules_dt$target = ifelse(test_rules_dt[, "target"] %in% list("0", "0", 0), "G", "B")
-		tree_test_pct = test_rules_dt %>%
-  	  dplyr::group_by(tree_nodes) %>%
-  	  dplyr::count(tree_nodes, target) %>%
-  	  dplyr::mutate(test_1_pct = as_percent(n / sum(n), digits = 4))
-		tree_test_pct = as.data.table(tree_test_pct)
-		test_sum = data.table::dcast(tree_test_pct[, c("tree_nodes", "target", "n"), with = FALSE],
-					  tree_nodes ~ target, value.var = "n")
-		test_sum = quick_as_df(test_sum)
-		test_sum[is.na(test_sum)] <- 0
-		test_ks = transform(test_sum,
-						 test_total = G + B,
-						 `%test_total` = round((G + B) / (sum(G + B)), 3),
-						 `%test_1` = round(B / (G + B), 3))
-		#  test_ks = test_ks[c(1, 4:6)]
-		#  names(test_ks) = c("tree_nodes", "#test", "%test", "%test_1")
-		dt_rules_ts = merge(dt_rules_k, test_ks,all.x = TRUE)
-		dt_rules_ts = dt_rules_ts[order(de_percent(dt_rules_ts$`%train_1`)),]
-		dt_rules_ts1 = dt_rules_ts %>%
-  	  dplyr::mutate(psi = round((de_percent(`%train`) - X.test_total) * log(de_percent(`%train`) / X.test_total), 3),
-					`#total` = `#train` + test_total,
-					`%total` = as_percent((`#train` + test_total) / sum(`#train` + test_total), 3),
-					X.test_total = as_percent(X.test_total, digits = 4),
-				 	X.test_1 = as_percent(X.test_1, digits = 4),
-					`%test_cumsum` = as_percent(cumsum(test_total) / sum(test_total), digits = 4),
-					`%test_cum_1_rate` = as_percent(cumsum(B) / cumsum(test_total), digits = 4),
-					`%test_cum_1` = as_percent(cumsum(B) / sum(B), digits = 4),
-					`%test_cum_0` = as_percent(cumsum(G) / sum(G), digits = 4),
-					test_KS = round(abs(cumsum(B) / sum(B) - cumsum(G) / sum(G)), 2),
-				 test_Lift = round(de_percent(X.test_1,4) / (sum(B, na.rm = TRUE) / sum
-					 (test_total, na.rm = TRUE)), 2)
-	  )
-		names(dt_rules_ts1) = c("tree_nodes", "tree_rules", "#train", "%train", "%train_cumsum", "train_0", "train_1", "%train_1", "%train_cum_1_rate",
-								 "%train_cum_0", "%train_cum_1","train_KS","train_Lift","test_1", "test_0",
-							"#test","%test", "%test_1","PSI", "#total", "%total",
-							"%test_cumsum", "%test_cum_1_rate", "%test_cum_1", "%test_cum_0","test_KS","test_Lift" )
-		dt_rules_k = dt_rules_ts1[c("tree_nodes", "tree_rules", "#total", "%total", "#train", "%train", "%train_cumsum", "train_0", "train_1", "%train_1", "%train_cum_1_rate",
-								 "%train_cum_0", "%train_cum_1","train_KS","train_Lift","#test", "%test","%test_cumsum", "test_0","test_1",
-								 "%test_1", "%test_cum_1_rate",
-							"%test_cum_0", "%test_cum_1", "test_KS","test_Lift", "PSI")]
-	}
-	return(dt_rules_k)
-	options(opt) # reset
+get_ctree_rules = function (tree_fit = NULL, train_dat = NULL, target = NULL, test_dat = NULL, 
+          tree_control = list(p = 0.05, cp = 0.0001, xval = 1, maxdepth = 10), 
+          seed = 46) {
+  opt = options(scipen = 200, stringsAsFactors = FALSE, digits = 6)
+  rules_list = split_rule = terminal_nodes = nodes_no = depth = node_rules = NULL
+  if (is.null(tree_fit)) {
+    cp = ifelse(!is.null(tree_control[["cp"]]), tree_control[["cp"]], 
+                0.00001)
+    xval = ifelse(!is.null(tree_control[["xval"]]), 
+                  tree_control[["xval"]], 5)
+    maxdepth = ifelse(!is.null(tree_control[["maxdepth"]]), 
+                      tree_control[["maxdepth"]], 10)
+    p = ifelse(!is.null(tree_control[["p"]]), tree_control[["p"]], 
+               0.02)
+    set.seed(seed)
+    trcontrol <- rpart.control(minbucket = round(nrow(train_dat) * 
+                                                   p), cp = cp, xval = xval, maxdepth = maxdepth)
+    Formula <- as.formula(paste(target, ".", sep = " ~ "))
+    tree_fit = rpart(data = train_dat, Formula, control = trcontrol, 
+                     parms = list(split = "information"))
+  }
+  if (!is.null(tree_fit) && class(tree_fit)[1] == "rpart") {
+    rules_list = capture.output(tree_fit)[-c(1:5)]
+    split_rule = strsplit(rules_list, ")|;")
+    terminal_nodes = sapply(split_rule, function(x) x[[1]][1])
+    node_rules$tree_nodes = 1:length(terminal_nodes)
+    nodes_no = as.numeric(row.names(tree_fit$frame))
+    node_rules$depth = floor(log(nodes_no, base = 2) + 0.0000001) + 1
+    rownam = 1:length(terminal_nodes)
+    tree_rules = sapply(1:length(terminal_nodes), function(x) as.character(split_rule[x][[1]][2]))
+    tree_rules_split = strsplit(tree_rules, "\\s{1,10}")
+    node_rules$tree_rules = sapply(tree_rules_split, function(x) {
+      x = x[which(x != "")]
+      y = NULL
+      if (any(grepl("<", x))) {
+        y = paste(x[1], x[2])
+      }else {
+        if (any(grepl("=", x)) & !any(grepl(">=", 
+                                            x))) {
+          x_1 = strsplit(x, "=")[[1]]
+          z = strsplit(x_1[2], split = "\\,")
+          if (length(unlist(z)) > 1) {
+            y = paste(x_1[1], "%in%", z)
+            y = gsub("\"", "'", y)
+          }else {
+            y = paste0(x_1[1], "==", "'", 
+                       z, "'")
+          }
+        }else {
+          y = x[1]
+        }
+      }
+      y
+    })
+    node_rules = as.data.frame(node_rules)
+    terminal_tree_nodes = which(grepl("\\*", rules_list))
+    tree_where = data.frame(tree_nodes = as.integer(tree_fit$where), 
+                            target = as.character(unlist(tree_fit$y)))
+    target = as.character(tree_fit$terms[[2]])
+  }else {
+    if (class(tree_fit)[1] == "BinaryTree") {
+      rules_list = capture.output(tree_fit@tree)
+      split_rule = strsplit(rules_list, ")|;")
+      tree_nodes = sapply(split_rule, function(x) x[[1]][1])
+      depth = (nchar(gsub("\\d{1,4}", "", tree_nodes)))/2 + 1
+      tree_rules = sapply(1:length(split_rule), function(x) as.character(split_rule[x][[1]][2]))
+      node_rules = data.frame(tree_nodes = as.integer(tree_nodes), 
+                              depth = depth, tree_rules = as.character(tree_rules), 
+                              row.names = 1:length(tree_nodes), stringsAsFactors = FALSE)
+      node_rules$tree_rules = sapply(tree_rules, function(x) {
+        x = x[which(x != "")]
+        y = NULL
+        if (any(grepl("<", x))) {
+          y = paste(x[1], x[2])
+        }else {
+          if (any(grepl("==", x)) & !any(grepl(">=", 
+                                               x))) {
+            x_1 = strsplit(x, "==")[[1]]
+            x_1 = gsub("\\{|\\}", "",  x_1)
+            Inf_t = grepl(", Inf]",x_1[2])
+            if(Inf_t){
+              x_1[2] = gsub(", Inf]",",Inf]",x_1[2])
+            }
+            x_1[1] = gsub(" ","",x_1[1])
+            z = strsplit(x_1[2], split = "\\, ")[[1]]
+            z = gsub(" ", "",  z)
+            if (length(unlist(z)) > 1) {
+              y = paste(x_1[1], "%in%", list(z))
+              y = gsub("\"", "'", y)
+            } else {
+              y = paste0(x_1[1], "==", "'", 
+                         z, "'")
+            }
+            if(Inf_t){
+              y = gsub(",Inf]",", Inf]",y)
+            }
+          }else {
+            y = x[1]
+          }
+        }
+        y
+      })
+      terminal_tree_nodes = which(!grepl("*>[:digit:]*|*<=[:digit:]*|==", 
+                                         rules_list))
+      rownam = as.integer(rownames(node_rules))
+      node_rules[terminal_tree_nodes, "tree_rules"] = ""
+      tree_where = data.frame(tree_nodes = as.integer(tree_fit@where), 
+                              target = as.character(unlist(tree_fit@responses@variables)))
+      target = names(tree_fit@responses@variables)
+    }else {
+      stop("Support only rpart tree & ctree (party package).\n")
+    }
+  }
+  terminal_rules = train_sum = rule_no = c_rules = final_rules = train_ks = dt_rules = dt_rules_k = NULL
+  for (i in terminal_tree_nodes) {
+    inds = ifelse(any(node_rules$tree_rules == "root"), 
+                  2, 1)
+    c_rules = sapply(inds:node_rules$depth[i], function(j) {
+      rule_no = which(rownam == max(which(node_rules$depth == 
+                                            j & rownam <= rownam[i])))
+      node_rules$tree_rules[rule_no]
+    })
+    c_rules = c_rules[c_rules != ""]
+    str_rules = strsplit(gsub(" ", "", c_rules), 
+                         "*>[:digit:]*|*<=[:digit:]*|==|%in%|*>=[:digit:]*|*<[:digit:]*")
+    str_rules = t(quick_as_df(str_rules))
+    rules_order = order(str_rules[, 1])
+    str_rules = str_rules[rules_order, ]
+    c_rules = c_rules[rules_order]
+    same_1 = list()
+    if (length(nrow(str_rules)) > 0) {
+      for (i_1 in 1:nrow(str_rules)) {
+        same_1[[i_1]] = which(str_rules[i_1, 1] == str_rules[, 
+                                                             1] & !grepl("<=|<", c_rules))
+      }
+      same_1 = unique(same_1)
+      t_noes = c()
+      for (i_2 in 1:length(same_1)) {
+        if (length(same_1[[i_2]]) > 0) {
+          t_noes[i_2] = max(same_1[[i_2]])
+        }
+      }
+      t_noes = t_noes[!is.na(t_noes)]
+      same_2 = list()
+      for (i_1 in 1:nrow(str_rules)) {
+        same_2[[i_1]] = which(str_rules[i_1, 1] == str_rules[, 
+                                                             1] & grepl("<=|<", c_rules))
+      }
+      same_2 = unique(same_2)
+      t_noes_2 = c()
+      for (i_3 in 1:length(same_2)) {
+        if (length(same_2[[i_3]]) > 0) {
+          t_noes_2[i_3] = max(same_2[[i_3]])
+        }
+      }
+      t_noes_2 = t_noes_2[!is.na(t_noes_2)]
+      c_rules = c_rules[sort(c(t_noes, t_noes_2))]
+    }
+    if (class(tree_fit)[1] == "BinaryTree") {
+      c_rules = gsub("==", " == ", c_rules)
+      c_rules = gsub("^ | $| NA$", "", c_rules)
+    } else {
+      c_rules = gsub("==", " == ", c_rules)
+      c_rules = gsub("<", " <", c_rules)
+      c_rules = gsub(">=", " >= ", c_rules)
+    }
+    terminal_rules[i] = paste0(c_rules, 
+                               collapse = " & ", sep = "")
+  }
+  final_rules = cbind(node_rules, terminal_rules)[terminal_tree_nodes, 
+                                                  c("tree_nodes", "terminal_rules")]
+  X.train_total = X.train_1 = X.test_total = X.test_1 = tree = train_total = test_total = G = B = `%train` = `#train` = NULL
+  tree_where$target = ifelse(tree_where[, "target"] %in% 
+                               list("0", "0", 0), "G", "B")
+  tree_where_pct = tree_where %>% dplyr::group_by(tree_nodes) %>% 
+    dplyr::count(tree_nodes, target) %>% dplyr::mutate(train_1_pct = as_percent(n/sum(n), 
+                                                                                digits = 4))
+  tree_where_pct = as.data.table(tree_where_pct)
+  train_sum = data.table::dcast(tree_where_pct[, c("tree_nodes", 
+                                                   "target", "n"), with = FALSE], tree_nodes ~ 
+                                  target, value.var = "n")
+  train_sum = quick_as_df(train_sum)
+  train_sum[is.na(train_sum)] <- 0
+  train_ks = transform(train_sum, train_total = G + B, `%train_total` = round((G + 
+                                                                                  B)/sum(G + B), 3), `%train_1` = round(B/(G + B), 
+                                                                                                                        3))
+  dt_rules = merge(final_rules, train_ks)
+  dt_rules = dt_rules[order(dt_rules$X.train_1), ]
+  dt_rules_k = transform(dt_rules, X.train_total = as_percent(X.train_total, 
+                                                              digits = 3), X.train_1 = as_percent(X.train_1, digits = 3), 
+                         `%train_cumsum` = as_percent(cumsum(train_total)/sum(train_total), 
+                                                      digits = 4), `%train_cum_1_rate` = as_percent(cumsum(B)/cumsum(train_total), 
+                                                                                                    digits = 4), `%train_cum_1` = as_percent(cumsum(B)/sum(B), 
+                                                                                                                                             digits = 4), `%train_cum_0` = as_percent(cumsum(G)/sum(G), 
+                                                                                                                                                                                      digits = 4), train_KS = round(abs(cumsum(B)/sum(B) - 
+                                                                                                                                                                                                                          cumsum(G)/sum(G)), 2), train_Lift = round(X.train_1/(sum(B, 
+                                                                                                                                                                                                                                                                                   na.rm = TRUE)/sum(train_total, na.rm = TRUE)), 2))
+  names(dt_rules_k) = c("tree_nodes", "tree_rules", 
+                        "train_1", "train_0", "#train", "%train", 
+                        "%train_1", "%train_cumsum", "%train_cum_1_rate", 
+                        "%train_cum_1", "%train_cum_0", "train_KS", 
+                        "train_Lift")
+  dt_rules_k = dt_rules_k[c("tree_nodes", "tree_rules", 
+                            "#train", "%train", "%train_cumsum", 
+                            "train_0", "train_1", "%train_1", "%train_cum_1_rate", 
+                            "%train_cum_0", "%train_cum_1", "train_KS", 
+                            "train_Lift")]
+  if (!is.null(test_dat)) {
+    test_dat = checking_data(dat = test_dat)
+    test_dat$target = test_dat[, target]
+    test_rules = list()
+    filter_s = sub_dat = test_rules_dt = tree_test_pct = test_sum = test_ks =
+      dt_rules_ts = dt_rules_ts1 = NULL
+     for (i in 1:nrow(final_rules)) {
+      filter_s = as.character(final_rules[i, 2])
+      sub_dat = test_dat %>% dplyr::filter(eval(parse(text = filter_s)))
+      colnames(sub_dat) <- iconv(colnames(sub_dat), from = "UTF-8", 
+                                 to = "GBK")
+      if (nrow(sub_dat) > 0) {
+        sub_dat$tree_nodes = final_rules[i, 1]
+        test_rules[[i]] = sub_dat[c("tree_nodes","target")]
+      }
+    }
+    test_rules_dt = Reduce("rbind", test_rules)
+    test_rules_dt$target = ifelse(test_rules_dt[, "target"] %in% 
+                                    list("0", "0", 0), "G", "B")
+    tree_test_pct = test_rules_dt %>% dplyr::group_by(tree_nodes) %>% 
+      dplyr::count(tree_nodes, target) %>% dplyr::mutate(test_1_pct = as_percent(n/sum(n), 
+                                                                                 digits = 4))
+    tree_test_pct = as.data.table(tree_test_pct)
+    test_sum = data.table::dcast(tree_test_pct[, c("tree_nodes", 
+                                                   "target", "n"), with = FALSE], tree_nodes ~ 
+                                   target, value.var = "n")
+    test_sum = quick_as_df(test_sum)
+    test_sum[is.na(test_sum)] <- 0
+    test_ks = transform(test_sum, test_total = G + B, `%test_total` = round((G + 
+                                                                               B)/(sum(G + B)), 3), `%test_1` = round(B/(G + 
+                                                                                                                           B), 3))
+    dt_rules_ts = merge(dt_rules_k, test_ks, all.x = TRUE)
+    dt_rules_ts = dt_rules_ts[order(de_percent(dt_rules_ts$`%train_1`)), 
+                              ]
+    dt_rules_ts1 = dt_rules_ts %>% dplyr::mutate(psi = round((de_percent(`%train`) -  X.test_total) * log(de_percent(`%train`)/X.test_total),3),`#total` = `#train` + test_total, 
+                                                 `%total` = as_percent((`#train` + test_total)/sum(`#train` + test_total), 3),
+												 X.test_total = as_percent(X.test_total,  digits = 4),
+												 X.test_1 = as_percent(X.test_1, digits = 4), 
+												 `%test_cumsum` = as_percent(cumsum(test_total)/sum(test_total),  digits = 4),
+												 `%test_cum_1_rate` = as_percent(cumsum(B)/cumsum(test_total),  digits = 4), 
+												 `%test_cum_1` = as_percent(cumsum(B)/sum(B), digits = 4), 
+												 `%test_cum_0` = as_percent(cumsum(G)/sum(G),  digits = 4),
+												 test_KS = round(abs(cumsum(B)/sum(B) - cumsum(G)/sum(G)), 2),
+												 test_Lift = round(de_percent(X.test_1,4)/(sum(B, na.rm = TRUE)/sum(test_total, na.rm = TRUE)), 2))
+    names(dt_rules_ts1) = c("tree_nodes", "tree_rules", 
+                            "#train", "%train", "%train_cumsum", 
+                            "train_0", "train_1", "%train_1", 
+                            "%train_cum_1_rate", "%train_cum_0", 
+                            "%train_cum_1", "train_KS", "train_Lift", 
+                            "test_1", "test_0", "#test", "%test", 
+                            "%test_1", "PSI", "#total", "%total", 
+                            "%test_cumsum", "%test_cum_1_rate", "%test_cum_1", 
+                            "%test_cum_0", "test_KS", "test_Lift")
+    dt_rules_k = dt_rules_ts1[c("tree_nodes", "tree_rules", 
+                                "#total", "%total", "#train", "%train", 
+                                "%train_cumsum", "train_0", "train_1", 
+                                "%train_1", "%train_cum_1_rate", "%train_cum_0", 
+                                "%train_cum_1", "train_KS", "train_Lift", 
+                                "#test", "%test", "%test_cumsum", 
+                                "test_0", "test_1", "%test_1", 
+                                "%test_cum_1_rate", "%test_cum_0", "%test_cum_1", 
+                                "test_KS", "test_Lift", "PSI")]
+  }
+  return(dt_rules_k)
+  options(opt)
 }
 
 

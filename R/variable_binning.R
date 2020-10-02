@@ -91,63 +91,71 @@ split_bins_all = function(dat, x_list = NULL, ex_cols = NULL, breaks_list = NULL
 #' x = "PAY_AMT1", breaks = NULL, bins_no = TRUE)
 #' @export
 
-split_bins = function(dat, x, breaks = NULL, bins_no = TRUE) {
-
-	opt = options(scipen = 200, stringsAsFactors = FALSE) #
-	dat = checking_data(dat)
-	if (length(breaks) < 1) {
-		breaks = get_breaks(dat, x, target = NULL, best = FALSE, equal_bins = TRUE, g = 5, note = FALSE)
-	}
-	sp_value_num = sp_value_char = NULL
-	if (any(c("integer", "numeric", "double") == class(dat[, x])[1])) {
-		dat[, x] = as.numeric(dat[, x])
-		breaks = sort(unlist(unique(c(-Inf, breaks, Inf))))
-		bins_1 = cut(dat[, x], breaks = unique(breaks), dig.lab = 12,
-					 ordered = TRUE, include.lowest = FALSE, right = TRUE)
-
-		if (bins_no) {
-			bins_0 = ifelse(is.na(bins_1), '00', paste("0", as.numeric(bins_1), sep = ""))
-			bins = paste(bins_0, bins_1, sep = ".")
-			bins[which(as.numeric(bins_1) >= 10)] =
-			  paste(as.numeric(bins_1[which(as.numeric(bins_1) >= 10)]),
-					bins_1[which(as.numeric(bins_1) >= 10)], sep = ".")
-		} else {
-			bins = as.character(bins_1)
-		}
-	} else {
-		breaks = sort(unlist(unique(breaks)))
-		if (any(grepl("\\|", breaks))) {
-			breaks_s = strsplit(breaks, "\\|")
-		} else {
-			breaks_s = breaks
-		}
-		dat[, x] = as.character(dat[, x])
-		dat[which(!(dat[, x] %in% unlist(breaks_s))), x] = get_median(dat[, x])
-		if (length(breaks_s) > 0) {
-			for (i in 1:length(breaks_s)) {
-				if (length(which(dat[, x] %in% unlist(breaks_s[[i]]))) > 1) {
-					if (i < 10) {
-						split_ind = which(dat[, x] %in% unlist(breaks_s[[i]]))
-						if (length(split_ind) > 0) {
-							dat[split_ind, x] =
-							ifelse(bins_no, paste(ifelse(is.na(dat[split_ind, x]), '00', paste0("0", i)), paste(breaks_s[[i]], collapse = ";"), sep = "."), paste(breaks_s[[i]], collapse = ";"))
-						}
-					} else {
-						split_ind = which(dat[, x] %in% unlist(breaks_s[[i]]))
-						if (length(split_ind) > 0) {
-							dat[split_ind, x] =
-							ifelse(bins_no, paste(ifelse(is.na(dat[split_ind, x]), '00', paste0(i)), paste(breaks_s[[i]], collapse = ";"), sep = "."), paste(breaks_s[[i]], collapse = ";"))
-						}
-					}
-				}
-			}
-		}
-		bins = dat[, x]
-	}
-	return(bins)
-	options(opt) # reset
+split_bins = function (dat, x, breaks = NULL, bins_no = TRUE){
+  opt = options(scipen = 200, stringsAsFactors = FALSE)
+  dat = checking_data(dat)
+  if (length(breaks) < 1) {
+    breaks = get_breaks(dat, x, target = NULL, best = FALSE, 
+                        equal_bins = TRUE, g = 5, note = FALSE)
+  }
+  sp_value_num = sp_value_char = NULL
+  if (any(c("integer", "numeric", "double") == 
+          class(dat[, x])[1])) {
+    dat[, x] = as.numeric(dat[, x])
+    breaks = sort(unlist(unique(c(-Inf, breaks, Inf))))
+    bins_1 = cut(dat[, x], breaks = unique(breaks), dig.lab = 12, 
+                 ordered = TRUE, include.lowest = FALSE, right = TRUE)
+    bins_1 = gsub(" ","",bins_1)
+    if (bins_no) {
+      bins_0 = ifelse(is.na(bins_1), "00", paste("0", 
+                                                 as.numeric(as.factor(bins_1)), sep = ""))
+      bins = paste(bins_0, bins_1, sep = ".")
+      bins[which(as.numeric(bins_1) >= 10)] = paste(as.numeric(bins_1[which(as.numeric(bins_1) >= 
+                                                                              10)]), bins_1[which(as.numeric(bins_1) >= 10)], 
+                                                    sep = ".")
+    }else {
+      bins = as.character(bins_1)
+    }
+  }else {
+    breaks = sort(unlist(unique(breaks)))
+    if (any(grepl("\\|", breaks))) {
+      breaks_s = strsplit(breaks, "\\|")
+    } else {
+      breaks_s = breaks
+    }
+    dat[, x] = as.character(dat[, x])
+    dat[which(!(dat[, x] %in% unlist(breaks_s))), x] = get_median(dat[, 
+                                                                      x])
+    if (length(breaks_s) > 0) {
+      for (i in 1:length(breaks_s)) {
+        if (length(which(dat[, x] %in% unlist(breaks_s[[i]]))) > 
+            1) {
+          if (i < 10) {
+            split_ind = which(dat[, x] %in% unlist(breaks_s[[i]]))
+            if (length(split_ind) > 0) {
+              dat[split_ind, x] = ifelse(bins_no, paste(ifelse(is.na(dat[split_ind, 
+                                                                         x]), "00", paste0("0", i)), 
+                                                        paste(breaks_s[[i]], collapse = ";"), 
+                                                        sep = "."), paste(breaks_s[[i]], 
+                                                                          collapse = ";"))
+            }
+          } else {
+            split_ind = which(dat[, x] %in% unlist(breaks_s[[i]]))
+            if (length(split_ind) > 0) {
+              dat[split_ind, x] = ifelse(bins_no, paste(ifelse(is.na(dat[split_ind, 
+                                                                         x]), "00", paste0(i)), paste(breaks_s[[i]], 
+                                                                                                      collapse = ";"), sep = "."), 
+                                         paste(breaks_s[[i]], collapse = ";"))
+            }
+          }
+        }
+      }
+    }
+    bins = dat[, x]
+  }
+  return(bins)
+  options(opt)
 }
-
 
 
 #' Generates Best Breaks for Binning

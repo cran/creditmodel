@@ -11,13 +11,16 @@ cohort_analysis(
   obs_id = NULL,
   occur_time = NULL,
   MOB = NULL,
+  group = NULL,
+  due_day = NULL,
   period = "monthly",
   status = NULL,
   amount = NULL,
   by_out = "cnt",
   start_date = NULL,
   end_date = NULL,
-  dead_status = 30
+  dead_status = 30,
+  all_due = TRUE
 )
 
 cohort_table(
@@ -25,13 +28,16 @@ cohort_table(
   obs_id = NULL,
   occur_time = NULL,
   MOB = NULL,
+  group = NULL,
+  due_day = NULL,
   period = "monthly",
   status = NULL,
   amount = NULL,
   by_out = "cnt",
   start_date = NULL,
   end_date = NULL,
-  dead_status = 30
+  dead_status = 30,
+  all_due = TRUE
 )
 }
 \arguments{
@@ -42,6 +48,10 @@ cohort_table(
 \item{occur_time}{The name of the variable that represents the time at which each observation takes place.}
 
 \item{MOB}{Mobility of book}
+
+\item{group}{A group of observations.}
+
+\item{due_day}{The name of the variable that represents the time at the end of MOB.}
 
 \item{period}{Period of event to analysiss. Default is "monthly"}
 
@@ -56,6 +66,8 @@ cohort_table(
 \item{end_date}{The latest occurrence time of observations.}
 
 \item{dead_status}{Status of dead observations.}
+
+\item{all_due}{All observations are due.}
 }
 \description{
 cohort_analysis

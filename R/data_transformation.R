@@ -360,7 +360,8 @@ time_transfer = function (dat, date_cols = NULL, ex_cols = NULL, note = FALSE)
                 t_len[[x]] = gsub(" |\\.0$", "",
                   t_len[[x]])
             }
-            if (t_sample[[x]] >= 5 & t_sample[[x]] <= 6 & grepl(pattern = "^[2]{1}[0]{1}[0-3]{1}[0-9]{1}-[0-9]{1}$|^[2]{1}[0]{1}[0-3]{1}[0-9]{1}-[0-9]{1,2}$|^[1]{1}[9]{1}[0-9]{2}-[0-9]{1,2}$",
+            if (t_sample[[x]] >= 5 & t_sample[[x]] <= 6 & 
+			grepl(pattern = "^[2]{1}[0]{1}[0-3]{1}[0-9]{1}-[0-9]{1}$|^[2]{1}[0]{1}[0-3]{1}[0-9]{1}-[0-9]{1,2}$|^[1]{1}[9]{1}[0-9]{2}-[0-9]{1,2}$",
                 x = substr(t_len[[x]], 1, 10))) {
                 df_date[[x]] = paste(df_date[[x]], "-01")
                 df_date[[x]] = as.Date(as.character(df_date[[x]]),
@@ -390,7 +391,7 @@ time_transfer = function (dat, date_cols = NULL, ex_cols = NULL, note = FALSE)
                 df_date[[x]] = as.POSIXct(as.character(df_date[[x]]),
                   format = "%Y-%m-%d %H:%M:%S")
             }
-            if (t_sample[[x]] >= 7 & t_sample[[x]] <= 9 & grepl(pattern = "^[2]{1}[0]{1}[0-5]{1}[0-9]{1}[0-9]{1}[0-3]{1}[0-9]{1,2}$|^[2]{1}[0]{1}[0-5]{1}[0-9]{1}[0-9]{1,2}[0-3]{1}[0-9]{1}$|^[1]{1}[9]{1}[0-9]{2}[0-9]{1,2}[0-3]{1}[0-9]{1}$",
+            if (t_sample[[x]] >= 8 & t_sample[[x]] <= 9 & grepl(pattern = "^[2]{1}[0]{1}[0-5]{1}[0-9]{1}[0-9]{1}[0-3]{1}[0-9]{1,2}$|^[2]{1}[0]{1}[0-5]{1}[0-9]{1}[0-9]{1,2}[0-3]{1}[0-9]{1}$|^[1]{1}[9]{1}[0-9]{2}[0-9]{1,2}[0-3]{1}[0-9]{1}$",
                 x = t_len[[x]])) {
                 df_date[[x]] = as.Date(as.character(df_date[[x]]),
                   "%Y%m%d")
