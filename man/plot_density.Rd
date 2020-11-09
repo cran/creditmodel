@@ -11,8 +11,10 @@ plot_density(
   m = 3,
   g = 5,
   y_breaks = NULL,
+  hist = 2,
   binwidth = NULL,
-  hist = TRUE,
+  pl_theme = plot_theme(legend.position = "top", title_size = 9, legend_size = 7,
+    axis_title_size = 8),
   colors_y = c(love_color(type = "deep"), love_color(type = "light"), love_color(type =
     "shallow"))
 )
@@ -30,9 +32,11 @@ plot_density(
 
 \item{y_breaks}{Breaks points of y.}
 
+\item{hist}{If plot the histogram,-1,1,2, default is 2.}
+
 \item{binwidth}{Windth of bins for histogram.}
 
-\item{hist}{If plot the histogram.}
+\item{pl_theme}{Theme of plot}
 
 \item{colors_y}{colors of y.}
 }
@@ -40,7 +44,7 @@ plot_density(
 You can use the \code{plot_density} to produce plots that characterize the density.
 }
 \examples{
-plot_density(dat = lendingclub, x = "annual_inc",y = "emp_length", m =0, hist = FALSE)
+plot_density(dat = lendingclub, x = "annual_inc",y = "emp_length", m =0, hist = -1)
 plot_density(dat = lendingclub, x = "annual_inc", m = 2,
 colors_y = love_color(type = "line")[c(1,3)])
 }

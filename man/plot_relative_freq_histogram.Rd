@@ -10,10 +10,13 @@ plot_relative_freq_histogram(
   y = NULL,
   x_breaks = NULL,
   y_breaks = NULL,
-  reverse = ifelse(!is.null(y), TRUE, FALSE),
+  reverse = ifelse(is.null(y), TRUE, FALSE),
   g = 10,
   cut_bin = "equal_width",
-  fill_colors = c(love_color(type = "light")[1:8], love_color(type = "deep")[1:6])
+  pl_theme = plot_theme(legend.position = "top", title_size = 9, legend_size = 7,
+    axis_title_size = 8),
+  fill_colors = c(love_color(type = "lightnihon_8x1"), love_color(type =
+    "darknihon_8x1"))
 )
 }
 \arguments{
@@ -32,6 +35,8 @@ plot_relative_freq_histogram(
 \item{g}{Number of initial breakpoints for equal frequency binning.}
 
 \item{cut_bin}{'equal_width' or 'equal_depth' to produce the breaks points.}
+
+\item{pl_theme}{Theme of plot.}
 
 \item{fill_colors}{Colors of bar.}
 }

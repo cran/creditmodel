@@ -11,10 +11,17 @@ fuzzy_cluster_means(
   sf = 2,
   nstart = 1,
   max_iter = 100,
-  epsm = 1e-06
+  epsm = 0.000001
 )
 
-fuzzy_cluster(dat, kc = 2, init_centers, sf = 3, max_iter = 100, epsm = 1e-06)
+fuzzy_cluster(
+  dat,
+  kc = 2,
+  init_centers,
+  sf = 3,
+  max_iter = 100,
+  epsm = 0.000001
+)
 }
 \arguments{
 \item{dat}{A data.frame contained only predict variables.}

@@ -9,7 +9,7 @@ get_ctree_rules(
   train_dat = NULL,
   target = NULL,
   test_dat = NULL,
-  tree_control = list(p = 0.05, cp = 1e-04, xval = 1, maxdepth = 10),
+  tree_control = list(p = 0.05, cp = 0.0001, xval = 1, maxdepth = 10),
   seed = 46
 )
 }

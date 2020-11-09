@@ -9,7 +9,7 @@ get_tree_breaks(
   x,
   target,
   pos_flag = NULL,
-  tree_control = list(p = 0.02, cp = 1e-06, xval = 5, maxdepth = 10),
+  tree_control = list(p = 0.02, cp = 0.000001, xval = 5, maxdepth = 10),
   sp_values = NULL
 )
 }

@@ -17,10 +17,11 @@ plot_bar(
   type = "total_pct",
   reverse = FALSE,
   position = "dodge",
-  dodge_width = 1,
-  theme = plot_theme(legend.position = "top", title_size = 9, legend_size = 7,
+  dodge_width = 0.9,
+  pl_theme = plot_theme(legend.position = "top", title_size = 9, legend_size = 7,
     axis_title_size = 8),
-  fill_colors = c(love_color(type = "light")[1:8], love_color(type = "deep")[1:6])
+  fill_colors = c(love_color(type = "lightnihon_8x1"), love_color(type =
+    "darknihon_8x1"))
 )
 }
 \arguments{
@@ -42,7 +43,7 @@ plot_bar(
 
 \item{value}{The name of the variable to sum. When this parameter is NULL, the default statistics is to sum frequency.}
 
-\item{type}{Output form of the result of crosstable. Provide these forms: "total_sum","total_pct","total_mean","total_median","total_max","total_min","bad_sum","bad_pct".}
+\item{type}{Output form of the result of crosstable. Provide these forms:"each_pct", "total_sum","total_pct","total_mean","total_median","total_max","total_min","bad_sum","bad_pct".}
 
 \item{reverse}{Logical,whether reverse the plot.}
 
@@ -50,7 +51,7 @@ plot_bar(
 
 \item{dodge_width}{Width of width.}
 
-\item{theme}{theme of the plot}
+\item{pl_theme}{Theme of the plot}
 
 \item{fill_colors}{Colors of bar.}
 }

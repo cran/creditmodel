@@ -11,7 +11,7 @@ train_lr(
   x_list = NULL,
   occur_time = NULL,
   prop = 0.7,
-  tree_control = list(p = 0.02, cp = 1e-08, xval = 5, maxdepth = 10),
+  tree_control = list(p = 0.02, cp = 0.00000001, xval = 5, maxdepth = 10),
   bins_control = list(bins_num = 10, bins_pct = 0.05, b_chi = 0.02, b_odds = 0.1, b_psi
     = 0.03, b_or = 0.15, mono = 0.2, odds_psi = 0.15, kc = 1),
   thresholds = list(cor_p = 0.8, iv_i = 0.02, psi_i = 0.1, cos_i = 0.6),

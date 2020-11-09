@@ -200,85 +200,85 @@ xgb_filter <- function(dat_train, dat_test = NULL, target = NULL, pos_flag = NUL
                                          colsample_bytree = 1, gamma = 0, scale_pos_weight = 1,
                                          early_stopping_rounds = 10,
                                          objective = "binary:logistic"),
-					   f_eval = 'auc', 				 
+                       f_eval = 'auc', 				 
                        cv_folds = 1, cp = NULL, seed = 46, vars_name = TRUE,
                        note = TRUE, save_data = FALSE,
                        file_name = NULL, dir_path = tempdir(), ...) {
-    opt = options(scipen = 200, stringsAsFactors = FALSE, digits = 6)
-    if (note) cat_line(paste("-- Selecting variables by XGboost"), col = love_color("deep_purple"))
-   Feature = Imp_Means_XGB = imp_vars = NULL
-   #get parameters
-    nrounds = ifelse(!is.null(xgb_params[["nrounds"]]),
+  opt = options(scipen = 200, stringsAsFactors = FALSE, digits = 6)
+  if (note) cat_line(paste("-- Selecting variables by XGboost"), col = love_color("deep_purple"))
+  Feature = Imp_Means_XGB = imp_vars = NULL
+  #get parameters
+  nrounds = ifelse(!is.null(xgb_params[["nrounds"]]),
                    xgb_params[["nrounds"]], 100)
-    max_depth = ifelse(!is.null(xgb_params[["max_depth"]]),
+  max_depth = ifelse(!is.null(xgb_params[["max_depth"]]),
                      xgb_params[["max_depth"]], 6)
-    eta = ifelse(!is.null(xgb_params[["eta"]]),
+  eta = ifelse(!is.null(xgb_params[["eta"]]),
                xgb_params[["eta"]], 0.1)
-    min_child_weight = ifelse(!is.null(xgb_params[["min_child_weight"]]),
+  min_child_weight = ifelse(!is.null(xgb_params[["min_child_weight"]]),
                             xgb_params[["min_child_weight"]], 1)
-    subsample = ifelse(!is.null(xgb_params[["subsample"]]),
+  subsample = ifelse(!is.null(xgb_params[["subsample"]]),
                      xgb_params[["subsample"]], 1)
-    colsample_bytree = ifelse(!is.null(xgb_params[["colsample_bytree"]]),
+  colsample_bytree = ifelse(!is.null(xgb_params[["colsample_bytree"]]),
                             xgb_params[["colsample_bytree"]], 1)
-    gamma = ifelse(!is.null(xgb_params[["gamma"]]),
+  gamma = ifelse(!is.null(xgb_params[["gamma"]]),
                  xgb_params[["gamma"]], 0)
-    scale_pos_weight = ifelse(!is.null(xgb_params[["scale_pos_weight"]]),
-                          xgb_params[["scale_pos_weight"]], 0)
-    early_stopping_rounds = ifelse(!is.null(xgb_params[["early_stopping_rounds"]]),
+  scale_pos_weight = ifelse(!is.null(xgb_params[["scale_pos_weight"]]),
+                            xgb_params[["scale_pos_weight"]], 0)
+  early_stopping_rounds = ifelse(!is.null(xgb_params[["early_stopping_rounds"]]),
                                  xgb_params[["early_stopping_rounds"]], 10)
-    objective = ifelse(!is.null(xgb_params[["objective"]]),
+  objective = ifelse(!is.null(xgb_params[["objective"]]),
                      xgb_params[["objective"]], "binary:logistic")
-    cp = ifelse(is.null(cp), 0, cp)
-
-    dat_train = checking_data(dat = dat_train, target = target, pos_flag = pos_flag)
-
-    if (!is.null(dat_test)) {
-        dat_test = checking_data(dat = dat_test, target = target, pos_flag = pos_flag)
-    } else {
-        train_test = train_test_split(dat_train, split_type = "OOT", prop = 0.7, note = FALSE,
+  cp = ifelse(is.null(cp), 0, cp)
+  
+  dat_train = checking_data(dat = dat_train, target = target, pos_flag = pos_flag)
+  
+  if (!is.null(dat_test)) {
+    dat_test = checking_data(dat = dat_test, target = target, pos_flag = pos_flag)
+  } else {
+    train_test = train_test_split(dat_train, split_type = "OOT", prop = 0.7, note = FALSE,
                                   occur_time = occur_time, seed = 46, save_data = FALSE)
-        dat_train = train_test$train
-        dat_test = train_test$test
-    }
-
-    x_list = get_x_list(x_list = x_list, dat_train = dat_train, dat_test = dat_test,
+    dat_train = train_test$train
+    dat_test = train_test$test
+  }
+  
+  x_list = get_x_list(x_list = x_list, dat_train = dat_train, dat_test = dat_test,
                       ex_cols = c(target, occur_time, ex_cols))
-
-    com_list = unique(c(target, occur_time, x_list))
-
-    dat_train = dat_train[, com_list]
-    dat_test = dat_test[, com_list]
-    dat_ts = rbind(dat_train, dat_test)
-    dat_ts = low_variance_filter(dat = dat_ts, lvp = 1, note = FALSE)
-    char_x_list = get_names(dat = dat_ts, types = c('character', 'factor'),
+  
+  com_list = unique(c(target, occur_time, x_list))
+  
+  dat_train = dat_train[, com_list]
+  dat_test = dat_test[, com_list]
+  dat_ts = rbind(dat_train, dat_test)
+  dat_ts = low_variance_filter(dat = dat_ts, lvp = 1, note = FALSE)
+  char_x_list = get_names(dat = dat_ts, types = c('character', 'factor'),
                           ex_cols = c(target, occur_time, ex_cols),
                           get_ex = FALSE)
-    one_hot_vars = NULL
-    if (length(char_x_list) > 0) {
-        dat_ts = one_hot_encoding(dat = dat_ts, cat_vars = char_x_list,
+  one_hot_vars = NULL
+  if (length(char_x_list) > 0) {
+    dat_ts = one_hot_encoding(dat = dat_ts, cat_vars = char_x_list,
                               na_act = FALSE, note = FALSE)
-
-        one_hot_vars = colnames(dat_ts)[gsub("\\.\\S{0,100}\\.", "", colnames(dat_ts)) %in% char_x_list]
-    }
-
-    xg_list = get_names(dat = dat_ts, types = c('numeric', 'integer', 'double'),
+    
+    one_hot_vars = colnames(dat_ts)[gsub("\\.\\S{0,100}\\.", "", colnames(dat_ts)) %in% char_x_list]
+  }
+  
+  xg_list = get_names(dat = dat_ts, types = c('numeric', 'integer', 'double'),
                       ex_cols = c(target, occur_time, ex_cols), get_ex = FALSE)
-
-    if (!is.null(cv_folds) && cv_folds > 1) {
-        cv_list = cv_split(dat_ts, k = cv_folds, occur_time = occur_time, seed = 46)
-        k = cv_folds
-    } else {
-        nr = nrow(dat_train)
-        train_test = train_test_split(dat_ts, split_type = "byRow", prop = nr / nrow(dat_ts),
+  
+  if (!is.null(cv_folds) && cv_folds > 1) {
+    cv_list = cv_split(dat_ts, k = cv_folds, occur_time = occur_time, seed = 46)
+    k = cv_folds
+  } else {
+    nr = nrow(dat_train)
+    train_test = train_test_split(dat_ts, split_type = "byRow", prop = nr / nrow(dat_ts),
                                   occur_time = occur_time, seed = 46, note = FALSE, save_data = FALSE)
-        dat_train = train_test$train
-        dat_test = train_test$test
-        k = 1
-    }
-    dt_imp_XGB = list()
-   if (f_eval == 'ks') {
+    dat_train = train_test$train
+    dat_test = train_test$test
+    k = 1
+  }
+  dt_imp_XGB = list()
+  if (f_eval == 'ks') {
     feval = eval_ks
-    }else {
+  }else {
     if(f_eval == 'auc'){
       feval = eval_auc
     }else{
@@ -293,31 +293,28 @@ xgb_filter <- function(dat_train, dat_test = NULL, target = NULL, pos_flag = NUL
       }
     }
   }
-
-
-
-
-    for (i in 1:k) {
-        if (k > 1) {
-            train_sub = dat_ts[-cv_list[[i]],]
-            test_sub = dat_ts[cv_list[[i]],]
-        } else {
-            train_sub = dat_train
-            test_sub = dat_test
-        }
-        x_train = as.matrix(train_sub[, xg_list])
-        y_train = as.numeric(as.character(train_sub[, target]))
-        xgb_train = list(data = x_train, label = y_train)
-        dtrain = xgb.DMatrix(data = xgb_train$data, label = xgb_train$label)
-
-        x_test = as.matrix(test_sub[, xg_list])
-        y_test = as.numeric(as.character(test_sub[, target]))
-        xgb_test = list(data = x_test, label = y_test)
-        dtest <- xgb.DMatrix(data = xgb_test$data, label = xgb_test$label)
-        watchlist <- list(train = dtrain, eval = dtest)
-        # Train a model
-        if (!is.null(seed)) set.seed(seed) else set.seed(46)
-        xgb_model_new = xgb.train(data = dtrain,
+  
+  for (i in 1:k) {
+    if (k > 1) {
+      train_sub = dat_ts[-cv_list[[i]],]
+      test_sub = dat_ts[cv_list[[i]],]
+    } else {
+      train_sub = dat_train
+      test_sub = dat_test
+    }
+    x_train = as.matrix(train_sub[, xg_list])
+    y_train = as.numeric(as.character(train_sub[, target]))
+    xgb_train = list(data = x_train, label = y_train)
+    dtrain = xgb.DMatrix(data = xgb_train$data, label = xgb_train$label)
+    
+    x_test = as.matrix(test_sub[, xg_list])
+    y_test = as.numeric(as.character(test_sub[, target]))
+    xgb_test = list(data = x_test, label = y_test)
+    dtest <- xgb.DMatrix(data = xgb_test$data, label = xgb_test$label)
+    watchlist <- list(train = dtrain, eval = dtest)
+    # Train a model
+    if (!is.null(seed)) set.seed(seed) else set.seed(46)
+    xgb_model_new = xgb.train(data = dtrain,
                               watchlist = watchlist,
                               nrounds = nrounds,
                               max_depth = max_depth,
@@ -332,54 +329,60 @@ xgb_filter <- function(dat_train, dat_test = NULL, target = NULL, pos_flag = NUL
                               objective = objective,
                               verbose = 0,
                               maximize = TRUE)
-        # feature importance
-        dat_names = dimnames(x_train)[[2]]
-        imp_XGB = xgb.importance(dat_names, model = xgb_model_new)
-        imp_XGB = data.frame(Feature = imp_XGB[, "Feature"],
+    # feature importance
+    dat_names = dimnames(x_train)[[2]]
+    imp_XGB = xgb.importance(dat_names, model = xgb_model_new)
+    imp_XGB = data.frame(Feature = imp_XGB[, "Feature"],
                          Importance = round(imp_XGB[, 'Gain'], 5),
                          stringsAsFactors = FALSE)
-        names(imp_XGB) = c("Feature", paste("Importance.cv", i, sep = "_"))
-        dt_imp_XGB[[i]] = imp_XGB
-    }
-
-    merge_all_xy = function(x, y) {
-        merge(x, y, by.x = "Feature", by.y = "Feature", all = TRUE)
-    }
-    dt_imp_var <- Reduce("merge_all_xy", dt_imp_XGB)
+    names(imp_XGB) = c("Feature", paste("Importance.cv", i, sep = "_"))
+    dt_imp_XGB[[i]] = imp_XGB
+  }
+  
+  if (k > 1) {
+  merge_all_xy = function(x, y) {
+    merge(x, y, by.x = "Feature", by.y = "Feature", all = TRUE)
+  }
+  dt_imp_var = Reduce("merge_all_xy", dt_imp_XGB)
+  dt_imp_var[is.na(dt_imp_var)] = 0
+  dt_imp_var = transform(dt_imp_var, Imp_Means_XGB = rowMeans(dt_imp_var[1:k + 1]))
+  }else{
+    dt_imp_var = dt_imp_XGB[[1]]
     dt_imp_var[is.na(dt_imp_var)] = 0
-    dt_imp_var = transform(dt_imp_var, Imp_Means_XGB = rowMeans(dt_imp_var[1:k + 1]))
-
-    imp_xgb = dt_imp_var[which(dt_imp_var$Imp_Means_XGB > cp),]
-    if (length(imp_xgb) <= 1) {
-        imp_xgb = dt_imp_var[which(dt_imp_var$Imp_Means_XGB > 0),]
-    }
-
-   
-    if (length(one_hot_vars) > 0) {
-     imp_xgb[which(imp_xgb$Feature %in% one_hot_vars), "Feature"] = gsub("\\.\\S{0,100}\\.", "",
-     imp_xgb[which(imp_xgb$Feature %in% one_hot_vars), "Feature"])
-    }
-	
-    imp_xgb = imp_xgb %>% dplyr::group_by(Feature) %>% dplyr::summarise(Imp_Means_XGB = sum(Imp_Means_XGB)) %>% 
-	as.data.frame(stringsAsFactors = FALSE)
-    imp_xgb = imp_xgb[order(imp_xgb$Imp_Means_XGB, decreasing = TRUE),]
-    imp_vars_xgb = as.character(unlist(imp_xgb[, "Feature"]))
-    if (save_data) {
-        dir_path = ifelse(!is.character(dir_path), tempdir(), dir_path)
-        if (!dir.exists(dir_path)) dir.create(dir_path)
-        if (!is.character(file_name)) { file_name = NULL }
-        save_data(imp_vars, file_name = ifelse(is.null(file_name), "feature.XGB", paste(file_name, "feature.XGB", sep = ".")),
-            dir_path = dir_path, note = note, as_list = TRUE)
-        save_data(dt_imp_var, file_name = ifelse(is.null(file_name), "feature.XGB_table", paste(file_name, "feature.XGB_table", sep = ".")),
-            dir_path = dir_path, note = note)
-    }
-    if (vars_name) {
-        return(c(imp_vars))
-    } else {
-        return(imp_xgb[c("Feature", "Imp_Means_XGB")])
-    }
-    options(opt) # reset
+    dt_imp_var = transform(dt_imp_var, Imp_Means_XGB = unlist(dt_imp_var[2]))
+  }
+  imp_xgb = dt_imp_var[which(dt_imp_var$Imp_Means_XGB > cp),]
+  if (length(imp_xgb) <= 1) {
+    imp_xgb = dt_imp_var[which(dt_imp_var$Imp_Means_XGB > 0),]
+  }
+  
+  
+  if (length(one_hot_vars) > 0) {
+    imp_xgb[which(imp_xgb$Feature %in% one_hot_vars), "Feature"] = gsub("\\.\\S{0,100}\\.", "",
+                                                                        imp_xgb[which(imp_xgb$Feature %in% one_hot_vars), "Feature"])
+  }	
+  imp_xgb = imp_xgb %>% dplyr::group_by(Feature) %>% dplyr::summarise(Imp_Means_XGB = sum(Imp_Means_XGB)) %>% 
+    as.data.frame(stringsAsFactors = FALSE)
+  imp_xgb = imp_xgb[order(imp_xgb$Imp_Means_XGB, decreasing = TRUE),]
+  imp_vars_xgb = as.character(unlist(imp_xgb[, "Feature"]))
+  if (save_data) {
+    dir_path = ifelse(!is.character(dir_path), tempdir(), dir_path)
+    if (!dir.exists(dir_path)) dir.create(dir_path)
+    if (!is.character(file_name)) { file_name = NULL }
+    save_data(imp_vars, file_name = ifelse(is.null(file_name), "feature.XGB", paste(file_name, "feature.XGB", sep = ".")),
+              dir_path = dir_path, note = note, as_list = TRUE)
+    save_data(dt_imp_var, file_name = ifelse(is.null(file_name), "feature.XGB_table", paste(file_name, "feature.XGB_table", sep = ".")),
+              dir_path = dir_path, note = note)
+  }
+  if (vars_name) {
+    return(c(imp_vars_xgb))
+  } else {
+    return(imp_xgb[c("Feature", "Imp_Means_XGB")])
+  }
+  options(opt) # reset
 }
+
+
 #' Select Features using GBM
 #'
 #'
@@ -529,145 +532,140 @@ gbm_filter <- function(dat, target = NULL, x_list = NULL, ex_cols = NULL, pos_fl
 #' @importFrom dplyr %>% group_by summarise
 #' @export
 feature_selector <- function(dat_train, dat_test = NULL, x_list = NULL, target = NULL,
-                                  pos_flag = NULL, occur_time = NULL, ex_cols = NULL,
-                                  filter = c("IV", "PSI", "XGB", "COR"),
-                                  cv_folds = 1,
-                                  iv_cp = 0.01, psi_cp = 0.1, xgb_cp = 0, cor_cp = 0.98,
-                                  breaks_list = NULL, hopper = FALSE, vars_name = TRUE,
-                                  parallel = FALSE, note = TRUE, seed = 46,
-                                  save_data = FALSE, file_name = NULL,
-                                  dir_path = tempdir(), ...) {
-
-    if (!is.null(filter) && any(is.element(filter, c("IV", "PSI", "XGB", "COR")))) {
-        filter = filter
-    } else {
-        filter = c("IV", "COR", "PSI", "XGB")
-    }
-    cv_folds = ifelse(!is.null(cv_folds) && is.numeric(cv_folds), cv_folds, 1)
-    iv_cp = ifelse(!is.null(iv_cp) && is.numeric(iv_cp), iv_cp, 0.01)
-    psi_cp = ifelse(!is.null(psi_cp) && is.numeric(psi_cp), psi_cp, 0.1)
-    xgb_cp = ifelse(!is.null(xgb_cp) && is.numeric(xgb_cp), xgb_cp, 0)
-    cor_cp = ifelse(!is.null(cor_cp) && is.numeric(cor_cp), cor_cp, 0.98)
-    dat_train = checking_data(dat = dat_train, target = target, pos_flag = pos_flag)
-    if (!is.null(dat_test)) {
-        dat_test = checking_data(dat = dat_test, target = target, pos_flag = pos_flag)
-        x_list = get_x_list(x_list = x_list, dat_train = dat_train, dat_test = dat_test,
+                             pos_flag = NULL, occur_time = NULL, ex_cols = NULL,
+                             filter = c("IV", "PSI", "XGB", "COR"),
+                             cv_folds = 1,
+                             iv_cp = 0.01, psi_cp = 0.5, xgb_cp = 0, cor_cp = 0.98,
+                             breaks_list = NULL, hopper = FALSE, vars_name = TRUE,
+                             parallel = FALSE, note = TRUE, seed = 46,
+                             save_data = FALSE, file_name = NULL,
+                             dir_path = tempdir(), ...) {
+  
+  if (!is.null(filter) && any(is.element(filter, c("IV", "PSI", "XGB", "COR")))) {
+    filter = filter
+  } else {
+    filter = c("IV", "COR", "PSI", "XGB")
+  }
+  cv_folds = ifelse(!is.null(cv_folds) && is.numeric(cv_folds), cv_folds, 1)
+  iv_cp = ifelse(!is.null(iv_cp) && is.numeric(iv_cp), iv_cp, 0.01)
+  psi_cp = ifelse(!is.null(psi_cp) && is.numeric(psi_cp), psi_cp, 0.1)
+  xgb_cp = ifelse(!is.null(xgb_cp) && is.numeric(xgb_cp), xgb_cp, 0)
+  cor_cp = ifelse(!is.null(cor_cp) && is.numeric(cor_cp), cor_cp, 0.98)
+  dat_train = checking_data(dat = dat_train, target = target, pos_flag = pos_flag)
+  if (!is.null(dat_test)) {
+    dat_test = checking_data(dat = dat_test, target = target, pos_flag = pos_flag)
+    x_list = get_x_list(x_list = x_list, dat_train = dat_train, dat_test = dat_test,
                         ex_cols = c(target, occur_time, ex_cols))
-        com_list = unique(c(target, occur_time, x_list))
-        dat_train = dat_train[, com_list]
-        dat_test = dat_test[, com_list]
-        dat_ts = rbind(dat_train, dat_test)
-        dat_ts = low_variance_filter(dat = dat_ts, lvp = 1, note = FALSE)
-        char_x_list = get_names(dat = dat_ts, types = c('character', 'factor'),
-                            ex_cols = c(target, occur_time, ex_cols), get_ex = FALSE)
-        if (length(char_x_list) > 0) {
-            dat_ts = one_hot_encoding(dat = dat_ts, cat_vars = char_x_list,
-                                na_act = FALSE, note = FALSE)
-        }
-        nr = nrow(dat_train)
-        train_test = train_test_split(dat_ts, split_type = "byRow", prop = nr / nrow(dat_ts),
+    com_list = unique(c(target, occur_time, x_list))
+    dat_train = dat_train[, com_list]
+    dat_test = dat_test[, com_list]
+    dat_ts = rbind(dat_train, dat_test)
+    dat_ts = low_variance_filter(dat = dat_ts, lvp = 1, note = FALSE)
+    
+    nr = nrow(dat_train)
+    train_test = train_test_split(dat_ts, split_type = "byRow", prop = nr / nrow(dat_ts),
                                   occur_time = occur_time, seed = 46, save_data = FALSE, note = FALSE)
-        dat_train = train_test$train
-        dat_test = train_test$test
-    } else {
-        dat_train = low_variance_filter(dat = dat_train, lvp = 1, note = FALSE)
-        char_x_list = get_names(dat = dat_train, types = c('character', 'factor'),
-                            ex_cols = c(target, occur_time, ex_cols), get_ex = FALSE)
-        if (length(char_x_list) > 0) {
-            dat_train = one_hot_encoding(dat = dat_train, cat_vars = char_x_list,
-                                   na_act = FALSE, note = FALSE)
-        }
-        train_test = train_test_split(dat = dat_train, split_type = "OOT", prop = 0.7,
+    dat_train = train_test$train
+    dat_test = train_test$test
+  } else {
+    dat_train = low_variance_filter(dat = dat_train, lvp = 1, note = FALSE)
+    train_test = train_test_split(dat = dat_train, split_type = "OOT", prop = 0.7,
                                   occur_time = occur_time, seed = 46, save_data = FALSE, note = FALSE)
-        dat_train = train_test$train
-        dat_test = train_test$test
-    }
-
-    imp_list = get_names(dat = dat_train, types = c('numeric', 'integer', 'double'),
+    dat_train = train_test$train
+    dat_test = train_test$test
+  }
+  
+  imp_list = get_names(dat = dat_train, types = c('numeric', 'integer', 'double',
+                                                  'factor','character','logical','integer64'),
                        ex_cols = c(target, occur_time, ex_cols), get_ex = FALSE)
-    dt_imp = PSI = IV = Feature = Imp_Means_XGB = NULL
-    select_vars_iv = select_vars_psi = select_vars_xgb = select_vars_cor = imp_list = NULL
-
-    if (save_data) {
-        dir_path = ifelse(!is.character(dir_path), tempdir(), dir_path)
-        if (!dir.exists(dir_path)) dir.create(dir_path)
-        if (!is.character(file_name)) file_name = NULL
-        }
-
-    psi_list_train = iv_list = xgb_list = NULL
-
-    if (any(filter == "PSI")) {
-        if (note) cat_line("-- Feature filtering by PSI", col = love_color("deep_purple"))
-        psi_list_train = get_psi_all(dat = dat_train, dat_test = dat_test, x_list = imp_list,
-                                  breaks_list = breaks_list, ex_cols = ex_cols, g = 5,
-                                  parallel = parallel, note = FALSE, as_table = FALSE)
-        psi_list_t = subset(psi_list_train, PSI <= psi_cp)
-        select_vars_psi = as.character(psi_list_t[, "Feature"])
-        if (length(select_vars_psi) <= 1) {
-            select_vars_psi = imp_list
-            warning("There is no variable that meets the threshold of PSI selection.\n")
-        }
-
-        if (save_data) {
-            save_data(psi_list_t, as_list = FALSE, row_names = FALSE, note = FALSE,
-              file_name = ifelse(is.null(file_name), "feature_filter_PSI",
-              paste(file_name, "feature_filter_PSI", sep = ".")), dir_path = dir_path)
-        }
-
-        if (hopper) {
-            imp_list = select_vars_psi
-        }
-        dt_imp = psi_list_t
+  dt_imp = PSI = IV = Feature = Imp_Means_XGB = NULL
+  select_vars_iv = select_vars_psi = select_vars_xgb = select_vars_cor = NULL
+  
+  if (save_data) {
+    dir_path = ifelse(!is.character(dir_path), tempdir(), dir_path)
+    if (!dir.exists(dir_path)) dir.create(dir_path)
+    if (!is.character(file_name)) file_name = NULL
+  }
+  
+  psi_list_train = iv_list = xgb_list = NULL
+  
+  if (any(filter == "PSI")) {
+    if (note) cat_line("-- Feature filtering by PSI", col = love_color("deep_purple"))
+    psi_list_train = get_psi_all(dat = dat_train, dat_test = dat_test, x_list = imp_list,
+                                 breaks_list = breaks_list, ex_cols = ex_cols, g = 5,
+                                 parallel = parallel, note = FALSE, as_table = FALSE)
+    psi_list_t = subset(psi_list_train, PSI <= psi_cp)
+    select_vars_psi = as.character(psi_list_t[, "Feature"])
+    if (length(select_vars_psi) <= 1) {
+      select_vars_psi = imp_list
+      warning("There is no variable that meets the threshold of PSI selection.\n")
     }
-
-    if (any(filter == "IV") & !is.null(target) &&
-        is.element(target, colnames(dat_train))) {
-        if (note) cat_line("-- Feature filtering by IV", col = love_color("deep_purple"))
-
-        iv_list = get_iv_all(dat = dat_train, target = target,
+    
+    if (save_data) {
+      save_data(psi_list_t, as_list = FALSE, row_names = FALSE, note = FALSE,
+                file_name = ifelse(is.null(file_name), "feature_filter_PSI",
+                                   paste(file_name, "feature_filter_PSI", sep = ".")), dir_path = dir_path)
+    }
+    
+    if (hopper) {
+      imp_list = select_vars_psi
+    }
+    dt_imp = psi_list_t
+  }
+  
+  if (any(filter == "IV") & !is.null(target) &&
+      is.element(target, colnames(dat_train))) {
+    if (note) cat_line("-- Feature filtering by IV", col = love_color("deep_purple"))
+    
+    iv_list = get_iv_all(dat = dat_train, target = target,
                          x_list = imp_list, ex_cols = ex_cols,
                          pos_flag = pos_flag,
                          equal_bins = TRUE, best = FALSE,
                          breaks_list = breaks_list, g = 20,
                          note = FALSE, parallel = parallel)
-
-        iv_list_t = subset(iv_list, IV > iv_cp & IV <= 2)[, c("Feature", "IV")]
-        if (any(iv_list$IV > 2)) {
-            if (note) {
-                cat_line("-- Following variable's IV is too high to be doubted:", col = love_color("deep_red"))
-                cat_bullet(paste0(format(paste(iv_list[which(iv_list$IV > 2), "Feature"], collapse = ","))), col = "darkgrey")
-            }
-        }
-
-        select_vars_iv = as.character(iv_list_t[, "Feature"])
-        if (length(select_vars_iv) <= 1) {
-            select_vars_iv = imp_list
-            warning("There is no variable that meets the threshold of IV selection.\n")
-        }
-
-        if (hopper) {
-            imp_list = select_vars_iv
-        }
-
-
-        if (save_data) {
-            save_data(iv_list_t, as_list = FALSE, row_names = FALSE, note = FALSE,
-              file_name = ifelse(is.null(file_name), "feature_filter_IV",
-              paste(file_name, "feature_filter_IV", sep = ".")), dir_path = dir_path)
-        }
-
-        if (is.null(dt_imp)) {
-            dt_imp = iv_list_t
-        } else {
-            dt_imp = merge(iv_list_t, dt_imp)
-        }
-
+    
+    iv_list_t = subset(iv_list, IV > iv_cp & IV <= 2)[, c("Feature", "IV")]
+    if (any(iv_list$IV > 2)) {
+      if (note) {
+        cat_line("-- Following variable's IV is too high to be doubted:", col = love_color("deep_red"))
+        cat_bullet(paste0(format(paste(iv_list[which(iv_list$IV > 2), "Feature"], collapse = ","))), col = "darkgrey")
+      }
     }
+    
+    select_vars_iv = as.character(iv_list_t[, "Feature"])
+    if (length(select_vars_iv) <= 1) {
+      select_vars_iv = imp_list
+      warning("There is no variable that meets the threshold of IV selection.\n")
+    }
+    
+    if (hopper) {
+      imp_list = select_vars_iv
+    }
+    
+    
+    if (save_data) {
+      save_data(iv_list_t, as_list = FALSE, row_names = FALSE, note = FALSE,
+                file_name = ifelse(is.null(file_name), "feature_filter_IV",
+                                   paste(file_name, "feature_filter_IV", sep = ".")), dir_path = dir_path)
+    }
+    
+    if (!is.null(dt_imp)|(length(dt_imp)> 0 && nrow(dt_imp)>0)) {
+      if (hopper) {
+        dt_imp = merge(iv_list_t, dt_imp)
+      }else{
+        dt_imp = merge(iv_list_t, dt_imp,all = TRUE)
+      }
 
+    } else {
+      dt_imp = iv_list_t
+    }
+    
+  }
 
-    if (any(filter == "XGB") & !is.null(target) && is.element(target, colnames(dat_train))) {
-
-        xgb_list = xgb_filter(dat_train = dat_train, dat_test = dat_test, target = target,
+  
+  if (any(filter == "XGB") & !is.null(target) && is.element(target, colnames(dat_train))) {
+    
+    xgb_list = xgb_filter(dat_train = dat_train, dat_test = dat_test, target = target,
                           x_list = imp_list, occur_time = occur_time, ex_cols = ex_cols,
                           xgb_params = list(nrounds = 1000, max_depth = 6, eta = 0.1,
                                             min_child_weight = 1, subsample = 1,
@@ -676,93 +674,98 @@ feature_selector <- function(dat_train, dat_test = NULL, x_list = NULL, target =
                                             objective = "binary:logistic"),
                           cv_folds = cv_folds, cp = xgb_cp, seed = seed, note = TRUE,
                           vars_name = FALSE, save_data = FALSE)
-
-        select_vars_xgb = as.character(unlist(xgb_list[, "Feature"]))
-
-        if (length(select_vars_xgb) <= 1) {
-            select_vars_xgb = imp_list
-            warning("There is no variable that meets the threshold of XGB selection.\n")
-        }
-
-        if (hopper) {
-            imp_list = select_vars_xgb
-        }
-
-        if (save_data) {
-            save_data(xgb_list, as_list = FALSE, row_names = FALSE, note = FALSE,
-              file_name = ifelse(is.null(file_name), "feature_filter_XGB", paste(file_name, "feature_filter_XGB", sep = ".")), dir_path = dir_path)
-        }
-
-        if (is.null(dt_imp)) {
-            dt_imp = xgb_list
-        } else {
-            dt_imp = merge(xgb_list, dt_imp)
-        }
+    
+    select_vars_xgb = as.character(unlist(xgb_list[, "Feature"]))
+    
+    if (length(select_vars_xgb) <= 1) {
+      select_vars_xgb = imp_list
+      warning("There is no variable that meets the threshold of XGB selection.\n")
     }
-
-    if (any(filter == "COR")) {
-        if (note) cat_line("-- Feature filtering by Correlation", col = love_color("deep_purple"))
-
-        com_list = NULL
-        if (!is.null(iv_list)) {
-            com_list = iv_list
-        } else {
-            if (!is.null(xgb_list)) {
-                com_list = xgb_list
-            } else {
-                if (!is.null(psi_list_train)) {
-                    psi_list_train[, "PSI"] = 1 - psi_list_train[["PSI"]]
-                    com_list = psi_list_train
-                }
-            }
-        }
-
-        cor_list = fast_high_cor_filter(dat = dat_train, vars_name = FALSE,
-                                             x_list = imp_list, com_list = com_list,
-                                             ex_cols = ex_cols, cor_class = FALSE,
-                                             p = cor_cp, note = FALSE,
-                                             save_data = FALSE)
-
-        select_vars_cor = as.character(unlist(cor_list[, "Feature"]))
-        if (length(select_vars_cor) <= 1) {
-            select_vars_cor = imp_list
-            warning("There is no variable that meets the threshold of COR selection.\n")
-        }
-
-        if (hopper) {
-            imp_list = select_vars_cor
-        }
-
-
-        if (save_data) {
-            save_data(cor_list, as_list = FALSE, row_names = FALSE, note = FALSE,
-              file_name = ifelse(is.null(file_name), "feature_filter_XGB", paste(file_name, "feature_filter_XGB", sep = ".")), dir_path = dir_path)
-        }
-
-        if (is.null(dt_imp)) {
-            dt_imp = cor_list
-        } else {
-            dt_imp = merge(cor_list, dt_imp)
-        }
+    
+    if (hopper) {
+      imp_list = select_vars_xgb
     }
-
-    imp_vars = as.character(unlist(dt_imp[, "Feature"]))
-
+    
     if (save_data) {
-        save_data(imp_vars, as_list = TRUE, row_names = FALSE, note = note,
-            file_name = ifelse(is.null(file_name), "feature_filter", paste(file_name, "feature_filter", sep = ".")),
-			dir_path = dir_path)
-        save_data(dt_imp, as_list = FALSE, row_names = FALSE, note = note,
-            file_name = ifelse(is.null(file_name), "feature_filter_table", paste(file_name, "feature_filter_table", sep = ".")), dir_path = dir_path)
+      save_data(xgb_list, as_list = FALSE, row_names = FALSE, note = FALSE,
+                file_name = ifelse(is.null(file_name), "feature_filter_XGB", paste(file_name, "feature_filter_XGB", sep = ".")), dir_path = dir_path)
     }
-
-    if (vars_name) {
-        return(imp_vars)
+    
+    if (!is.null(dt_imp)|(length(dt_imp)> 0 && nrow(dt_imp)>0) ) {
+      if (hopper) {
+        dt_imp = merge(xgb_list, dt_imp)
+      }else{
+        dt_imp = merge(xgb_list, dt_imp,all = TRUE)
+      }
+     
     } else {
-        return(dt_imp)
+      dt_imp = xgb_list
     }
+  }
+  
+  if (any(filter == "COR")) {
+    if (note) cat_line("-- Feature filtering by Correlation", col = love_color("deep_purple"))
+    
+    com_list = NULL
+    iv_list = NULL
+    if (!is.null(iv_list)|(length(iv_list)>0 && nrow(iv_list) >0)) {
+      com_list = iv_list
+    } else {
+      if (!is.null(xgb_list)|(length(xgb_list)>0 && nrow(xgb_list) >0)) {
+        com_list = xgb_list
+      } else {
+        if (!is.null(psi_list_train)|(length(psi_list_train)>0 && nrow(psi_list_train) >0)) {
+          psi_list_train[, "PSI"] = 1 - psi_list_train[["PSI"]]
+          com_list = psi_list_train
+        }
+      }
+    }
+    
+    cor_list = fast_high_cor_filter(dat = dat_train, vars_name = FALSE,
+                                    x_list = imp_list, com_list = com_list,
+                                    ex_cols = ex_cols, cor_class = FALSE,
+                                    p = cor_cp, note = FALSE,
+                                    save_data = FALSE)
+    
+    select_vars_cor = as.character(unlist(cor_list[, "Feature"]))
+    if (length(select_vars_cor) <= 1) {
+      select_vars_cor = imp_list
+      warning("There is no variable that meets the threshold of COR selection.\n")
+    }
+    
+    if (save_data) {
+      save_data(cor_list, as_list = FALSE, row_names = FALSE, note = FALSE,
+                file_name = ifelse(is.null(file_name), "feature_filter_XGB", paste(file_name, "feature_filter_XGB", sep = ".")), dir_path = dir_path)
+    }
+    
+    if (!is.null(dt_imp)|(length(dt_imp)> 0 && nrow(dt_imp)>0)) {
+      if (hopper) {
+        dt_imp = merge(cor_list, dt_imp)
+      }else{
+        dt_imp = merge(cor_list, dt_imp,all = TRUE)
+      }
+      
+    } else {
+      dt_imp = cor_list
+    }
+  }
+  
+  imp_vars = as.character(unlist(dt_imp[, "Feature"]))
+  
+  if (save_data) {
+    save_data(imp_vars, as_list = TRUE, row_names = FALSE, note = note,
+              file_name = ifelse(is.null(file_name), "feature_filter", paste(file_name, "feature_filter", sep = ".")),
+              dir_path = dir_path)
+    save_data(dt_imp, as_list = FALSE, row_names = FALSE, note = note,
+              file_name = ifelse(is.null(file_name), "feature_filter_table", paste(file_name, "feature_filter_table", sep = ".")), dir_path = dir_path)
+  }
+  
+  if (vars_name) {
+    return(imp_vars)
+  } else {
+    return(dt_imp)
+  }
 }
-
 
 #' high_cor_filter
 #'

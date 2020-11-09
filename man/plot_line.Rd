@@ -16,9 +16,10 @@ plot_line(
   value = NULL,
   type = "total_pct",
   reverse = FALSE,
-  theme = plot_theme(legend.position = "right", title_size = 9, legend_size = 7,
+  pl_theme = plot_theme(legend.position = "right", title_size = 9, legend_size = 7,
     axis_title_size = 8),
-  fill_colors = c(love_color(type = "light")[1:8], love_color(type = "deep")[1:6])
+  fill_colors = c(love_color(type = "lightnihon_8x1"), love_color(type =
+    "darknihon_8x1"))
 )
 }
 \arguments{
@@ -44,9 +45,9 @@ plot_line(
 
 \item{reverse}{Logical,whether reverse the plot.}
 
-\item{theme}{theme of the plot}
+\item{pl_theme}{theme of the plot}
 
-\item{fill_colors}{Colors of bar.}
+\item{fill_colors}{Colors of line.}
 }
 \description{
 You can use the \code{plot_bar} to produce the barplot.

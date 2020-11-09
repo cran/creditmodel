@@ -15,7 +15,7 @@ feature_selector(
   filter = c("IV", "PSI", "XGB", "COR"),
   cv_folds = 1,
   iv_cp = 0.01,
-  psi_cp = 0.1,
+  psi_cp = 0.5,
   xgb_cp = 0,
   cor_cp = 0.98,
   breaks_list = NULL,

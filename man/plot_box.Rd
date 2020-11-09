@@ -8,9 +8,10 @@ plot_box(
   dat,
   y,
   x = NULL,
+  x_breaks = NULL,
   g = 5,
-  colors_x = c(love_color(type = "deep"), love_color(type = "light"), love_color(type =
-    "shallow"), love_color(type = "dark"))
+  fill_colors = c(love_color(type = "lightnihon_8x1"), love_color(type =
+    "darknihon_8x1"))
 )
 }
 \arguments{
@@ -20,9 +21,11 @@ plot_box(
 
 \item{x}{The name of an independent variable.}
 
+\item{x_breaks}{Breaks points of x.}
+
 \item{g}{Number of initial breakpoints for equal frequency binning.}
 
-\item{colors_x}{colors of x.}
+\item{fill_colors}{colors of x.}
 }
 \description{
 You can use the \code{plot_box} to produce boxplot.

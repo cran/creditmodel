@@ -8,7 +8,7 @@ customer_segmentation(
   dat,
   x_list = NULL,
   ex_cols = NULL,
-  cluster_control = list(meth = "Kmeans", kc = 2, nstart = 1, epsm = 1e-06, sf = 2,
+  cluster_control = list(meth = "Kmeans", kc = 2, nstart = 1, epsm = 0.000001, sf = 2,
     max_iter = 100),
   tree_control = list(cv_folds = 5, maxdepth = kc + 1, minbucket = nrow(dat)/(kc + 1)),
   save_data = FALSE,

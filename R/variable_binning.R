@@ -99,21 +99,19 @@ split_bins = function (dat, x, breaks = NULL, bins_no = TRUE){
                         equal_bins = TRUE, g = 5, note = FALSE)
   }
   sp_value_num = sp_value_char = NULL
-  if (any(c("integer", "numeric", "double") == 
-          class(dat[, x])[1])) {
+  if (any(c("integer", "numeric", "double") == class(dat[, x])[1])) {
     dat[, x] = as.numeric(dat[, x])
     breaks = sort(unlist(unique(c(-Inf, breaks, Inf))))
-    bins_1 = cut(dat[, x], breaks = unique(breaks), dig.lab = 12, 
+    bins_1 = cut(dat[, x], breaks = unique(breaks), dig.lab = 12,
                  ordered = TRUE, include.lowest = FALSE, right = TRUE)
-    bins_1 = gsub(" ","",bins_1)
+    
     if (bins_no) {
-      bins_0 = ifelse(is.na(bins_1), "00", paste("0", 
-                                                 as.numeric(as.factor(bins_1)), sep = ""))
+      bins_0 = ifelse(is.na(bins_1), '00', paste("0", as.numeric(bins_1), sep = ""))
       bins = paste(bins_0, bins_1, sep = ".")
-      bins[which(as.numeric(bins_1) >= 10)] = paste(as.numeric(bins_1[which(as.numeric(bins_1) >= 
-                                                                              10)]), bins_1[which(as.numeric(bins_1) >= 10)], 
-                                                    sep = ".")
-    }else {
+      bins[which(as.numeric(bins_1) >= 10)] =
+        paste(as.numeric(bins_1[which(as.numeric(bins_1) >= 10)]),
+              bins_1[which(as.numeric(bins_1) >= 10)], sep = ".")
+    } else {
       bins = as.character(bins_1)
     }
   }else {
@@ -156,6 +154,7 @@ split_bins = function (dat, x, breaks = NULL, bins_no = TRUE){
   return(bins)
   options(opt)
 }
+
 
 
 #' Generates Best Breaks for Binning

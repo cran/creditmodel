@@ -254,7 +254,7 @@ training_model <- function(model_name = "mymodel",
 								 file_name = NULL, dir_path = data_dir_path)
 	}
 
-	if ((is.logical(missing_proc) && missing_proc) || (is.character(missing_proc) && is.element(missing_proc, 
+	if ((is.logical(missing_proc) && missing_proc) || (is.character(missing_proc) && is.element(missing_proc,
 	c("median", "avg_dist", "default")))) {
 		if (is.character(missing_proc) && is.element(missing_proc, c("median", "avg_dist", "default"))) {
 			method = missing_proc
@@ -490,6 +490,7 @@ training_model <- function(model_name = "mymodel",
 										 dir_path = LR_var_dir_path)
 				select_vars = unique(c(forced_in, unlist(select_vars)))
 			}
+
 			bins_table = get_bins_table_all(dat = dat_train, target = target,
 									  ex_cols = c(target, occur_time, obs_id, ex_cols),
 									  x_list = select_vars, breaks_list = breaks_list,

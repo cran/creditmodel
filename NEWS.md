@@ -1,3 +1,11 @@
+# creditmodel-1.2.7
+
+**In this version I have:**
+* Fixed some bugs in `split_bins`,`time_transfer`,`cohort_analysis`,`xgb_filter`,`feature_selector`.
+* Rewrite the functions of  `plot_bar`,`plot_density`,`plot_line`, `plot_box`,`plot_relative_freq_histogram`,`love_color`.
+* Add new functions of `plot_colors`
+
+
 # creditmodel-1.2.6
 
 **In this version I have:**

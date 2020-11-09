@@ -19,6 +19,7 @@ get_plots(
   g = 20,
   tree_control = NULL,
   bins_control = NULL,
+  fill_colors = love_color(type = "lightnihon_6x1"),
   plot_show = TRUE,
   save_data = FALSE,
   file_name = NULL,
@@ -42,6 +43,7 @@ plot_vars(
   g = 10,
   tree_control = NULL,
   bins_control = NULL,
+  fill_colors = love_color(type = "lightnihon_6x1"),
   plot_show = TRUE,
   save_data = FALSE,
   dir_path = tempdir()
@@ -73,6 +75,8 @@ plot_vars(
 \item{tree_control}{Parameters of using Decision Tree to segment initial breaks. See detials: \code{\link{get_tree_breaks}}}
 
 \item{bins_control}{Parameters  used to control binning.  See detials: \code{\link{select_best_class}}, \code{\link{select_best_breaks}}}
+
+\item{fill_colors}{Colors of plots.See detials: \code{\link{love_color}},select some beatiful colors.}
 
 \item{plot_show}{Logical, show model performance in current graphic device. Default is FALSE.}
 
