@@ -11,7 +11,9 @@ plot_bar(
   x_breaks = NULL,
   y_breaks = NULL,
   cut_bin = "equal_width",
-  g = 10,
+  g_x = 10,
+  g_y = 5,
+  string_bins = FALSE,
   target = NULL,
   value = NULL,
   type = "total_pct",
@@ -20,8 +22,8 @@ plot_bar(
   dodge_width = 0.9,
   pl_theme = plot_theme(legend.position = "top", title_size = 9, legend_size = 7,
     axis_title_size = 8),
-  fill_colors = c(love_color(type = "lightnihon_8x1"), love_color(type =
-    "darknihon_8x1"))
+  fill_colors = c(love_color(type = "deep"), love_color(type = "light"),
+    love_color(type = "shallow"))
 )
 }
 \arguments{
@@ -37,13 +39,18 @@ plot_bar(
 
 \item{cut_bin}{'equal_width' or 'equal_depth' to produce the breaks points.}
 
-\item{g}{Number of initial breakpoints for equal frequency binning.}
+\item{g_x}{Number of initial breakpoints for equal frequency binning of x.}
+
+\item{g_y}{Number of initial breakpoints for equal frequency binning of y.}
+
+\item{string_bins}{Whether to process bins of classification variables.}
 
 \item{target}{The name of target variable.}
 
 \item{value}{The name of the variable to sum. When this parameter is NULL, the default statistics is to sum frequency.}
 
-\item{type}{Output form of the result of crosstable. Provide these forms:"each_pct", "total_sum","total_pct","total_mean","total_median","total_max","total_min","bad_sum","bad_pct".}
+\item{type}{Output form of the result of crosstable. 
+Provide these forms:"each_pct_x", "each_pct_y","total_sum","total_pct","total_mean","total_median","total_max","total_min","bad_sum","bad_pct".}
 
 \item{reverse}{Logical,whether reverse the plot.}
 
@@ -60,10 +67,12 @@ You can use the \code{plot_bar} to produce the barplot.
 }
 \examples{
 plot_bar(dat = lendingclub, x = "grade")
-plot_bar(dat = lendingclub, x = "grade", y= "dti_joint", g = 5,
-	 position = 'dodge', dodge_width = 0.9,
-	 reverse = FALSE,
-	 cut_bin = 'equal_width',
+plot_bar(dat = lendingclub, x = "grade", y= "dti", 
+         g_x = 5,g_y = 3,
+		 position = 'dodge', dodge_width = 0.9,
+		 type = "each_pct_x",
+		 reverse = FALSE,
+		 cut_bin = 'equal_depth',
  fill_colors = c(love_color(type = "line"),
   love_color(type = "line")))
 }

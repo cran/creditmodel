@@ -29,7 +29,7 @@
 #'
 #' @export
 
-process_nas <- function(dat, x_list = NULL, class_var = FALSE, miss_values = list(-1, "missing"),default_miss =  list(-1, "missing"),
+process_nas = function(dat, x_list = NULL, class_var = FALSE, miss_values = list(-1, "missing"),default_miss =  list(-1, "missing"),
 						parallel = FALSE, ex_cols = NULL, method = "median", note = FALSE,
 						save_data = FALSE, file_name = NULL, dir_path = tempdir(), ...) {
 	if (note) cat_line("-- Processing NAs", col = love_color("dark_green"))
@@ -43,7 +43,7 @@ process_nas <- function(dat, x_list = NULL, class_var = FALSE, miss_values = lis
 	x_list = get_x_list(x_list = x_list, dat_train = dat, dat_test = NULL, ex_cols = ex_cols)
 
 	dat = null_blank_na(dat = dat, miss_values = miss_values, note = FALSE)
-	mat_nas_shadow <- get_shadow_nas(dat[ x_list])
+	mat_nas_shadow = get_shadow_nas(dat[ x_list])
 	if (length(mat_nas_shadow) > 0) {
 		nas_rate = colSums(mat_nas_shadow) / nrow(mat_nas_shadow)
 		na_vars = names(mat_nas_shadow)
@@ -57,7 +57,7 @@ process_nas <- function(dat, x_list = NULL, class_var = FALSE, miss_values = lis
 										dt_nas_random = dt_nas_random)
 		}
 
-		dat[na_vars] <- loop_function(func = process_nas_var, x_list = na_vars,
+		dat[na_vars] = loop_function(func = process_nas_var, x_list = na_vars,
 										args = list(dat = dat, nas_rate = nas_rate,
 													mat_nas_shadow = mat_nas_shadow,
 													dt_nas_random = dt_nas_random,
@@ -93,7 +93,7 @@ process_nas <- function(dat, x_list = NULL, class_var = FALSE, miss_values = lis
 #' @return A data.frame with outliers analysis for each variable.
 #' @export
 
-analysis_nas <- function(dat, class_var = FALSE, nas_rate = NULL, na_vars = NULL, mat_nas_shadow = NULL, dt_nas_random = NULL, ...) {
+analysis_nas = function(dat, class_var = FALSE, nas_rate = NULL, na_vars = NULL, mat_nas_shadow = NULL, dt_nas_random = NULL, ...) {
 	if (is.null(mat_nas_shadow)) { mat_nas_shadow = get_shadow_nas(dat) }
 	if (is.null(nas_rate)) { nas_rate = colSums(mat_nas_shadow) / nrow(mat_nas_shadow) }
 	if (is.null(na_vars)) { na_vars = names(mat_nas_shadow) }
@@ -250,7 +250,7 @@ process_nas_var = function(dat = dat, x,
 				  append = TRUE, note = FALSE)
 		}
 		if (note) cat_bullet(paste(unlist(nas_analysis), collapse = "\t"), col = "darkgrey")
-		is_not_na <- unlist(dat[, x][!is.na(dat[, x])])
+		is_not_na = unlist(dat[, x][!is.na(dat[, x])])
 		if (nas_rate_x > 0 & len_num > 0) {
 			if (!is.na(missing_type_x) && missing_type_x != "No_NAs") {
 				if (!is.element(class(dat[, x])[1], c('numeric', 'integer', 'double', 'Date'))) {
@@ -295,7 +295,7 @@ process_nas_var = function(dat = dat, x,
 #' @param miss_value_num Default value of missing data imputation for numeric variables, Defualt is -1.
 #' @export
 
-knn_nas_imp <- function(dat, x, nas_rate = NULL, mat_nas_shadow = NULL,
+knn_nas_imp = function(dat, x, nas_rate = NULL, mat_nas_shadow = NULL,
 dt_nas_random = NULL, k = 10, scale = FALSE, method = 'median', miss_value_num = -1) {
 	dat = checking_data(dat)
 	miss_x = which(!complete.cases(dat[, x]))	
@@ -365,8 +365,8 @@ dt_nas_random = NULL, k = 10, scale = FALSE, method = 'median', miss_value_num =
 #'
 #' @param  dat  A data.frame contained only predict variables.
 #' @export
-get_shadow_nas <- function(dat) {
-	nas_shadow <- as.data.frame(abs(is.na(dat)))
+get_shadow_nas = function(dat) {
+	nas_shadow = as.data.frame(abs(is.na(dat)))
 	mat_nas_shadow = list()
 	if (length(nas_shadow) > 0) {
 		low_variance = vapply(nas_shadow,
@@ -386,12 +386,12 @@ get_shadow_nas <- function(dat) {
 #' @param  dat  A data.frame contained only predict variables.
 #' @export
 
-get_nas_random <- function(dat) {
+get_nas_random = function(dat) {
 	dt_nas_random = c()
 	if (length(dat) > 0) {
-		dt_nas_random <- quick_as_df(lapply(dat, function(x) {
-			nas <- which(is.na(x))
-			is_not_na <- unlist(x[!is.na(x)])
+		dt_nas_random = quick_as_df(lapply(dat, function(x) {
+			nas = which(is.na(x))
+			is_not_na = unlist(x[!is.na(x)])
 			if (length(unique(is_not_na)) <= 1) {
 				if (length(unique(is_not_na)) == 1 && unique(is_not_na) == 0) {
 					x[nas] = 1
@@ -443,7 +443,7 @@ get_nas_random <- function(dat) {
 
 
 
-process_outliers <- function(dat, target, ex_cols = NULL, kc = 3, kn = 5, x_list = NULL,
+process_outliers = function(dat, target, ex_cols = NULL, kc = 3, kn = 5, x_list = NULL,
                              parallel = FALSE,note = FALSE, process = TRUE,
                              save_data = FALSE, file_name = NULL, dir_path = tempdir()) {
     if (note)cat_line("-- Processing outliers using Kmeans and LOF", col = love_color("dark_green"))
@@ -480,11 +480,11 @@ process_outliers <- function(dat, target, ex_cols = NULL, kc = 3, kn = 5, x_list
 #' @rdname process_outliers
 #' @export
 
-outliers_kmeans_lof <- function(dat, x, target = NULL, kc = 3, kn = 5,
+outliers_kmeans_lof = function(dat, x, target = NULL, kc = 3, kn = 5,
                                 note = FALSE, process = TRUE,
                                 save_data = FALSE, file_name = NULL, dir_path = tempdir()) {
-    lof <- outliers_detection(dat = dat, x)
-    len_num <- length(unique(dat[, x]))
+    lof = outliers_detection(dat = dat, x)
+    len_num = length(unique(dat[, x]))
     if (length(lof) > 0) {
         outlier_type = analysis_outliers(dat = dat, x, target = target, lof = lof)
     } else {
@@ -504,26 +504,26 @@ outliers_kmeans_lof <- function(dat, x, target = NULL, kc = 3, kn = 5,
     if (process) {
         if (len_num > 0) {
             if (outlier_type =="no_outlier") {
-                dat[, x] <- dat[, x]
+                dat[, x] = dat[, x]
             } else {
                 if (outlier_type == "random") {
-                    dat[lof, x] <- sample(dat[, x][!is.na(dat[, x])], size = 1, replace = TRUE)
+                    dat[lof, x] = sample(dat[, x][!is.na(dat[, x])], size = 1, replace = TRUE)
                 } else {
                     if (outlier_type == "NAs") {
-                        dat[lof, x] <- NA
+                        dat[lof, x] = NA
                     } else {
                         top_rate = length(lof) / length(dat[, x])
                         if (outlier_type == "floor") {
-                            p1 <- ifelse(any(c('numeric', 'integer', 'double') == class(dat[, x])),
+                            p1 = ifelse(any(c('numeric', 'integer', 'double') == class(dat[, x])),
                                          quantile(dat[, x], 0.005, na.rm = TRUE, type = 3),
                                          get_median(dat[, x]))
-                            dat[lof, x] <- p1
+                            dat[lof, x] = p1
                         } else {
                             if (outlier_type == "top") {
-                                p99 <- ifelse(any(c('numeric', 'integer', 'double') == class(dat[, x])),
+                                p99 = ifelse(any(c('numeric', 'integer', 'double') == class(dat[, x])),
                                               quantile(dat[, x], 0.995, na.rm = TRUE, type = 3),
                                               get_median(dat[, x]))
-                                dat[lof, x] <- p99
+                                dat[lof, x] = p99
                             }
                         }
                     }
@@ -546,7 +546,7 @@ outliers_kmeans_lof <- function(dat, x, target = NULL, kc = 3, kn = 5,
 #' @return A data.frame with outliers analysis for each variable.
 #' @export
 
-analysis_outliers <- function(dat, target, x, lof = NULL) {
+analysis_outliers = function(dat, target, x, lof = NULL) {
     if (is.null(lof)) {
         lof = outliers_detection(dat = dat, x)
     }
@@ -554,7 +554,7 @@ analysis_outliers <- function(dat, target, x, lof = NULL) {
     outlier_type ="no_outlier"
     if (length(lof) > 10) {
         corr_lof_y = corr_lof_na = corr_lof_x = corr_xy = 1
-        is_lof <- abs(dm_x %in% dm_x[lof])
+        is_lof = abs(dm_x %in% dm_x[lof])
         if (any(is.element(class(dm_x) ,  c('Date', 'numeric', 'integer', 'double')))) {
             corr_lof_x = cor(dm_x, y = is_lof, method = "spearman", use = "pairwise.complete.obs")
         } else {
@@ -578,13 +578,13 @@ analysis_outliers <- function(dat, target, x, lof = NULL) {
                                               simulate.p.value = TRUE)$statistic,
                                    silent = TRUE) / sum(table_xy))
             }
-            ctb_y <- as.matrix(table(is_lof, dat[, target]))
+            ctb_y = as.matrix(table(is_lof, dat[, target]))
         }
-        NAs <- which(is.na(dm_x))
+        NAs = which(is.na(dm_x))
         if (length(NAs) > 30) {
-            is_na <- abs(is.na(dm_x))
+            is_na = abs(is.na(dm_x))
             corr_lof_na = cor(is_na, y = is_lof, method = "spearman")
-            ctb_na <- as.matrix(table(is_lof, is_na))
+            ctb_na = as.matrix(table(is_lof, is_na))
         }
         ctb_list = list(ctb_y, ctb_na)
         effect_sz = odds_ratio = dif_1_rate = c()
@@ -638,13 +638,13 @@ analysis_outliers <- function(dat, target, x, lof = NULL) {
 #' @return  Outliers of each variable.
 #' @export
 
-outliers_detection <- function(dat, x, kc = 3, kn = 5) {
+outliers_detection = function(dat, x, kc = 3, kn = 5) {
     dm_x = dat[, x]
     len = length(unique(dm_x))
     lof = NULL
     if (len > 50 & any(c('Date', 'numeric', 'integer', 'double') == class(dm_x)[1])) {
         dm_s = min_max_norm(dm_x)
-        dm_s[is.na(dm_s)] <- get_median(as.numeric(dm_s))
+        dm_s[is.na(dm_s)] = get_median(as.numeric(dm_s))
         #  packages("mclust")
         set.seed(46)
         #G = if (len > 100) { c(1:min(ceiling(len / 50), 5)) } else { c(1:2) }
@@ -652,8 +652,8 @@ outliers_detection <- function(dat, x, kc = 3, kn = 5) {
         kc = ifelse(len > 100, kc, 2)
         km = kmeans(dm_s, centers = kc)
         #distance of samples
-        center <- list()
-        distance <- list()
+        center = list()
+        distance = list()
         for (i in 1:kc) {
             center[[i]] = matrix(km$centers[i,], nrow = length(dm_s), ncol = 1, byrow = T)
             distance[[i]] = sqrt(rowSums((dm_s - center[[i]]) ^ 2))
@@ -683,7 +683,7 @@ outliers_detection <- function(dat, x, kc = 3, kn = 5) {
         }
     } else {
         if (len > 2 & len < 50 & any(c('factor', 'character') == class(dm_x)[1])) {
-            dm_x <- as.character(dm_x)
+            dm_x = as.character(dm_x)
             lof = which(dm_x %in% names(which(table(dm_x, useNA = "no") / length(dm_x) < 0.005)))
             rm(dm_x)
         }

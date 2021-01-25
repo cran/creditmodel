@@ -4,7 +4,14 @@
 \alias{char_to_num}
 \title{character to number}
 \usage{
-char_to_num(dat, char_list = NULL, m = 0, p = 1, note = TRUE, ex_cols = NULL)
+char_to_num(
+  dat,
+  char_list = NULL,
+  m = 0,
+  p = 0.5,
+  note = FALSE,
+  ex_cols = NULL
+)
 }
 \arguments{
 \item{dat}{A data frame}

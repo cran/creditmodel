@@ -10,13 +10,16 @@ plot_relative_freq_histogram(
   y = NULL,
   x_breaks = NULL,
   y_breaks = NULL,
+  value = NULL,
   reverse = ifelse(is.null(y), TRUE, FALSE),
-  g = 10,
+  g_x = 10,
+  g_y = 5,
   cut_bin = "equal_width",
   pl_theme = plot_theme(legend.position = "top", title_size = 9, legend_size = 7,
     axis_title_size = 8),
-  fill_colors = c(love_color(type = "lightnihon_8x1"), love_color(type =
-    "darknihon_8x1"))
+  fill_colors = c(love_color(type = "lightnihon_6x1"), love_color(type = "deep"),
+    love_color(type = "light")),
+  string_bins = FALSE
 )
 }
 \arguments{
@@ -30,20 +33,26 @@ plot_relative_freq_histogram(
 
 \item{y_breaks}{Breaks points of y.}
 
+\item{value}{The name of the variable to sum. When this parameter is NULL, the default statistics is to sum frequency.}
+
 \item{reverse}{Logical,whether reverse the plot.}
 
-\item{g}{Number of initial breakpoints for equal frequency binning.}
+\item{g_x}{Number of initial breakpoints for equal frequency binning of x.}
+
+\item{g_y}{Number of initial breakpoints for equal frequency binning of y.}
 
 \item{cut_bin}{'equal_width' or 'equal_depth' to produce the breaks points.}
 
 \item{pl_theme}{Theme of plot.}
 
 \item{fill_colors}{Colors of bar.}
+
+\item{string_bins}{Whether to process bins of classification variables.}
 }
 \description{
 You can use the \code{plot_relative_freq_histogram} to produce the relative frequency histogram plots.
 }
 \examples{
-plot_relative_freq_histogram(dat = lendingclub, x = "grade", y = "dti_joint", g = 7,
+plot_relative_freq_histogram(dat = lendingclub, x = "grade", y = "dti", g_x = 7,g_y = 3,
 	cut_bin = 'equal_width')
 }

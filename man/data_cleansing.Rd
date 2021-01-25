@@ -18,7 +18,7 @@ data_cleansing(
   missing_proc = "median",
   low_var = 0.999,
   missing_rate = 0.999,
-  merge_cat = FALSE,
+  merge_cat = TRUE,
   note = TRUE,
   parallel = FALSE,
   save_data = FALSE,

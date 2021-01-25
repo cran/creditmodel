@@ -43,5 +43,5 @@ This function is used for Fuzzy Clustering.
 }
 \references{
 Bezdek, James C. "FCM: The fuzzy c-means clustering algorithm".
-Computers & Geosciences (0098-3004),\url{https://doi.org/10.1016/0098-3004(84)90020-7}
+Computers & Geosciences (0098-3004),\doi{10.1016/0098-3004(84)90020-7}
 }

@@ -52,13 +52,13 @@ dat = re_name(dat, "default.payment.next.month", "target")
 dat = data_cleansing(dat, target = "target", obs_id = "ID", occur_time = "apply_date",
 miss_values =  list("", -1))
 
-train_test <- train_test_split(dat, split_type = "OOT", prop = 0.7,
+train_test = train_test_split(dat, split_type = "OOT", prop = 0.7,
                                 occur_time = "apply_date")
 dat_train = train_test$train
 dat_test = train_test$test
 #get breaks of all predictive variables
 x_list = c("PAY_0", "LIMIT_BAL", "PAY_AMT5", "EDUCATION", "PAY_3", "PAY_2")
-breaks_list <- get_breaks_all(dat = dat_train, target = "target",
+breaks_list = get_breaks_all(dat = dat_train, target = "target",
                               x_list = x_list, occur_time = "apply_date", ex_cols = "ID",
 save_data = FALSE, note  = FALSE)
 #woe transform

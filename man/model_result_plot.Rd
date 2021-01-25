@@ -26,7 +26,8 @@ model_result_plot(
   plot_show = TRUE,
   total = TRUE,
   g = 10,
-  cut_bin = "equal_depth"
+  cut_bin = "equal_depth",
+  digits = 4
 )
 
 perf_table(
@@ -37,8 +38,10 @@ perf_table(
   g = 10,
   cut_bin = "equal_depth",
   breaks = NULL,
+  digits = 2,
   pos_flag = list("1", "1", "Bad", 1),
-  total = FALSE
+  total = FALSE,
+  binsNO = FALSE
 )
 
 ks_plot(
@@ -49,7 +52,7 @@ ks_plot(
   gtitle = NULL,
   breaks = NULL,
   g = 10,
-  cut_bin = "equal_depth",
+  cut_bin = "equal_width",
   perf_tb = NULL
 )
 
@@ -108,9 +111,13 @@ score_distribution_plot(
 
 \item{cut_bin}{A string, if equal_bins is TRUE, 'equal_depth' or 'equal_width', default is 'equal_depth'.}
 
+\item{digits}{Digits of numeric,default is 4.}
+
 \item{breaks}{Splitting points of prob or score.}
 
 \item{pos_flag}{The value of positive class of target variable, default: "1".}
+
+\item{binsNO}{Bins Number.Default is FALSE.}
 
 \item{perf_tb}{Performance table.}
 }
@@ -141,7 +148,7 @@ x_list = c("PAY_0", "LIMIT_BAL", "PAY_AMT5", "PAY_3", "PAY_2")
 dat = data_cleansing(dat, target = "target", obs_id = "ID",x_list = x_list,
 occur_time = "apply_date", miss_values = list("", -1))
 dat = process_nas(dat,default_miss = TRUE)
-train_test <- train_test_split(dat, split_type = "OOT", prop = 0.7,
+train_test = train_test_split(dat, split_type = "OOT", prop = 0.7,
                                 occur_time = "apply_date")
 dat_train = train_test$train
 dat_test = train_test$test

@@ -120,19 +120,19 @@ tree_control = list(p = 0.02, cp = 0.000001, xval = 5, maxdepth = 10)
 bins_control = list(bins_num = 10, bins_pct = 0.02, b_chi = 0.02, b_odds = 0.1,
                    b_psi = 0.05, b_or = 15, mono = 0.2, odds_psi = 0.1, kc = 5)
 # get categrory variable breaks
-b <-  get_breaks(dat = UCICreditCard[1:1000,], x = "MARRIAGE",
+b =  get_breaks(dat = UCICreditCard[1:1000,], x = "MARRIAGE",
                 target = "default.payment.next.month",
                 occur_time = "apply_date",
                 sp_values = list(-1, "missing"),
                 tree_control = tree_control, bins_control = bins_control)
 # get numeric variable breaks
-b2 <-  get_breaks(dat = UCICreditCard[1:1000,], x = "PAY_2",
+b2 =  get_breaks(dat = UCICreditCard[1:1000,], x = "PAY_2",
                  target = "default.payment.next.month",
                  occur_time = "apply_date",
                  sp_values = list(-1, "missing"),
                  tree_control = tree_control, bins_control = bins_control)
 # get breaks of all predictive variables
-b3 <-  get_breaks_all(dat = UCICreditCard[1:1000,], target = "default.payment.next.month",
+b3 =  get_breaks_all(dat = UCICreditCard[1:1000,], target = "default.payment.next.month",
                      x_list = c("MARRIAGE","PAY_2"),
                      occur_time = "apply_date", ex_cols = "ID",
                      sp_values = list(-1, "missing"),

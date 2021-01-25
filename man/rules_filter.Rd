@@ -22,7 +22,7 @@ A data frame.
 \code{rules_filter} This function is used to filter or select samples by rules.
 }
 \examples{
-train_test <- train_test_split(UCICreditCard, split_type = "Random", prop = 0.8, save_data = FALSE)
+train_test = train_test_split(UCICreditCard, split_type = "Random", prop = 0.8, save_data = FALSE)
 dat_train = train_test$train
 dat_test = train_test$test
 dat_train$default.payment.next.month = as.numeric(dat_train$default.payment.next.month)

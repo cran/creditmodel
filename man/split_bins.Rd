@@ -4,7 +4,15 @@
 \alias{split_bins}
 \title{split_bins}
 \usage{
-split_bins(dat, x, breaks = NULL, bins_no = TRUE)
+split_bins(
+  dat,
+  x,
+  breaks = NULL,
+  bins_no = TRUE,
+  as_factor = FALSE,
+  labels = NULL,
+  use_NA = TRUE
+)
 }
 \arguments{
 \item{dat}{A data.frame with independent variables.}
@@ -14,6 +22,12 @@ split_bins(dat, x, breaks = NULL, bins_no = TRUE)
 \item{breaks}{Breaks for binning.}
 
 \item{bins_no}{Number the generated bins. Default is TRUE.}
+
+\item{as_factor}{Whether to convert to factor type.}
+
+\item{labels}{Labels of bins.}
+
+\item{use_NA}{Whether to process NAs.}
 }
 \value{
 A data.frame with Bined x.

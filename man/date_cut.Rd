@@ -4,12 +4,14 @@
 \alias{date_cut}
 \title{Date Time Cut Point}
 \usage{
-date_cut(dat_time, pct = 0.7)
+date_cut(dat_time, pct = 0.7, g = 100)
 }
 \arguments{
 \item{dat_time}{time vectors.}
 
 \item{pct}{the percent of cutting. Default: 0.7.}
+
+\item{g}{Number of cuts.}
 }
 \value{
 A Date.

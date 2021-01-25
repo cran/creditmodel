@@ -78,7 +78,7 @@ xgb_params = list(nrounds = 100, max_depth = 6, eta = 0.1,
                                        early_stopping_rounds = 10,
                                        objective = "binary:logistic")
 \dontrun{
-xgb_features <- xgb_filter(dat_train = dat, dat_test = NULL,
+xgb_features = xgb_filter(dat_train = dat, dat_test = NULL,
 target = "default.payment.next.month", occur_time = "apply_date",f_eval = 'ks',
 xgb_params = xgb_params,
 cv_folds = 1, ex_cols = "ID$|date$|default.payment.next.month$", vars_name = FALSE)

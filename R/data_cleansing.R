@@ -60,7 +60,7 @@
 data_cleansing = function (dat, target = NULL, obs_id = NULL, occur_time = NULL, 
                            pos_flag = NULL, x_list = NULL, ex_cols = NULL, miss_values = NULL, 
                            remove_dup = TRUE, outlier_proc = TRUE, missing_proc = "median", 
-                           low_var = 0.999, missing_rate = 0.999, merge_cat = FALSE, note = TRUE, 
+                           low_var = 0.999, missing_rate = 0.999, merge_cat = TRUE, note = TRUE, 
                            parallel = FALSE, save_data = FALSE, file_name = NULL, dir_path = tempdir()) 
 {
   opt = options(scipen = 200, warn = -1, stringsAsFactors = FALSE, digits = 10)
@@ -146,7 +146,7 @@ data_cleansing = function (dat, target = NULL, obs_id = NULL, occur_time = NULL,
         m = merge_cat
       }
       else {
-        m = 50
+        m = 10
       }
       dat = merge_category(dat = dat, ex_cols = c(date_x_list, 
                                                   flag_list, ex_x_cols), m = m, note = note)
@@ -221,7 +221,7 @@ data_cleansing = function (dat, target = NULL, obs_id = NULL, occur_time = NULL,
 #' @export
 
 
-remove_duplicated <- function(dat = dat, obs_id = NULL, occur_time = NULL,
+remove_duplicated = function(dat = dat, obs_id = NULL, occur_time = NULL,
                               target = NULL , note = FALSE) {
     if(note)cat_line("-- Removing duplicated observations", col = love_color("dark_green"))
 
@@ -290,7 +290,7 @@ remove_duplicated <- function(dat = dat, obs_id = NULL, occur_time = NULL,
 #' datss = null_blank_na(dat = UCICreditCard[1:1000, ], miss_values =list(-1,-2))
 #' @export
 #' @importFrom dplyr group_by mutate summarize  summarise n  count %>% filter mutate_if
-null_blank_na <- function(dat, miss_values = NULL, note = FALSE) {
+null_blank_na = function(dat, miss_values = NULL, note = FALSE) {
     if(note)cat_line("-- Replacing null or blank or miss_values with NA", col = love_color("dark_green"))
   dat = checking_data(dat)
     dat %>% mutate_if(is.character, function(x) {
@@ -316,7 +316,7 @@ null_blank_na <- function(dat, miss_values = NULL, note = FALSE) {
 #' @export
 
 
-entry_rate_na <- function(dat, nr = 0.98, note = FALSE) {
+entry_rate_na = function(dat, nr = 0.98, note = FALSE) {
     if(note)cat_line(paste("-- Processing NAs & special value rate is more than", nr), col = love_color("dark_green"))
     n_row = nrow(dat)
     NAs_rate = vapply(dat, function(x) {

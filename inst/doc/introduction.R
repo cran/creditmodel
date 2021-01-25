@@ -1,8 +1,8 @@
-## ----setup, include = FALSE----------------------------------------------
+## ----setup, include = FALSE---------------------------------------------------
 knitr::opts_chunk$set(echo = FALSE)
 library(creditmodel)
 
-## ----fig.width = 10------------------------------------------------------
+## ----fig.width = 10-----------------------------------------------------------
 
 B_model = training_model(dat = UCICreditCard,
                          model_name = "UCICreditCard",

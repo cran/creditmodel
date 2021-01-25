@@ -10,8 +10,10 @@ plot_box(
   x = NULL,
   x_breaks = NULL,
   g = 5,
-  fill_colors = c(love_color(type = "lightnihon_8x1"), love_color(type =
-    "darknihon_8x1"))
+  string_bins = FALSE,
+  cut_bin = "equal_depth",
+  fill_colors = c(love_color(type = "lightnihon_6x1"), love_color(type = "deep"),
+    love_color(type = "light"))
 )
 }
 \arguments{
@@ -24,6 +26,10 @@ plot_box(
 \item{x_breaks}{Breaks points of x.}
 
 \item{g}{Number of initial breakpoints for equal frequency binning.}
+
+\item{string_bins}{Whether to process bins of classification variables.}
+
+\item{cut_bin}{A string, if equal_bins is TRUE, 'equal_depth' or 'equal_width', default is 'equal_depth'.}
 
 \item{fill_colors}{colors of x.}
 }

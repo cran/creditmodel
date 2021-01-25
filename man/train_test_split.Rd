@@ -53,7 +53,7 @@ A list of indices (train-test)
 \code{train_test_split} Functions for partition of data.
 }
 \examples{
-train_test <- train_test_split(lendingclub,
+train_test = train_test_split(lendingclub,
 split_type = "OOT", prop = 0.7,
 occur_time = "issue_d", seed = 12, save_data = FALSE)
 dat_train = train_test$train

@@ -11,15 +11,17 @@ plot_line(
   x_breaks = NULL,
   y_breaks = NULL,
   cut_bin = "equal_width",
-  g = 10,
+  g_x = 10,
+  g_y = 5,
   target = NULL,
   value = NULL,
   type = "total_pct",
   reverse = FALSE,
+  string_bins = FALSE,
   pl_theme = plot_theme(legend.position = "right", title_size = 9, legend_size = 7,
     axis_title_size = 8),
-  fill_colors = c(love_color(type = "lightnihon_8x1"), love_color(type =
-    "darknihon_8x1"))
+  fill_colors = c(love_color(type = "deep"), love_color(type = "light"),
+    love_color(type = "shallow"))
 )
 }
 \arguments{
@@ -35,15 +37,20 @@ plot_line(
 
 \item{cut_bin}{'equal_width' or 'equal_depth' to produce the breaks points.}
 
-\item{g}{Number of initial breakpoints for equal frequency binning.}
+\item{g_x}{Number of initial breakpoints for equal frequency binning of x.}
+
+\item{g_y}{Number of initial breakpoints for equal frequency binning of y.}
 
 \item{target}{The name of target variable.}
 
 \item{value}{The name of the variable to sum. When this parameter is NULL, the default statistics is to sum frequency.}
 
-\item{type}{Output form of the result of crosstable. Provide these forms: "total_sum","total_pct","total_mean","total_median","total_max","total_min","bad_sum","bad_pct".}
+\item{type}{Output form of the result of crosstable. 
+Provide these forms:"each_pct_x", "each_pct_y","total_sum","total_pct","total_mean","total_median","total_max","total_min","bad_sum","bad_pct".}
 
 \item{reverse}{Logical,whether reverse the plot.}
+
+\item{string_bins}{Whether to process bins of classification variables.}
 
 \item{pl_theme}{theme of the plot}
 
@@ -55,6 +62,6 @@ You can use the \code{plot_bar} to produce the barplot.
 \examples{
 plot_line(dat = lendingclub, x = "grade")
 plot_line(dat = lendingclub, x = "grade", 
-   y = "mort_acc",type = "bad_pct",g = 5, cut_bin = 
+   y = "mort_acc",type = "bad_pct",g_x = 10,g_y = 3, cut_bin = 
  "equal_depth",target = "loan_status")
 }

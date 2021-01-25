@@ -19,7 +19,7 @@
 #' @param note Logical. Outputs info. Default is TRUE.
 #' @return A list of indices (train-test)
 #' @examples
-#' train_test <- train_test_split(lendingclub,
+#' train_test = train_test_split(lendingclub,
 #' split_type = "OOT", prop = 0.7,
 #' occur_time = "issue_d", seed = 12, save_data = FALSE)
 #' dat_train = train_test$train
@@ -27,7 +27,7 @@
 #' @importFrom stats quantile ecdf
 #' @importFrom cli cat_rule cat_line cat_bullet
 #' @export
-train_test_split <- function( dat, prop = 0.7, split_type = "Random",occur_time = NULL,
+train_test_split = function( dat, prop = 0.7, split_type = "Random",occur_time = NULL,
                               cut_date = NULL, start_date = NULL, save_data = FALSE,
                               dir_path = tempdir(), file_name = NULL, note = FALSE, seed = 43) {
 
@@ -131,7 +131,7 @@ train_test_split <- function( dat, prop = 0.7, split_type = "Random",occur_time 
 #' @importFrom stats quantile ecdf
 #' @export
 
-cv_split <- function(dat, k = 5, occur_time = NULL, seed = 46) {
+cv_split = function(dat, k = 5, occur_time = NULL, seed = 46) {
     cv_list = list()
     dat = checking_data(dat = dat, occur_time = occur_time)
     if (!is.null(seed)) set.seed(seed) else set.seed(46)
@@ -141,7 +141,7 @@ cv_split <- function(dat, k = 5, occur_time = NULL, seed = 46) {
         date_q = as.double(sub("%", "", names(date_n))) / 100
         prop = round(1 / k,  2)
         date_temp = date_n[which(date_q == prop)]
-        if (length(date_temp) >0 && nchar(date_temp) <= 7) {
+        if (length(date_temp) >0 && n_char(date_temp) <= 7) {
             for (i in 1:k) {
                 cv_list[[i]] = which(dat[, occur_time] >= min(as.Date(date_n[which(date_q >= prop * (k - i))],
                                                                       origin = "1970-01-01")) &
@@ -193,9 +193,9 @@ cv_split <- function(dat, k = 5, occur_time = NULL, seed = 46) {
 #' @importFrom cli cat_rule cat_line cat_bullet
 #' @importFrom utils  capture.output  data  install.packages  installed.packages
 #' @export
-require_packages <- function(..., pkg = as.character(substitute(list(...)))) {
+require_packages = function(..., pkg = as.character(substitute(list(...)))) {
     opt = options("warn" = -1)
-    new_pkg <- pkg[!(pkg %in% installed.packages()[, "Package"])]
+    new_pkg = pkg[!(pkg %in% installed.packages()[, "Package"])]
     if (length(new_pkg) > 0) {
         cat_rule("Installing missing packages if needed", col = love_color("light_cyan"))
         install.packages(new_pkg, dependencies = TRUE)
@@ -220,9 +220,9 @@ require_packages <- function(..., pkg = as.character(substitute(list(...)))) {
 #' UCICreditCard = quick_as_df(UCICreditCard)
 #'
 #' @export
-quick_as_df <- function(df_list){
-    class(df_list) <- "data.frame"
-    attr(df_list, "row.names") <- .set_row_names(length(df_list[[1]]))
+quick_as_df = function(df_list){
+    class(df_list) = "data.frame"
+    attr(df_list, "row.names") = .set_row_names(length(df_list[[1]]))
     df_list
 }
 
@@ -244,7 +244,7 @@ quick_as_df <- function(df_list){
 #' @export
 
 
-save_data <- function(..., files = list(...), file_name = as.character(substitute(list(...))), dir_path = getwd(),
+save_data = function(..., files = list(...), file_name = as.character(substitute(list(...))), dir_path = getwd(),
                      note = FALSE, as_list = FALSE, row_names = FALSE, append = FALSE) {
 
   ind_n = sapply(files, function(x) {
@@ -296,18 +296,21 @@ save_data <- function(..., files = list(...), file_name = as.character(substitut
 
   if (as_list) {
     for (i in seq_along(files)) {
+	  
       if (dir.exists(paste0(dir_path, '/', file_name[i], ".csv"))) file.remove(list.files(paste0(dir_path, '/', file_name[i], ".csv"),
                                                                                           recursive = TRUE, full.names = TRUE))
-      data.table::fwrite(list(files[[i]]), paste0(dir_path, '/', file_name[i], ".csv"), append = append,
-                         col.names = FALSE)
+      if(length(files[[i]])>0){
+	  data.table::fwrite(list(files[[i]]), paste0(dir_path, '/', file_name[i], ".csv"), append = append, col.names = FALSE)
+	  }
     }
 
   } else {
     for (i in seq_along(files)) {
       if (dir.exists(paste0(dir_path, '/', file_name[i], ".csv"))) file.remove(list.files(paste0(dir_path, '/', file_name[i], ".csv"),
-                                                                                          recursive = TRUE, full.names = TRUE))
-      data.table::fwrite(as.data.table(files[[i]]), paste0(dir_path, '/', file_name[i], ".csv"), append = append,
-                         col.names = TRUE)
+	                                                                                            recursive = TRUE, full.names = TRUE))
+      if(length(files[[i]])>0){
+	  data.table::fwrite(as.data.table(files[[i]]), paste0(dir_path, '/', file_name[i], ".csv"), append = append,col.names = TRUE)
+	  }
     }
   }
 }
@@ -332,7 +335,7 @@ save_data <- function(..., files = list(...), file_name = as.character(substitut
 
 
 
-read_data <- function(path, pattern = NULL, encoding = "unknown", header = TRUE, sep = "auto", stringsAsFactors = FALSE, select = NULL, drop = NULL, nrows = Inf) {
+read_data = function(path, pattern = NULL, encoding = "unknown", header = TRUE, sep = "auto", stringsAsFactors = FALSE, select = NULL, drop = NULL, nrows = Inf) {
 	file_names = sort(list.files(path, pattern = pattern))
 	numCores = parallel::detectCores() - 1
 	if (length(file_names) > 0) {
@@ -386,7 +389,7 @@ read_data <- function(path, pattern = NULL, encoding = "unknown", header = TRUE,
 }
 
 #' @rdname read_data
-check_data_format <- function(path) {
+check_data_format = function(path) {
   if (file.exists(path)) {
     sig = readBin(path, n = 10, what = "raw")
     xlsx_sig = as.raw(c(
@@ -424,7 +427,7 @@ check_data_format <- function(path) {
 #' UCICreditCard[1:10, c(1,20:25)], by = "ID")
 #' @export
 
-multi_left_join <- function(..., df_list = list(...), key_dt = NULL, by = NULL) {
+multi_left_join = function(..., df_list = list(...), key_dt = NULL, by = NULL) {
 
 	if (is.null(by)) {
 		for (i in 1:length(df_list)) {
@@ -490,34 +493,34 @@ multi_left_join <- function(..., df_list = list(...), key_dt = NULL, by = NULL) 
 
 
 digits_num =function(dat_x){
-    digits1 = digits2 = 16
-    dat_x = unique(unlist(dat_x[!is.na(dat_x)]))
-    if (length(dat_x) > 0 && any(is.element(class(dat_x), c("integer", "numeric",
-        "double")))&& max(dat_x,na.rm = TRUE) > 1e-16) {
-        digits1 = vapply(dat_x, function(num) {
-            char_num = as.character(gsub("-", "",
-                num))
-            n_num = as.numeric(char_num) %% 1
-            if (!is.null(n_num) && !is.na(n_num) && is.numeric(n_num)) {
-                if (n_num == 0) {
-                    t_lens = nchar(char_num)
-                    left_comma = t_lens
-                    right_comma = t_lens - left_comma
-                }
-                else {
-                    comma_p = gregexpr("[.]", char_num)[[1]][1]
-                    t_lens = nchar(char_num)
-                    left_comma = comma_p - 1
-                    right_comma = t_lens - 1 - left_comma
-                }
-                right_comma
-            }
-        }, FUN.VALUE = numeric(1))
-        digits2 = max(digits1)
-    }
-	digits2 = ifelse(digits2 > 16, 16, digits2)
-	return(digits2)
+  digits1 = digits2 = 16
+  dat_x = unique(unlist(dat_x[!is.na(dat_x)&!dat_x %in% c(-Inf,Inf)]))
+  if (length(dat_x) > 0 && any(is.element(class(dat_x), c("integer", "numeric",
+                                                          "double")))&& max(dat_x,na.rm = TRUE) > 1e-16) {
+    digits1 = vapply(dat_x, function(num) {
+      char_num = as.character(gsub("-", "",
+                                   num))
+      n_num = as.numeric(char_num) %% 1
+      if (!is.null(n_num) && !is.na(n_num) && is.numeric(n_num)) {
+        if (n_num == 0) {
+          t_lens = n_char(char_num)
+          left_comma = t_lens
+          right_comma = t_lens - left_comma
+        } else {
+          comma_p = gregexpr("[.]", char_num)[[1]][1]
+          t_lens = n_char(char_num)
+          left_comma = comma_p - 1
+          right_comma = t_lens - 1 - left_comma
+        }
+        right_comma
+      }
+    }, FUN.VALUE = numeric(1))
+    digits2 = max(digits1)
+  }
+  digits2 = ifelse(digits2 > 16, 16, digits2)
+  return(digits2)
 }
+
 
 
 
@@ -530,7 +533,7 @@ digits_num =function(dat_x){
 #' @examples
 #' is_date(lendingclub$issue_d)
 #' @export
-is_date <- function(x){
+is_date = function(x){
     any(class(x) %in% c("Date", "POSIXlt", "POSIXct", "POSIXt"))
 }
 
@@ -539,6 +542,7 @@ is_date <- function(x){
 #' \code{date_cut} is  a small function to get date point.
 #' @param dat_time  time vectors.
 #' @param pct  the percent of cutting. Default: 0.7.
+#' @param g  Number of cuts.
 #' @return  A Date.
 #' @examples
 #' date_cut(dat_time = lendingclub$issue_d, pct = 0.8)
@@ -546,21 +550,21 @@ is_date <- function(x){
 #' @importFrom stats quantile ecdf
 #' @export
 
-date_cut <- function(dat_time, pct = 0.7){
-    dat_time = as.Date(dat_time)
-    if (is_date(dat_time)) {
-        date_n = quantile(ecdf(dat_time), seq(0, 1, by = 0.01))
-        date_q = as.double(sub("%", "", names(date_n))) / 100
-        date_temp = date_n[which(date_q == pct)]
-        if (nchar(date_temp) > 7) {
-            cut_date= min(as.Date.POSIXct(date_n[which(date_q >= pct)], origin = "1970-01-01"))
-        } else {
-            cut_date = min(as.Date(date_n[which(date_q >= pct)], origin = "1970-01-01"))
-        }
-        return(cut_date)
+date_cut = function(dat_time, pct = 0.7,g = 100){
+  dat_time = as.Date(dat_time)
+  if (is_date(dat_time)) {
+    date_n = quantile(ecdf(dat_time), seq(0, 1, by = 1/g))
+    date_q = round(as.double(sub("%", "", names(date_n))) / 100,3)
+    date_temp = date_n[which(date_q == round(pct,3))]
+    if (n_char(date_temp) > 7) {
+      cut_date= min(as.Date.POSIXct(date_n[which(date_q >= pct)], origin = "1970-01-01"))
     } else {
-        stop(paste("Not Date or Time.\n"))
+      cut_date = min(as.Date(date_n[which(date_q >= pct)], origin = "1970-01-01"))
     }
+    return(cut_date)
+  } else {
+    stop(paste("Not Date or Time.\n"))
+  }
 }
 
 
@@ -574,7 +578,7 @@ date_cut <- function(dat_time, pct = 0.7){
 #' as_percent(0.2363, digits = 2)
 #' as_percent(1)
 #' @export
-as_percent <- function(x, digits = 2) {
+as_percent = function(x, digits = 2) {
     x = as.numeric(x)
     pct = round(x, digits) * 100
     x_pct = paste0(pct, ifelse(is.finite(x), "%", ""))
@@ -591,7 +595,7 @@ as_percent <- function(x, digits = 2) {
 #'  "xyz"  %islike% "yz$"
 #' @export
 
-'%islike%' <- function(x, y) {
+'%islike%' = function(x, y) {
     grx = FALSE
     x = gsub("[^\u4e00-\u9fa5,^a-zA-Z,^0-9,^.,^_,^;^-]", "", x)
     y = gsub("\\{|\\}", "", y)
@@ -689,30 +693,30 @@ re_name = function(dat, oldname = c(), newname = c()) {
 #' @export
 
 
-rowAny <- function(x) rowSums(x, na.rm = TRUE) > 0
+rowAny = function(x) rowSums(x, na.rm = TRUE) > 0
 
 #' @rdname rowAny
 #' @export
-rowAllnas <- function(x) rowSums(is.na(x)) == length(x)
+rowAllnas = function(x) rowSums(is.na(x)) == length(x)
 
 #' @rdname rowAny
 #' @export
-colAllnas <- function(x) colSums(is.na(x)) == nrow(x)
-
-
-#' @rdname rowAny
-#' @export
-colAllzeros <- function(x) colSums(x) == 0
-
-#' @rdname rowAny
-#' @export
-rowAll <- function(x) rowSums(x, na.rm = TRUE) == ncol(x)
+colAllnas = function(x) colSums(is.na(x)) == nrow(x)
 
 
 #' @rdname rowAny
 #' @export
+colAllzeros = function(x) colSums(x) == 0
 
-rowCVs <- function(x, na.rm = FALSE) {
+#' @rdname rowAny
+#' @export
+rowAll = function(x) rowSums(x, na.rm = TRUE) == ncol(x)
+
+
+#' @rdname rowAny
+#' @export
+
+rowCVs = function(x, na.rm = FALSE) {
     ifelse(rowAllnas(x), NA,
             ifelse(rowAny(x) > 0,
             sqrt(rowSums((x - rowMeans(x, na.rm = na.rm)) ^ 2, na.rm = na.rm) / length(x)) / rowMeans(x, na.rm = na.rm), 0))
@@ -720,72 +724,72 @@ rowCVs <- function(x, na.rm = FALSE) {
 
 #' @rdname rowAny
 #' @export
-rowSds <- function(x, na.rm = FALSE) sqrt(rowSums((x - rowMeans(x, na.rm = na.rm)) ^ 2, na.rm = na.rm) / length(x))
+rowSds = function(x, na.rm = FALSE) sqrt(rowSums((x - rowMeans(x, na.rm = na.rm)) ^ 2, na.rm = na.rm) / length(x))
 
 #' @rdname rowAny
 #' @export
 
-colSds <- function(x, na.rm = TRUE) {
+colSds = function(x, na.rm = TRUE) {
     lapply(x, function(i)sd(i,na.rm = TRUE))
 }
 
 #' @rdname rowAny
 #' @export
-rowMaxs <- function(x, na.rm = FALSE) {
+rowMaxs = function(x, na.rm = FALSE) {
     maxs = apply(x, 1, function(i) ifelse(length(i) > 1, i[which.max(i)], i))
     as.numeric(maxs)
 }
 
 #' @rdname rowAny
 #' @export
-rowMins <- function(x, na.rm = FALSE) {
+rowMins = function(x, na.rm = FALSE) {
     mins = apply(x, 1, function(i) i[which.min(i)])
     as.numeric(mins)
 }
 
 #' @rdname rowAny
 #' @export
-rowMaxMins <- function(x, na.rm = FALSE) {
+rowMaxMins = function(x, na.rm = FALSE) {
     max_mins = apply(x, 1, function(i) i[which.max(i)] - i[which.min(i)])
     as.numeric(max_mins)
 }
 
 #' @rdname rowAny
 #' @export
-colMaxMins <- function(x, na.rm = FALSE) {
+colMaxMins = function(x, na.rm = FALSE) {
     max_mins = apply(x, 2, function(i) i[which.max(i)] - i[which.min(i)])
     as.numeric(max_mins)
 }
 
 #' @rdname rowAny
 #' @export
-cnt_x <- function(x) {
+cnt_x = function(x) {
   length(x)
 }
 #' @rdname rowAny
 #' @export
-sum_x <- function(x) {
+sum_x = function(x) {
   sum_x = sum(x, na.rm = TRUE)
   sum_x[which(sum_x == -Inf || sum_x == Inf || is.na(sum_x))] = NA
   sum_x
 }
 #' @rdname rowAny
 #' @export
-max_x <- function(x) {
-  max_x <- max(x, na.rm = TRUE)
+max_x = function(x) {
+  max_x = max(x, na.rm = TRUE)
   max_x[which(max_x == -Inf || max_x == Inf || is.na(max_x))] = NA
   max_x
 }
 #' @rdname rowAny
 #' @export
-min_x <- function(x) {
+min_x = function(x) {
   min_x = min(x, na.rm = TRUE)
   min_x[which(min_x == -Inf || min_x == Inf || is.na(min_x))] = NA
   min_x
 }
 #' @rdname rowAny
 #' @export
-avg_x <- function(x) {
+avg_x = function(x) {
   mean_x = mean(x, na.rm = TRUE)
   mean_x[which(mean_x == -Inf || mean_x == Inf || is.na(mean_x))] = NA
   mean_x
@@ -859,7 +863,7 @@ get_names = function(dat, types = c('logical', 'factor', 'character', 'numeric',
 #' @export
 
 
-get_x_list <- function(dat_train = NULL, dat_test = NULL,x_list = NULL, ex_cols = NULL,note = FALSE) {
+get_x_list = function(dat_train = NULL, dat_test = NULL,x_list = NULL, ex_cols = NULL,note = FALSE) {
     if (!is.null(dat_train)) {
         if (is.null(x_list) | length(x_list) <1 ) {
             if (is.null(dat_test)) {
@@ -941,7 +945,7 @@ get_x_list <- function(dat_train = NULL, dat_test = NULL,x_list = NULL, ex_cols 
 #' dat = checking_data(dat = UCICreditCard, target = "default.payment.next.month")
 #' @export
 
-checking_data <- function(dat = NULL, target = NULL, occur_time = NULL,
+checking_data = function(dat = NULL, target = NULL, occur_time = NULL,
 						  note = FALSE, pos_flag = NULL) {
 	if (note) cat_line("-- Checking data and target format...", col = love_color("dark_green"))
 	if (is.null(dat)) {
@@ -1004,20 +1008,20 @@ checking_data <- function(dat = NULL, target = NULL, occur_time = NULL,
 #' @importFrom doParallel registerDoParallel
 #' @importFrom foreach foreach %dopar% %do%  registerDoSEQ
 #' @export
-start_parallel_computing <- function(parallel = TRUE) {
+start_parallel_computing = function(parallel = TRUE) {
 
-  parallelType <- if (.Platform$OS.type == "windows")
+  parallelType = if (.Platform$OS.type == "windows")
     "snow" else "multicore"
 
   numCores = parallel::detectCores()-1
-  attr(parallel, "type") <- parallelType
-  attr(parallel, "cores") <- numCores
+  attr(parallel, "type") = parallelType
+  attr(parallel, "cores") = numCores
 
   if (parallel) {
     if (parallelType == "snow") {
 
       cl = parallel::makeCluster(numCores, type = "PSOCK")
-      attr(parallel, "cluster") <- cl
+      attr(parallel, "cluster") = cl
 
       varlist = ls(envir = parent.frame(), all.names = TRUE)
       varlist = varlist[varlist != "..."]
@@ -1034,7 +1038,7 @@ start_parallel_computing <- function(parallel = TRUE) {
 
       doParallel::registerDoParallel(cl, cores = numCores[1])
 
-      attr(parallel, "cluster") <- cl
+      attr(parallel, "cluster") = cl
     }
     else { stop("Only 'snow' and 'multicore' clusters allowed!") }
   }
@@ -1051,7 +1055,7 @@ start_parallel_computing <- function(parallel = TRUE) {
 #' @importFrom parallel  stopCluster
 #' @importFrom foreach  registerDoSEQ
 #' @export
-stop_parallel_computing <- function(cluster) {
+stop_parallel_computing = function(cluster) {
     parallel::stopCluster(cluster)
     foreach::registerDoSEQ()
     invisible()
@@ -1081,15 +1085,15 @@ stop_parallel_computing <- function(cluster) {
 #' @importFrom foreach foreach %dopar% %do%
 #' @export
 
-loop_function <- function(func = NULL, args = list(data = NULL), x_list = NULL,
+loop_function = function(func = NULL, args = list(data = NULL), x_list = NULL,
                           bind = "rbind", parallel = TRUE, as_list = FALSE) {
     opt = options(scipen = 200, stringsAsFactors = FALSE, "warn" = -1) # suppress warnings
     df_list = df_tbl = NULL
     if (parallel) {
         parallel = start_parallel_computing(parallel)
-        stopCluster <- TRUE
+        stopCluster = TRUE
     } else {
-        parallel <- stopCluster <- FALSE
+        parallel = stopCluster = FALSE
     }
     on.exit(if (parallel & stopCluster) stop_parallel_computing(attr(parallel, "cluster")))
 
@@ -1139,7 +1143,7 @@ loop_function <- function(func = NULL, args = list(data = NULL), x_list = NULL,
 #' str_match(str_r = orignal_nam,pattern= "\\d+")
 #' @export
 
-str_match <- function(pattern, str_r) {
+str_match = function(pattern, str_r) {
     ind = regexpr(pattern, str_r)
     substr(str_r, ind, ind + attr(ind, "match.length"))
 }
@@ -1154,25 +1158,11 @@ str_match <- function(pattern, str_r) {
 #' codes= data.frame(ori_value = c('F','M'), code = c(0,1) )
 #' SEX_re = re_code(SEX,codes)
 #' @export
-re_code <- function(x,codes){
+re_code = function(x,codes){
     for (i in 1:nrow(codes)) {
     x[which(x == codes[i, 1])] = codes[i, 2]
     }
     return(x)
-}
-
-
-
-#'  Max Min Normalization
-#'
-#' \code{max_min_norm} is for normalizing each column vector of matrix 'x' using max_min normalization
-#' @param x Vector
-#' @return Normalized vector
-#' @examples
-#' dat_s = apply(UCICreditCard[,12:14], 2, max_min_norm)
-#' @export
-max_min_norm <- function(x) {
-    (max(x,na.rm = TRUE) - x) / (max(x,na.rm = TRUE) - min(x, na.rm = TRUE))
 }
 
 
@@ -1185,8 +1175,319 @@ max_min_norm <- function(x) {
 #' dat_s = apply(UCICreditCard[,12:14], 2, min_max_norm)
 #' @export
 
-min_max_norm <- function(x) {
-    ((x - min(x , na.rm = TRUE)) / (max(x, na.rm = TRUE) - min(x, na.rm = TRUE)))
+min_max_norm = function(x) {
+  min_x = min(x[x!=-Inf], na.rm = TRUE)
+  max_x =  max(x[x!=Inf], na.rm = TRUE)
+  if(any(x %in% c(-Inf,Inf))){
+    x[x==-Inf] = min_x
+    x[x==Inf] = max_x
+    cat_line("Warning: Function call min_max_norm(x) cannot have -Inf/Inf,turn Inf to maximum,and turn -Inf to minimum.", 
+             col = love_color("dark_red"))
+  }
+  x = (x - min_x) / (max_x - min_x)
+  return(x)
+}
+
+#' Max Min Normalization
+#'
+#' \code{max_min_norm} is for normalizing each column vector of matrix 'x' using max_min normalization
+#' @param x  Vector
+#' @return Normalized vector
+#' @examples
+#' dat_s = apply(UCICreditCard[,12:14], 2, max_min_norm)
+#' @export
+
+max_min_norm = function(x) {
+  min_x = min(x[x!=-Inf], na.rm = TRUE)
+  max_x =  max(x[x!=Inf], na.rm = TRUE)
+  if(any(x %in% c(-Inf,Inf))){
+    x[x==-Inf] = min_x
+    x[x==Inf] = max_x
+    cat_line("Warning: Function call max_min_norm(x) cannot have -Inf/Inf,turn Inf to maximum,and turn -Inf to minimum.", 
+             col = love_color("dark_red"))
+  }
+  x =  (max_x - x) / (max_x - min_x)
+  return(x)
+}
+
+
+#' The length of a string.
+#'
+#' Returns the number of "code points", in a string.
+#' @param string A string.
+#' @return A numeric vector giving number of characters (code points) in each
+#'    element of the character vector. Missing string have missing length.
+#' @export
+#' @examples
+#' n_char(letters)
+#' n_char(NA)
+
+n_char = function(string) {
+     nchar(string,allowNA = TRUE,keepNA =FALSE,type = 'bytes')
+}
+
+
+#' Automatic production of hive SQL
+#'
+#' Returns text parse of hive SQL
+#' @param sql_dt The data dictionary has three columns: table, map and feature.
+#' @param key_sql You can write your own SQL for the main table.
+#' @param key_table Key table.
+#' @param key_id Primary key id.
+#' @param key_where Key table conditions.
+#' @param only_key Only key table.
+#' @param left_id  Right table's key id.
+#' @param left_where Right table conditions.
+#' @param new_name A string, Rename all variables except primary key with suffix 'new_name'.
+#' @param ... Other params.
+#' @return Text parse of hive SQL
+#' @export
+#' @examples
+#' #sql_dt:table, map and feature
+#' sql_dt = data.frame(table = c("table_1", "table_1",  "table_1", "table_1","table_1",
+#'                                "table_2", "table_2","table_2",
+#'                               "table_2","table_2","table_2","table_2",
+#'                                "table_2","table_2","table_2","table_2",
+#'                               "table_2","table_2","table_2","table_3","table_3",
+#'                                "table_3","table_3","table_3"), 
+#'                    map =  c("all","all", "all","all","all","all","all","all","all","all",
+#'                             "all", "all","all","id_card_info",
+#'                             "id_card_info","id_card_info", "mobile_info","mobile_info",
+#'                             "mobile_info","all", "all","all", "all","all"), 
+#'                    feature =c( "user_id","real_name","id_card_encode","mobile_encode","dt",
+#'                               "user_id","type_code","first_channel",
+#'                                "second_channel","user_name","user_sex","user_birthday",
+#'                                  "user_age","card_province","card_zone",
+#'                                "card_city","city","province","carrier","user_id",
+#'                               "biz_id","biz_code","apply_time","dt"))
+#' #sample 1
+#' sql_hive_text_parse(sql_dt = sql_dt,
+#'           key_sql = NULL,
+#'                key_table = "table_2",
+#'                key_where =  c("user_sex = 'male",
+#'                               "user_age > 20"),
+#'                only_key = FALSE,
+#'                key_id = "user_id",
+#'                left_id = "user_id",
+#'                left_where = c("dt = date_add(current_date(),-1)",
+#'                               "apply_time >= '2020-05-01' "
+#'                ), new_name ="basic"
+#'           )
+#' 
+#' #sample 2
+#' sql_hive_text_parse(sql_dt = subset(sql_dt),
+#'                key_sql = "SELECT 
+#'        user_id,
+#'        max(apply_time) as max_apply_time
+#'        FROM table_3
+#'        WHERE dt = date_add(current_date(),-1)
+#'                GROUP BY user_id",
+#'                key_id = "user_id",
+#'                left_id = "user_id",
+#'                left_where = c("dt = date_add(current_date(),-1)"
+#'                               ),
+#'                new_name =  NULL)
+
+sql_hive_text_parse = function(sql_dt,
+                          key_sql = NULL,
+                          key_table = NULL,
+                          key_id = NULL,
+                          key_where =  c("dt = date_add(current_date(),-1)"),
+                          only_key = FALSE,
+                          left_id = NULL,
+                          left_where = c("dt = date_add(current_date(),-1)"),
+                          new_name = NULL,...){
+  if(is.null(key_sql)){
+    key_dt =  sql_dt[which(sql_dt$table == key_table),]
+    key_dt[,'feature'] = gsub(" ","",key_dt[,'feature'])
+    key_map =  unique(key_dt["map"])
+    dup_feature_map = sapply(unlist(key_map),function(x)ifelse(x != 'all' & any(unique(key_dt[which(key_dt$map == x),"feature"])
+                                                                                %in%
+                                                                                  unique(key_dt[which(key_dt$map != 'all' &key_dt$map != x),"feature"])),x,NA))
+
+    dup_feature_map = dup_feature_map[!is.na(dup_feature_map)]
+    key_sql_tuple = list()
+
+    for( i in unlist(key_map[which(key_map$map != "all"),"map"])){
+      dup_name = ifelse(is.element(i,dup_feature_map),paste0(i,"_"),"")
+      key_tuple_feature = unique(key_dt[which(key_dt$map == i),"feature"])
+      key_tuple_feature_2 = unique(key_dt[which(key_dt$map == i),"feature"])
+      key_tuple_feature_2 = gsub("-","_",tolower(key_tuple_feature_2))
+
+      key_sql_tuple[[i]] = paste(paste0("lateral view json_tuple(udf.MapToJson(",
+                                         unique(key_dt[which(key_dt$map == i),"map"]),"),"),
+                                  paste0("'",key_tuple_feature,"'",
+                                         collapse = ","),")"
+                                  ,unique(key_dt[which(key_dt$map == i),"map"]),"AS",
+                                  paste0(dup_name,key_tuple_feature_2,
+                                         collapse = ","))
+
+
+    }
+    key_feature = list()
+    for( i in unlist(key_map[,"map"])){
+      dup_name = ifelse(is.element(i,dup_feature_map),paste0(i,"_"),"")
+      key_feature[[i]] = paste0(dup_name,unique(key_dt[which(key_dt$map == i),"feature"]))
+    }
+    key_feature = unlist(key_feature,use.names = FALSE)
+    key_where_x = sapply(key_where, function(s)as.character(strsplit(s,split = "\t| |<=|>=|>|<|in|=")[[1]][1]))
+    if(any(!key_where_x %in% key_feature) ){
+      key_where_t_no = names(key_where_x)[which(!key_where_x %in% key_feature)]
+      warnings(paste("invalid condition of key_where:",key_where_t_no))
+    }
+    if(length(which(key_id %in% key_feature))==0){
+      stop(paste(key_id,"does not exist in the Features of", key_table))
+    }
+    key_where_t = names(key_where_x)[which(key_where_x %in% key_feature)]
+    if(length(key_where_t)>0){
+      key_where_sql = paste("WHERE",paste(key_where_t,collapse = " AND "))
+    }else{
+      key_where_sql = ""
+    }
+    key_feature_3 = gsub("-","_",tolower(key_feature))
+
+    if(!is.null(new_name) && length(new_name) >0){
+      if(!is.null(key_id)){
+        key_feature_2 = key_feature
+
+        key_feature_2[which( key_id != key_feature_2)] = paste(unlist(key_feature_2[which( key_id != key_feature_2)],
+                                                                      use.names = FALSE),
+                                                               new_name,sep = "_")
+        key_feature_2 = gsub("-","_",tolower(key_feature_2))
+        key_feature_text =  paste(paste(unlist(key_feature_3),"AS",key_feature_2),
+                                  collapse = ",",sep = ",")
+      }else{
+        key_feature_2 = key_feature
+        key_feature_2 = paste(unlist(key_feature_2,use.names = FALSE),new_name,sep = "_")
+        key_feature_2 = gsub("-","_",tolower(key_feature_2))
+        key_feature_text =  paste(paste(unlist(key_feature_3),"AS",key_feature_2),
+                                  collapse = ",",sep = ",")
+      }
+
+    }else{
+      key_feature_2 = key_feature
+      key_feature_2 = gsub("-","_",tolower(key_feature_2))
+      key_feature_text =  paste(paste(unlist(key_feature_3),"AS",key_feature_2),
+                                collapse = ",",sep = ",")
+
+    }
+    key_sql_text = paste(paste(paste0("SELECT ",key_feature_text)," FROM ",
+                               key_table
+    ), paste(unlist(key_sql_tuple),collapse = "  "),
+    key_where_sql)
+
+  }else{
+    key_sql_text = gsub("\n"," ",key_sql)
+  }
+  if(is.null(key_sql)){
+    left_table = unique(sql_dt[which(sql_dt$table != key_table),"table"])
+  }else{
+    left_table = unique(sql_dt[,"table"])
+  }
+
+  if(!is.null(key_id) & !only_key & length(left_table)>0){
+    left_sql_text = list()
+    left_id_t = c()
+
+    for( t in left_table){
+      left_dt =  sql_dt[which(sql_dt$table == t),]
+      left_dt[,'feature'] = gsub(" ","",left_dt[,'feature'])
+      left_map =  unique(left_dt["map"])
+      dup_feature_left_map = sapply(unlist(left_map),function(x)ifelse(x != 'all' & any(unique(left_dt[which(left_dt$map == x),"feature"])
+                                                                                  %in%
+                                                                                    unique(left_dt[which(left_dt$map != 'all' &
+                                                                                                           left_dt$map != x),
+                                                                                                   "feature"])),x,NA))
+
+      dup_feature_left_map = dup_feature_left_map[!is.na(dup_feature_left_map)]
+
+      left_feature = list()
+      for( i in unlist(left_map[,"map"])){
+        left_dup_name = ifelse(is.element(i,dup_feature_left_map),paste0(i,"_"),"")
+        left_feature[[i]] = paste0(left_dup_name,unique(left_dt[which(left_dt$map == i),"feature"]))
+      }
+
+      left_sql_tuple = list()
+      for( i in unlist(left_map[which(left_map$map != "all"),"map"])){
+        left_dup_name = ifelse(is.element(i,dup_feature_left_map),paste0(i,"_"),"")
+        left_tuple_feature = unique(left_dt[which(left_dt$map == i),"feature"])
+        #left_tuple_feature[grepl("-",left_tuple_feature)] = paste("`",left_tuple_feature[grepl("-",left_tuple_feature)],"`",sep = "")
+        left_tuple_feature_2 = unique(left_dt[which(left_dt$map == i),"feature"])
+
+        left_tuple_feature_2 = gsub("-","_",tolower(left_tuple_feature_2))
+
+        left_sql_tuple[[i]] = paste(paste0("lateral view json_tuple(udf.MapToJson(",
+                                           unique(left_dt[which(left_dt$map == i),"map"]),"),"),
+                                    paste0("'",left_tuple_feature,"'",
+                                           collapse = ","),")"
+                                    ,unique(left_dt[which(left_dt$map == i),"map"]),"AS",
+                                    paste0(left_dup_name,left_tuple_feature_2,
+                                           collapse = ","))
+      }
+      left_feature = unlist(left_feature,use.names = FALSE)
+      left_where_x = sapply(left_where, function(s)as.character(strsplit(s,split = "\t| |<=|>=|>|<|in|=")[[1]][1]))
+      left_where_t = names(left_where_x)[which(left_where_x %in% left_feature)]
+      if(length(left_where_t)>0){
+        left_where_sql = paste("WHERE",paste(left_where_t,collapse = " AND "))
+      }else{
+        left_where_sql = ""
+      }
+  
+      if(length(which(left_id %in% left_feature))>0){
+        left_id_t[t] =  left_id[which(left_id %in% left_feature)]
+      }else{
+        stop(paste(left_id,"does not exist in the Features of", t))
+      }
+      left_feature_3 =  gsub("-","_",tolower(left_feature))
+      if(!is.null(new_name) && length(new_name) >0){
+        if(!is.null(left_id)){
+          left_feature_2 = left_feature
+
+          left_feature_2[which( left_id != left_feature_2)] = paste(unlist(left_feature_2[which( left_id != left_feature_2)],
+                                                                        use.names = FALSE),
+                                                                 new_name,sep = "_")
+          left_feature_2 = gsub("-","_",tolower(left_feature_2))
+
+          left_feature_text =  paste(paste(unlist(left_feature_3),"AS",left_feature_2),
+                                    collapse = ",",sep = ",")
+        }else{
+          left_feature_2 = left_feature
+          left_feature_2 = paste(unlist(left_feature_2,use.names = FALSE),new_name,sep = "_")
+          left_feature_2 = gsub("-","_",tolower(left_feature_2))
+          left_feature_text =  paste(paste(unlist(left_feature_3),"AS",left_feature_2),
+                                    collapse = ",",sep = ",")
+        }
+
+      }else{
+        left_feature_2 = left_feature
+        left_feature_2 = gsub("-","_",tolower(left_feature_2))
+        left_feature_text =  paste(paste(unlist(left_feature_3),"AS",left_feature_2),
+                                  collapse = ",",sep = ",")
+
+      }
+
+      left_sql_text[[t]] = paste(paste(paste0("SELECT ",left_feature_text)," FROM ",t),
+                                 paste(unlist(left_sql_tuple),collapse = "  "),left_where_sql)
+    }
+    key_letters = letters[1:(length(left_table)+1)]
+    left_join_sql_text = c()
+    for( len_dt in 1:(length(key_letters)-1)){
+      left_join_sql_text[len_dt] =  paste("LEFT JOIN",
+                                          paste("(",left_sql_text[[len_dt]],")",
+                                                key_letters[len_dt+1]),
+                                          paste("ON",paste0(key_letters[1],
+                                                            ".",key_id),"=" ,
+                                                paste0(key_letters[len_dt+1],".",
+                                                       left_id_t[which(names(left_id_t) == left_table[len_dt])])))
+    }
+    sql_text = paste( "SELECT", paste0(paste0(key_letters,".*"), collapse = " , "),
+                      "FROM",
+                      paste("(",key_sql_text,")",key_letters[1]),
+                      paste(left_join_sql_text,collapse = "  "))
+  }else{
+    sql_text = key_sql_text
+  }
+  return(sql_text)
 }
 
 

@@ -88,7 +88,7 @@ dat = re_name(dat, "default.payment.next.month", "target")
 dat = data_cleansing(dat, target = "target", obs_id = "ID",
 occur_time = "apply_date", miss_values = list("", -1))
 
-train_test <- train_test_split(dat, split_type = "OOT", prop = 0.7,
+train_test = train_test_split(dat, split_type = "OOT", prop = 0.7,
                                 occur_time = "apply_date")
 dat_train = train_test$train
 dat_test = train_test$test
@@ -103,7 +103,7 @@ dat_test$pred_LR = round(predict(lr_model, dat_test[, x_list], type = "response"
 ks_psi_plot(train_pred = dat_train, test_pred = dat_test,
                             score = "pred_LR", target = "target",
                             plot_show = TRUE)
-tb_pred <- ks_table_plot(train_pred = dat_train, test_pred = dat_test,
+tb_pred = ks_table_plot(train_pred = dat_train, test_pred = dat_test,
                                         score = "pred_LR", target = "target",
                                      g = 10, g_width = 13, plot_show = FALSE)
 key_index = model_key_index(tb_pred)

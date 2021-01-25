@@ -7,7 +7,7 @@
 #' @export
 
 
-local_outlier_factor <- function(dat, k = 10) {
+local_outlier_factor = function(dat, k = 10) {
     dat = as.matrix(dat)
     row_num = dim(dat)[1L]
     matrix_nrow = k * 2 + 2
@@ -75,9 +75,9 @@ local_outlier_factor <- function(dat, k = 10) {
 #' @param epsm Default is 1e-06.
 #' @references
 #' Bezdek, James C. "FCM: The fuzzy c-means clustering algorithm".
-#' Computers & Geosciences (0098-3004),\url{https://doi.org/10.1016/0098-3004(84)90020-7}
+#' Computers & Geosciences (0098-3004),\doi{10.1016/0098-3004(84)90020-7}
 #' @export
-fuzzy_cluster_means <- function(dat, kc = 2, sf = 2, nstart = 1, max_iter = 100, epsm = 1e-06) {
+fuzzy_cluster_means = function(dat, kc = 2, sf = 2, nstart = 1, max_iter = 100, epsm = 1e-06) {
     dat = as.matrix(dat)
     set.seed(46)
     init_centers_id = sample(1:nrow(dat), kc)
@@ -103,7 +103,7 @@ fuzzy_cluster_means <- function(dat, kc = 2, sf = 2, nstart = 1, max_iter = 100,
 #' @rdname fuzzy_cluster_means
 #' @export
 
-fuzzy_cluster <- function(dat, kc = 2, init_centers, sf = 3, max_iter = 100, epsm = 1e-06) {
+fuzzy_cluster = function(dat, kc = 2, init_centers, sf = 3, max_iter = 100, epsm = 1e-06) {
 
     dist = sapply(1:kc, function(j) rowSums(scale(dat, init_centers[j,], FALSE) ^ 2))
     history_obj = c()
@@ -138,7 +138,7 @@ fuzzy_cluster <- function(dat, kc = 2, init_centers, sf = 3, max_iter = 100, eps
 #' @param  y  A list
 #' @param cos_margin  rows or cols
 #' @export
-euclid_dist <- function(x, y, cos_margin = 1) {
+euclid_dist = function(x, y, cos_margin = 1) {
     x = as.matrix(x)
     y = as.matrix(y)
     if (cos_margin == 1) {
@@ -160,7 +160,7 @@ euclid_dist <- function(x, y, cos_margin = 1) {
 #' @param cos_margin Margin of matrix, 1 for rows and 2 for cols, Default is 1.
 #' @return A number of cosin similarity
 #' @export
-cos_sim <- function(x, y, cos_margin = 1) {
+cos_sim = function(x, y, cos_margin = 1) {
   opt = options(digits = 6)
   x = as.numeric(x)
   y = as.numeric(y)
@@ -210,15 +210,15 @@ cos_sim <- function(x, y, cos_margin = 1) {
 #' }
 #' @importFrom dplyr  %>% mutate_if
 #' @export
-char_cor_vars <- function(dat, x) {
+char_cor_vars = function(dat, x) {
     dat = as.data.frame(dat) %>% merge_category(note = FALSE) %>% mutate_if(is.factor, as.character)
 
     vapply(seq_along(dat), function(j) {
         if (length(x) > 1 | length(unlist(x)) > 1) {
-            cross_table <- table(unlist(x), dat[, j])
+            cross_table = table(unlist(x), dat[, j])
         } else {
 
-            cross_table <- table(dat[, x], dat[, j])
+            cross_table = table(dat[, x], dat[, j])
 
         }
         sqrt(chisq.test(cross_table, correct = TRUE,
@@ -231,7 +231,7 @@ char_cor_vars <- function(dat, x) {
 #' @rdname char_cor_vars
 #' @export
 
-char_cor <- function(dat, x_list = NULL, ex_cols = "date$", parallel = FALSE, note = FALSE) {
+char_cor = function(dat, x_list = NULL, ex_cols = "date$", parallel = FALSE, note = FALSE) {
     if (note) {
         cat("[NOTE] Computing the correlation matrix of factor or character variables.\n")
     }
@@ -281,7 +281,7 @@ auc_value = function(target, prob) {
 #' @return KS value
 #' @export
 
-ks_value <- function(target, prob) {
+ks_value = function(target, prob) {
   if(!is.numeric(target)){
     target =  as.numeric(as.character(target))
   }
@@ -305,7 +305,7 @@ ks_value <- function(target, prob) {
 #' @return True Positive Rate
 #' @export
 
-tnr_value <- function(prob, target){
+tnr_value = function(prob, target){
    if(!is.numeric(target)){
      target =  as.numeric(as.character(target))
    }
@@ -323,7 +323,7 @@ tnr_value <- function(prob, target){
 #' @return Max lift value
 #' @export
 
-lift_value <- function(target, prob) {
+lift_value = function(target, prob) {
    if(!is.numeric(target)){
      target =  as.numeric(as.character(target))
    }
@@ -384,7 +384,7 @@ eval_lift = function(preds, dtrain) {
 #' @export
 #' @importFrom stats aggregate
 
-get_median <- function(x, weight_avg = NULL) {
+get_median = function(x, weight_avg = NULL) {
     if (any(c('numeric', 'integer', 'double') == class(x)[1])) {
         if (is.null(weight_avg)) {
             central_value = median(x, na.rm = T)
@@ -447,14 +447,14 @@ entropy_weight = function(dat, pos_vars, neg_vars) {
 #' @param x  A numeric vector.
 #' @return  A numeric vector of entropy.
 
-p_ij <- function(x) {
+p_ij = function(x) {
 	x = unlist(x)
 	x = x / sum(x, na.rm = TRUE)
 	return(x)
 }
 
 #' @rdname p_ij
-e_ij <- function(x) {
+e_ij = function(x) {
 	x = unlist(x)
 	for (i in 1:length(x)) {
 		if (is.na(x[i]) || x[i] == 0) {

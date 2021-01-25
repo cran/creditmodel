@@ -24,7 +24,7 @@ cor_heat_plot(
 \code{cor_heat_plot} is for ploting correlation matrix
 }
 \examples{
-train_test <- train_test_split(UCICreditCard,
+train_test = train_test_split(UCICreditCard,
 split_type = "Random", prop = 0.8,save_data = FALSE)
 dat_train = train_test$train
 dat_test = train_test$test

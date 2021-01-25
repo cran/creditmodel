@@ -33,7 +33,7 @@ A data frame with tree rules and 1 percent under each rule.
 \code{get_ctree_rules} This function is used to desision tree rules and percentage of 1 under each rule.
 }
 \examples{
-train_test <- train_test_split(UCICreditCard, split_type = "Random", prop = 0.8, save_data = FALSE)
+train_test = train_test_split(UCICreditCard, split_type = "Random", prop = 0.8, save_data = FALSE)
 dat_train = train_test$train
 dat_test = train_test$test
 dat_train$default.payment.next.month = as.numeric(dat_train$default.payment.next.month)

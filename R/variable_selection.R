@@ -44,7 +44,7 @@
 #' @export
 
 
-psi_iv_filter <- function(dat, dat_test = NULL, target, x_list = NULL,
+psi_iv_filter = function(dat, dat_test = NULL, target, x_list = NULL,
                           breaks_list = NULL,pos_flag = NULL,
                           ex_cols = NULL, occur_time = NULL,
 						   best = FALSE, equal_bins = TRUE, g = 10, sp_values = NULL,
@@ -126,7 +126,7 @@ psi_iv_filter <- function(dat, dat_test = NULL, target, x_list = NULL,
   if (length(select_vars_psi) > 0 & length(select_vars_iv) > 0) {
     iv_psi_sel = merge(iv_sel[1:2], psi_sel[1:3], by = "Feature")
     iv_psi_sel = iv_psi_sel[order(iv_psi_sel$IV, decreasing = TRUE),]
-    vars_sel <- as.character(iv_psi_sel[, "Feature"])
+    vars_sel = as.character(iv_psi_sel[, "Feature"])
   } else {
     if (length(select_vars_iv) > 0) {
       iv_psi_sel = iv_sel[1:2]
@@ -185,7 +185,7 @@ psi_iv_filter <- function(dat, dat_test = NULL, target, x_list = NULL,
 #'                                        early_stopping_rounds = 10,
 #'                                        objective = "binary:logistic")
 #' \dontrun{
-#' xgb_features <- xgb_filter(dat_train = dat, dat_test = NULL,
+#' xgb_features = xgb_filter(dat_train = dat, dat_test = NULL,
 #' target = "default.payment.next.month", occur_time = "apply_date",f_eval = 'ks',
 #' xgb_params = xgb_params,
 #' cv_folds = 1, ex_cols = "ID$|date$|default.payment.next.month$", vars_name = FALSE)
@@ -193,7 +193,7 @@ psi_iv_filter <- function(dat, dat_test = NULL, target, x_list = NULL,
 #' @importFrom xgboost xgb.importance xgb.train xgb.DMatrix getinfo
 #' @export
 
-xgb_filter <- function(dat_train, dat_test = NULL, target = NULL, pos_flag = NULL,
+xgb_filter = function(dat_train, dat_test = NULL, target = NULL, pos_flag = NULL,
                        x_list = NULL, occur_time = NULL, ex_cols = NULL,
                        xgb_params = list(nrounds = 100, max_depth = 6, eta = 0.1,
                                          min_child_weight = 1, subsample = 1,
@@ -310,8 +310,8 @@ xgb_filter <- function(dat_train, dat_test = NULL, target = NULL, pos_flag = NUL
     x_test = as.matrix(test_sub[, xg_list])
     y_test = as.numeric(as.character(test_sub[, target]))
     xgb_test = list(data = x_test, label = y_test)
-    dtest <- xgb.DMatrix(data = xgb_test$data, label = xgb_test$label)
-    watchlist <- list(train = dtrain, eval = dtest)
+    dtest = xgb.DMatrix(data = xgb_test$data, label = xgb_test$label)
+    watchlist = list(train = dtrain, eval = dtest)
     # Train a model
     if (!is.null(seed)) set.seed(seed) else set.seed(46)
     xgb_model_new = xgb.train(data = dtrain,
@@ -409,7 +409,7 @@ xgb_filter <- function(dat_train, dat_test = NULL, target = NULL, pos_flag = NUL
 #'                        n.minobsinnode = 30,
 #'                      cv.folds = 2)
 #' \dontrun{
-#'  features <- gbm_filter(dat = UCICreditCard[1:1000, c(8:12, 26)],
+#'  features = gbm_filter(dat = UCICreditCard[1:1000, c(8:12, 26)],
 #'          target = "default.payment.next.month",
 #'       occur_time = "apply_date",
 #'      GBM.params = GBM.params
@@ -418,7 +418,7 @@ xgb_filter <- function(dat_train, dat_test = NULL, target = NULL, pos_flag = NUL
 #' @export
 
 
-gbm_filter <- function(dat, target = NULL, x_list = NULL, ex_cols = NULL, pos_flag = NULL,
+gbm_filter = function(dat, target = NULL, x_list = NULL, ex_cols = NULL, pos_flag = NULL,
                        GBM.params = gbm_params(),
                        cores_num = 2, vars_name = TRUE, note = TRUE, save_data = FALSE,
                        file_name = NULL,
@@ -531,7 +531,7 @@ gbm_filter <- function(dat, target = NULL, x_list = NULL, ex_cols = NULL, pos_fl
 #' @importFrom xgboost xgb.importance xgb.train xgb.DMatrix
 #' @importFrom dplyr %>% group_by summarise
 #' @export
-feature_selector <- function(dat_train, dat_test = NULL, x_list = NULL, target = NULL,
+feature_selector = function(dat_train, dat_test = NULL, x_list = NULL, target = NULL,
                              pos_flag = NULL, occur_time = NULL, ex_cols = NULL,
                              filter = c("IV", "PSI", "XGB", "COR"),
                              cv_folds = 1,
@@ -802,7 +802,7 @@ feature_selector <- function(dat_train, dat_test = NULL, x_list = NULL, target =
 #' p = 0.9, cor_class = FALSE ,var_name = FALSE)
 #' @export
 
-fast_high_cor_filter <- function(dat, p = 0.95, x_list = NULL, com_list = NULL,
+fast_high_cor_filter = function(dat, p = 0.95, x_list = NULL, com_list = NULL,
                                  ex_cols = NULL, save_data = FALSE, cor_class = TRUE,vars_name = TRUE,
                                  parallel = FALSE, note = FALSE,
                                  file_name = NULL, dir_path = tempdir(), ...) {
@@ -826,7 +826,7 @@ fast_high_cor_filter <- function(dat, p = 0.95, x_list = NULL, com_list = NULL,
         if (length(num_x_list) > 1) {
             dat[is.na(dat)] = -1
             cor_mat_num = cor(dat[num_x_list], method = "spearman", use = "complete.obs")
-            cor_nums <- high_cor_selector(cor_mat = cor_mat_num, p = p, 
+            cor_nums = high_cor_selector(cor_mat = cor_mat_num, p = p, 
                                   com_list = com_list, x_list = num_x_list)
 			num_cor_list = data.frame(Feature = cor_nums, cor_Means = rowMeans(cor_mat_num[cor_nums, cor_nums])) 
         } else {
@@ -935,7 +935,7 @@ fast_high_cor_filter <- function(dat, p = 0.95, x_list = NULL, com_list = NULL,
 #' @rdname fast_high_cor_filter
 #' @export
 
-high_cor_filter <- function(dat, com_list = NULL, x_list = NULL, ex_cols = NULL,
+high_cor_filter = function(dat, com_list = NULL, x_list = NULL, ex_cols = NULL,
                             onehot = TRUE, parallel = FALSE, p = 0.7, file_name = NULL,
                             dir_path = tempdir(), save_data = FALSE, note = FALSE, ...) {
     if (note) cat_line("-- Selecting the variable with the highest IV in a highly correlated variable group", col = love_color("dark_purple2"))
@@ -995,9 +995,9 @@ high_cor_filter <- function(dat, com_list = NULL, x_list = NULL, ex_cols = NULL,
         return(goup_max)
     }, FUN.VALUE = character(1))
     cor_vars = c(single_group_vars, sel_vars)
-    dat <- dat[cor_vars]
+    dat = dat[cor_vars]
     #return to the original form of one-hot encoding variables
-    dat <- de_one_hot_encoding(dat)
+    dat = de_one_hot_encoding(dat)
 	 #obtain the numeric variables.
     var_list = colnames(dat)
     if (save_data) {
@@ -1025,7 +1025,7 @@ high_cor_filter <- function(dat, com_list = NULL, x_list = NULL, ex_cols = NULL,
 #' @param retain Logical, output selected variables, if FALSE, output filtered variables.
 #' @return  A list of selected variables.
 #' @export
-high_cor_selector <- function(cor_mat, p = 0.95, x_list = NULL, com_list = NULL, retain = TRUE) {
+high_cor_selector = function(cor_mat, p = 0.95, x_list = NULL, com_list = NULL, retain = TRUE) {
     cols = NULL
     if (is.null(cor_mat)) {
         warning("Correlation matrix is missing.\n")
@@ -1114,7 +1114,7 @@ high_cor_selector <- function(cor_mat, p = 0.95, x_list = NULL, com_list = NULL,
 #' @param cor_class  Culculate catagery variables's correlation matrix. Default is FALSE.
 #' @param parallel Logical, parallel computing. Default is FALSE.
 #' @export
-reduce_high_cor_filter <- function(dat, x_list = NULL, size = ncol(dat)/10,  p = 0.95,
+reduce_high_cor_filter = function(dat, x_list = NULL, size = ncol(dat)/10,  p = 0.95,
                                 com_list = NULL,ex_cols = NULL, cor_class = TRUE,
                                  parallel = FALSE) {
 
@@ -1167,25 +1167,25 @@ reduce_high_cor_filter <- function(dat, x_list = NULL, size = ncol(dat)/10,  p =
 #' }
 #' @export
 
-get_correlation_group <- function(cor_mat, p = 0.8) {
-  vars_num <- dim(cor_mat)[1]
+get_correlation_group = function(cor_mat, p = 0.8) {
+  vars_num = dim(cor_mat)[1]
   cor_vars_list = correlation_sub = cor_vars_list_final = cor_arr = NULL
 
   if (length(vars_num) > 0 && vars_num > 1) {
-    diag(cor_mat) <- NA
+    diag(cor_mat) = NA
     if (!any(abs(cor_mat)[!is.na(abs(cor_mat))] > p)) {
       cor_vars_list = colnames(cor_mat)
     } else {
-      correlation_sub <- data.frame(which(abs(cor_mat) > p, arr.ind = TRUE))
-      correlation_sub <- subset(correlation_sub, col != row)
-      cor_arr <- list()
+      correlation_sub = data.frame(which(abs(cor_mat) > p, arr.ind = TRUE))
+      correlation_sub = subset(correlation_sub, col != row)
+      cor_arr = list()
       for (i in unique(correlation_sub$col)) {
-        cor_arr[[i]] <- sort(unique(unlist(correlation_sub[which(correlation_sub$col == i),])))
+        cor_arr[[i]] = sort(unique(unlist(correlation_sub[which(correlation_sub$col == i),])))
       }
       cor_vars = unique(cor_arr[!sapply(cor_arr, function(x) is.null(x))])
       cor_vars_list_final = select_cor_group(cor_vars)
-      cor_vars_list <- list()
-      cor_vars_list <- lapply(1:length(cor_vars_list_final),
+      cor_vars_list = list()
+      cor_vars_list = lapply(1:length(cor_vars_list_final),
                               function(x) colnames(cor_mat[, unlist(cor_vars_list_final[x])]))
       cor_vars_list = append(cor_vars_list,
                              colnames(cor_mat)[which(!(colnames(cor_mat) %in% unlist(cor_vars_list)))])
@@ -1202,7 +1202,7 @@ get_correlation_group <- function(cor_mat, p = 0.8) {
 #' @rdname get_correlation_group
 #' @export
 
-select_cor_group <- function(cor_vars) {
+select_cor_group = function(cor_vars) {
   cor_vars_group = list()
   cor_vars_group_final = cor_vars
   for (i in 1:length(cor_vars)) {
@@ -1217,13 +1217,13 @@ select_cor_group <- function(cor_vars) {
 #' @param cor_vars_list  List of correlated variable
 #' @rdname get_correlation_group
 #' @export
-select_cor_list <- function(cor_vars_list) {
-  cor_vars_list2 <- list()
+select_cor_list = function(cor_vars_list) {
+  cor_vars_list2 = list()
   for (i in 1:length(cor_vars_list)) {
-    cor_vars_list2[[i]] <- lapply(cor_vars_list, function(x) base::setdiff(unlist(x), unlist(cor_vars_list[i])))
+    cor_vars_list2[[i]] = lapply(cor_vars_list, function(x) base::setdiff(unlist(x), unlist(cor_vars_list[i])))
   }
   n_list = length(cor_vars_list2)
-  cor_vars_list3 <- unique(lapply(1:n_list,
+  cor_vars_list3 = unique(lapply(1:n_list,
                                   function(i) {
                                     cor_vars_sub = cor_vars_list2[[i]]
                                     n_vars = length(cor_vars_sub)
@@ -1261,11 +1261,11 @@ select_cor_list <- function(cor_vars_list) {
 #'  dat_train = process_nas(dat_train)
 #'  #get breaks of all predictive variables
 #'  x_list = c("PAY_0", "LIMIT_BAL", "PAY_AMT5", "EDUCATION", "PAY_3", "PAY_2")
-#'  breaks_list <- get_breaks_all(dat = dat_train, target = "target",
+#'  breaks_list = get_breaks_all(dat = dat_train, target = "target",
 #'                                 x_list = x_list, occur_time = "apply_date", ex_cols = "ID",
 #'   save_data = FALSE, note = FALSE)
 #'  #woe transform
-#'  train_woe = woe_trans_all(dat = dat_train,
+#'  train_woe = woe_trans_all(dat = dat_train,x_list = x_list,
 #'                             target = "target",
 #'                             breaks_list = breaks_list,
 #'                             woe_name = FALSE)
@@ -1277,7 +1277,7 @@ select_cor_list <- function(cor_vars_list) {
 #' @export
 
 
-lasso_filter <- function(dat_train, dat_test = NULL, target = NULL,
+lasso_filter = function(dat_train, dat_test = NULL, target = NULL,
                          x_list = NULL, pos_flag = NULL,
                          ex_cols = NULL, sim_sign = "negtive",
                          best_lambda = "lambda.auc",
@@ -1330,7 +1330,7 @@ lasso_filter <- function(dat_train, dat_test = NULL, target = NULL,
 
   # Train a model
   if (!is.null(seed)) set.seed(seed) else set.seed(46)
-  lasso_model <- glmnet(y = y_train,
+  lasso_model = glmnet(y = y_train,
                         x = x_train, #X must be a matrix.
                         family = "binomial", #For non-negative count dependent variable.
                         alpha = 1) #1for lasso
@@ -1402,7 +1402,7 @@ lasso_filter <- function(dat_train, dat_test = NULL, target = NULL,
 #' @importFrom glmnet cv.glmnet glmnet
 #' @import ggplot2
 #' @export
-get_auc_ks_lambda <- function(lasso_model, x_test, y_test, save_data = FALSE, plot_show = TRUE, file_name = NULL, dir_path = tempdir()) {
+get_auc_ks_lambda = function(lasso_model, x_test, y_test, save_data = FALSE, plot_show = TRUE, file_name = NULL, dir_path = tempdir()) {
   test_pre = predict(lasso_model, newx = x_test, s = lasso_model$lambda, type = "response") # make predictions
   KS = apply(test_pre, 2, function(x) round(ks_value( target = y_test,prob = x), 4))
   AUC = apply(test_pre, 2, function(x) round(auc_value(target = y_test, prob = x), 4))
@@ -1522,10 +1522,10 @@ get_auc_ks_lambda <- function(lasso_model, x_test, y_test, save_data = FALSE, pl
 #' lambda.sim_sign give the model with the same positive or negetive coefficients of all variables.
 #'
 #' @export
-get_sim_sign_lambda <- function(lasso_model, sim_sign = "negtive") {
+get_sim_sign_lambda = function(lasso_model, sim_sign = "negtive") {
   lambda = lasso_model$lambda
 
-  coefs <- c()
+  coefs = c()
   if (sim_sign == "negtive") {
     for (i in 1:length(lambda)) {
       coefs[i] = coef(lasso_model, s = lambda[i])[-1] > 0
@@ -1556,7 +1556,7 @@ get_sim_sign_lambda <- function(lasso_model, sim_sign = "negtive") {
 #'  PCA_dat = PCA_reduce(train = UCICreditCard[num_x_list])
 #' }
 #' @export
-PCA_reduce <- function(train = train, test = NULL, mc = 0.9){
+PCA_reduce = function(train = train, test = NULL, mc = 0.9){
   train = train[which(complete.cases(train)),]
   train_mean = apply(train, 2, mean)
   train_std = apply(train, 2, sd)

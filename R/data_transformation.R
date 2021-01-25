@@ -25,13 +25,13 @@
 #' dat = data_cleansing(dat, target = "target", obs_id = "ID", occur_time = "apply_date",
 #' miss_values =  list("", -1))
 #'
-#' train_test <- train_test_split(dat, split_type = "OOT", prop = 0.7,
+#' train_test = train_test_split(dat, split_type = "OOT", prop = 0.7,
 #'                                 occur_time = "apply_date")
 #' dat_train = train_test$train
 #' dat_test = train_test$test
 #' #get breaks of all predictive variables
 #' x_list = c("PAY_0", "LIMIT_BAL", "PAY_AMT5", "EDUCATION", "PAY_3", "PAY_2")
-#' breaks_list <- get_breaks_all(dat = dat_train, target = "target",
+#' breaks_list = get_breaks_all(dat = dat_train, target = "target",
 #'                               x_list = x_list, occur_time = "apply_date", ex_cols = "ID",
 #' save_data = FALSE, note  = FALSE)
 #' #woe transform
@@ -46,77 +46,82 @@
 #'
 #' @export
 
-woe_trans_all <- function(dat, x_list = NULL, ex_cols = NULL, bins_table = NULL,
-                          target = NULL, breaks_list = NULL, note = FALSE,
-                          save_data = FALSE, parallel = FALSE, woe_name = FALSE,
-                          file_name = NULL, dir_path = tempdir(), ...) {
+woe_trans_all = function(dat, x_list = NULL, ex_cols = NULL, bins_table = NULL,
+          target = NULL, breaks_list = NULL, note = FALSE,
+          save_data = FALSE, parallel = FALSE, woe_name = FALSE,
+          file_name = NULL, dir_path = tempdir(), ...) {
 
-    if (note)cat_line("-- Transforming variables to woe", col = love_color("deep_green"))
-    opt = options(scipen = 200, stringsAsFactors = FALSE) #
-    if (is.null(x_list)) {
-        if (!is.null(bins_table)) {
-            x_list = unique(bins_table[which(as.character(bins_table[, "Feature"]) != "Total"), "Feature"])
-        } else {
-            x_list = get_names(dat = dat,
-                               types = c('factor', 'character', 'numeric', 'integer', 'double'),
-                               ex_cols = c(target, ex_cols), get_ex = FALSE)
-        }
-    }
-    ex_vars = get_names(dat = dat, types = c('factor', 'character', 'numeric', 'integer', 'double'),
-                        ex_cols = x_list, get_ex = FALSE)
-	if(sum(is.na(dat))> 0){stop("Input data contains NAs, please process missing value first.")	}
-    dat_woe = loop_function(func = woe_trans, x_list = x_list,
-                            args = list(dat = dat, bins_table = bins_table,
-                                        target = target, breaks_list = breaks_list,
-                                        woe_name = woe_name),
-                            bind = "cbind", parallel = parallel)
-    dat = cbind(dat[ex_vars], dat_woe)
-    if (save_data) {
-        dir_path = ifelse(!is.character(dir_path),
-                      tempdir(), dir_path)
-        if (!dir.exists(dir_path)) dir.create(dir_path)
-        if (!is.character(file_name)) file_name = NULL
-        save_data(dat, file_name = ifelse(is.null(file_name), "dat.woe", paste(file_name, "dat.woe", sep = ".")), dir_path = dir_path, note = note)
-    }
+   if (note)cat_line("-- Transforming variables to woe", col = love_color("deep_green"))
+   opt = options(scipen = 200, stringsAsFactors = FALSE) #
+   if (is.null(x_list)) {
+     if (!is.null(bins_table)) {
+       x_list = unique(bins_table[which(as.character(bins_table[, "Feature"]) != "Total"), "Feature"])
+     } else {
+       if(length(breaks_list)>0){
+         x_list = unique(breaks_list[,1])
+       }else{
+         x_list = get_names(dat = dat,
+                            types = c('factor', 'character', 'numeric', 'integer', 'double'),
+                            ex_cols = c(target, ex_cols), get_ex = FALSE)
+         
+       }
+     }
+   }
+   ex_vars = get_names(dat = dat, types = c('factor', 'character', 'numeric', 'integer', 'double'),
+                       ex_cols = x_list, get_ex = FALSE)
+   if(sum(is.na(dat))> 0){stop("Input data contains NAs, please process missing value first.")	}
+   dat_woe = loop_function(func = woe_trans, x_list = x_list,
+                           args = list(dat = dat, bins_table = bins_table,
+                                       target = target, breaks_list = breaks_list,
+                                       woe_name = woe_name),
+                           bind = "cbind", parallel = parallel)
+   dat = cbind(dat[ex_vars], dat_woe)
+   if (save_data) {
+     dir_path = ifelse(!is.character(dir_path),
+                       tempdir(), dir_path)
+     if (!dir.exists(dir_path)) dir.create(dir_path)
+     if (!is.character(file_name)) file_name = NULL
+     save_data(dat, file_name = ifelse(is.null(file_name), "dat.woe", paste(file_name, "dat.woe", sep = ".")), dir_path = dir_path, note = note)
+   }
 
-    return(dat)
-	options(opt) # reset
-}
+   return(dat)
+   options(opt) # reset
+ }
 
 #' @rdname woe_trans_all
 #' @export
 
-woe_trans <- function(dat, x, bins_table = NULL, target = NULL, breaks_list = NULL, woe_name = FALSE) {
-    # bins_table
-    if (is.null(bins_table)) {
-        if (!is.null(breaks_list)) {
-            bins_table = get_bins_table(dat = dat, x = x,
-                                         target = target, breaks_list = breaks_list,
-                                         note = FALSE)
-        } else {
-            stop("bins_table & breaks_list are both missing.\n")
-        }
-    }
-    bins_tbl = bins_table[which(as.character(bins_table[, "Feature"]) == names(dat[x])),
-                          c("Feature", "cuts", "bins", "woe")]
-    if (woe_name) {
-        woe_names = paste(names(dat[x]), "woe", sep = "_")
-    } else {
-        woe_names = names(dat[x])
-    }
-    if (length(bins_tbl) > 0 && all(as.character(bins_tbl[, "Feature"]) != "Total")) {
-        bins = split_bins(dat = dat, x = x, breaks = bins_tbl[, c("cuts")], bins_no = TRUE)
-        for (i in 1:nrow(bins_tbl)) {
-           woe_ind =  which(as.character(bins) == as.character(bins_tbl[i, "bins"]))
-           if(length(woe_ind) > 0){
-               dat[woe_ind, woe_names] = bins_tbl[i, "woe"]
-           }
+woe_trans = function(dat, x, bins_table = NULL, target = NULL, breaks_list = NULL, woe_name = FALSE) {
+   # bins_table
+   if (is.null(bins_table)) {
+     if (!is.null(breaks_list)) {
+       bins_table = get_bins_table(dat = dat, x = x,
+                                   target = target, breaks_list = breaks_list,
+                                   note = FALSE)
+     } else {
+       stop("bins_table & breaks_list are both missing.\n")
+     }
+   }
+   bins_tbl = bins_table[which(as.character(bins_table[, "Feature"]) == names(dat[x])),
+                         c("Feature", "cuts", "bins", "woe")]
+   if (woe_name) {
+     woe_names = paste(names(dat[x]), "woe", sep = "_")
+   } else {
+     woe_names = names(dat[x])
+   }
+   if (length(bins_tbl) > 0 && all(as.character(bins_tbl[, "Feature"]) != "Total")) {
+     bins = split_bins(dat = dat, x = x, breaks = bins_tbl[, c("cuts")], bins_no = TRUE)
+     for (i in 1:nrow(bins_tbl)) {
+       woe_ind =  which(as.character(bins) == as.character(bins_tbl[i, "bins"]))
+       if(length(woe_ind) > 0){
+         dat[woe_ind, woe_names] = bins_tbl[i, "woe"]
+       }
 
-        }
-        dat[, woe_names] = as.numeric(dat[, woe_names])
-    }
-    return(dat[woe_names])
-}
+     }
+     dat[, woe_names] = as.numeric(dat[, woe_names])
+   }
+   return(dat[woe_names])
+ }
 
 #' One-Hot Encoding
 #'
@@ -139,7 +144,7 @@ woe_trans <- function(dat, x, bins_table = NULL, target = NULL, breaks_list = NU
 #' @importFrom cli cat_rule cat_line cat_bullet
 #' @export
 
-one_hot_encoding <- function(dat, cat_vars = NULL, ex_cols = NULL,
+one_hot_encoding = function(dat, cat_vars = NULL, ex_cols = NULL,
                             merge_cat = TRUE, na_act = TRUE, note = FALSE) {
   if (note)cat_line("-- One-hot encoding for charactor or factor", col = love_color("deep_green"))
 
@@ -194,7 +199,7 @@ one_hot_encoding <- function(dat, cat_vars = NULL, ex_cols = NULL,
 #' na_act = FALSE)
 #' @importFrom cli cat_rule cat_line cat_bullet
 #' @export
-de_one_hot_encoding <- function(dat_one_hot, cat_vars = NULL, na_act = TRUE,note = FALSE) {
+de_one_hot_encoding = function(dat_one_hot, cat_vars = NULL, na_act = TRUE,note = FALSE) {
 
   if(note)cat_line("-- Recoverying one-hot encoding for charactor or factor.\n", col = love_color("deep_green"))
   dat_one_hot = checking_data(dat_one_hot)
@@ -269,7 +274,7 @@ time_transfer = function (dat, date_cols = NULL, ex_cols = NULL, note = FALSE)
                       ex_cols = ex_cols)
   date_cols1 = NULL
   if (!is.null(date_cols)) {
-    date_cols1 <- names(dat[x_list])[colnames(dat[x_list]) %islike%
+    date_cols1 = names(dat[x_list])[colnames(dat[x_list]) %islike%
                                        date_cols]
   } else {
     date_cols1 = names(dat[x_list])
@@ -278,16 +283,16 @@ time_transfer = function (dat, date_cols = NULL, ex_cols = NULL, note = FALSE)
   df_date = df_date[!colAllnas(df_date)]
   df_date = df_date[!sapply(df_date, is_date)]
   if (dim(df_date)[2] != 0) {
-    df_date_cols <- names(df_date)
-    t_sample <- list()
-    t_len <- list()
+    df_date_cols = names(df_date)
+    t_sample = list()
+    t_len = list()
     t_sam = NULL
     tryCatch({
       for (x in 1:ncol(df_date)) {
         t_sam = vapply(as.character(sample(na.omit(df_date[[x]]),
                                            10, replace = TRUE)), function(i) {
-                                             if (nchar(i) >= 6) {
-                                               nchar(i)
+                                             if (n_char(i) >= 6) {
+                                               n_char(i)
                                              } else {
                                                0
                                              }
@@ -296,8 +301,8 @@ time_transfer = function (dat, date_cols = NULL, ex_cols = NULL, note = FALSE)
         if(length(t_sam) == 0){
           t_sam = vapply(as.character(sample(na.omit(df_date[[x]]),
                                              100, replace = TRUE)), function(i) {
-                                               if (nchar(i) >= 6) {
-                                                 nchar(i)
+                                               if (n_char(i) >= 6) {
+                                                 n_char(i)
                                                } else {
                                                  0
                                                }
@@ -307,8 +312,8 @@ time_transfer = function (dat, date_cols = NULL, ex_cols = NULL, note = FALSE)
         if(length(t_sam) == 0){
           t_sam = vapply(as.character(sample(na.omit(df_date[[x]]),
                                              1000, replace = TRUE)), function(i) {
-                                               if (nchar(i) >= 6) {
-                                                 nchar(i)
+                                               if (n_char(i) >= 6) {
+                                                 n_char(i)
                                                } else {
                                                  0
                                                }
@@ -318,8 +323,8 @@ time_transfer = function (dat, date_cols = NULL, ex_cols = NULL, note = FALSE)
 
         if(length(t_sam) == 0){
           t_sam = vapply(as.character(na.omit(df_date[[x]])), function(i) {
-            if (nchar(i) >= 6) {
-              nchar(i)
+            if (n_char(i) >= 6) {
+              n_char(i)
             } else {
               0
             }
@@ -332,7 +337,7 @@ time_transfer = function (dat, date_cols = NULL, ex_cols = NULL, note = FALSE)
         else {
           t_sample[[x]] = 0
         }
-        t_len[[x]] = as.character(names(t_sam)[which(nchar(names(t_sam)) ==
+        t_len[[x]] = as.character(names(t_sam)[which(n_char(names(t_sam)) ==
                                                        t_sample[[x]])][1])
       }
     }, error = function(e) {
@@ -345,10 +350,8 @@ time_transfer = function (dat, date_cols = NULL, ex_cols = NULL, note = FALSE)
       if (!is.numeric(df_date[[x]]) & t_sample[[x]] > 10 &
           grepl(":", t_len[[x]]) & length(gregexpr("\\.",
                                                    t_len[[x]])[[1]]) == 1 & grepl("\\.", t_len[[x]])) {
-        df_date[[x]] = gsub("\\.0$", "",
-                            df_date[[x]])
-        t_len[[x]] = gsub(" |\\.0$", "",
-                          t_len[[x]])
+        df_date[[x]] = gsub("\\.0$", "",df_date[[x]])
+        t_len[[x]] = gsub(" |\\.0$", "",t_len[[x]])
       }
       if (t_sample[[x]] >= 5 & t_sample[[x]] <= 6 & 
           grepl(pattern = "^[2]{1}[0]{1}[0-3]{1}[0-9]{1}-[0-9]{1}$|^[2]{1}[0]{1}[0-3]{1}[0-9]{1}-[0-9]{1,2}$|^[1]{1}[9]{1}[0-9]{2}-[0-9]{1,2}$",
@@ -370,14 +373,14 @@ time_transfer = function (dat, date_cols = NULL, ex_cols = NULL, note = FALSE)
       }
       if (t_sample[[x]] > 10 & grepl(pattern = "^[2]{1}[0]{1}[0-3]{1}[0-9]{1}-[0-9]{1}-[0-3]{1}[0-9]{1,2}$|^[2]{1}[0]{1}[0-3]{1}[0-9]{1}-[0-9]{1,2}-[0-3]{1}[0-9]{1}$|^[1]{1}[9]{1}[0-9]{2}-[0-9]{1,2}-[0-3]{1}[0-9]{1}$",
                                      x = substr(t_len[[x]], 1, 10)) & grepl(pattern = "[0-1]{1}[0-9]{1}:[0-9]{2}$",
-                                                                            substr(t_len[[x]], 11, nchar(t_len[[x]])))) {
+                                                                            substr(t_len[[x]], 11, n_char(t_len[[x]])))) {
         df_date[[x]] = paste0(df_date[[x]], ":00")
         df_date[[x]] = as.POSIXct(as.character(df_date[[x]]),
                                   format = "%Y-%m-%d %H:%M:%S")
       }
       if (t_sample[[x]] > 10 & grepl(pattern = "^[2]{1}[0]{1}[0-3]{1}[0-9]{1}-[0-9]{1}-[0-3]{1}[0-9]{1,2}$|^[2]{1}[0]{1}[0-3]{1}[0-9]{1}-[0-9]{1,2}-[0-3]{1}[0-9]{1}$|^[1]{1}[9]{1}[0-9]{2}-[0-9]{1,2}-[0-3]{1}[0-9]{1}$",
                                      x = substr(t_len[[x]], 1, 10)) & grepl(pattern = "[0-1]{1}[0-9]{1}:[0-9]{2}:[0-9]{2}",
-                                                                            substr(t_len[[x]], 11, nchar(t_len[[x]])))) {
+                                                                            substr(t_len[[x]], 11, n_char(t_len[[x]])))) {
         df_date[[x]] = as.POSIXct(as.character(df_date[[x]]),
                                   format = "%Y-%m-%d %H:%M:%S")
       }
@@ -388,19 +391,19 @@ time_transfer = function (dat, date_cols = NULL, ex_cols = NULL, note = FALSE)
       }
       if (t_sample[[x]] > 10 & grepl(pattern = "^[2]{1}[0]{1}[0-5]{1}[0-9]{1}[0-9]{1}[0-3]{1}[0-9]{1,2}$|^[2]{1}[0]{1}[0-5]{1}[0-9]{1}[0-9]{1,2}[0-3]{1}[0-9]{1}$|^[1]{1}[9]{1}[0-9]{2}[0-9]{1,2}[0-3]{1}[0-9]{1}$",
                                      x = substr(t_len[[x]], 1, 8)) & grepl(pattern = "[0-9]{1,2}:[0-9]{2}:[0-9]{2}$",
-                                                                           substr(t_len[[x]], 9, nchar(t_len[[x]])))) {
+                                                                           substr(t_len[[x]], 9, n_char(t_len[[x]])))) {
         df_date[[x]] = gsub(" ", "", df_date[[x]])
         df_date[[x]] = paste(substr(df_date[[x]], 1,
-                                    8), substr(df_date[[x]], 9, nchar(df_date[[x]])))
+                                    8), substr(df_date[[x]], 9, n_char(df_date[[x]])))
         df_date[[x]] = as.POSIXct(as.character(df_date[[x]]),
                                   format = "%Y%m%d %H:%M:%S")
       }
       if (t_sample[[x]] > 10 & grepl(pattern = "^[2]{1}[0]{1}[0-5]{1}[0-9]{1}[0-9]{1}[0-3]{1}[0-9]{1,2}$|^[2]{1}[0]{1}[0-5]{1}[0-9]{1}[0-9]{1,2}[0-3]{1}[0-9]{1}$|^[1]{1}[9]{1}[0-9]{2}[0-9]{1,2}[0-3]{1}[0-9]{1}$",
                                      x = substr(t_len[[x]], 1, 8)) & grepl(pattern = "[0-9]{1,2}:[0-9]{2}$",
-                                                                           substr(t_len[[x]], 9, nchar(t_len[[x]])))) {
+                                                                           substr(t_len[[x]], 9, n_char(t_len[[x]])))) {
         df_date[[x]] = gsub(" ", "", df_date[[x]])
         df_date[[x]] = paste(substr(df_date[[x]], 1,
-                                    8), substr(df_date[[x]], 9, nchar(df_date[[x]])),
+                                    8), substr(df_date[[x]], 9, n_char(df_date[[x]])),
                              ":00")
         df_date[[x]] = as.POSIXct(as.character(df_date[[x]]),
                                   format = "%Y%m%d %H:%M:%S")
@@ -412,21 +415,21 @@ time_transfer = function (dat, date_cols = NULL, ex_cols = NULL, note = FALSE)
       }
       if (t_sample[[x]] > 10 & grepl(pattern = "^[2]{1}[0]{1}[0-3]{1}[0-9]{1}/[0-9]{1,2}/[0-9]{1,2}$|^[2]{1}[0]{1}[0-3]{1}[0-9]{1}/[0-9]{1}/[0-9]{1}$|^[2]{1}[0]{1}[0-3]{1}[0-9]{1}/[0-9]{1,2}/[0-3]{1}[0-9]{1}$|^[2]{1}[0]{1}[0-3]{1}[0-9]{1}/[0-9]{1}/[0-3]{1}[0-9]{1}$|^[1]{1}[9]{1}[0-9]{2}/[0-9]{1,2}/[0-3]{1}[0-9]{1}$",
                                      x = substr(t_len[[x]], 1, 10)) & grepl(pattern = "[0-9]{1,2}:[0-9]{2}$",
-                                                                            substr(t_len[[x]], 11, nchar(t_len[[x]])))) {
+                                                                            substr(t_len[[x]], 11, n_char(t_len[[x]])))) {
         df_date[[x]] = paste0(df_date[[x]], ":00")
         df_date[[x]] = as.POSIXct(as.character(df_date[[x]]),
                                   format = "%Y/%m/%d %H:%M:%S")
       }
       if (t_sample[[x]] > 10 & grepl(pattern = "^[2]{1}[0]{1}[0-3]{1}[0-9]{1}/[0-9]{1,2}/[0-9]{1,2}$|^[2]{1}[0]{1}[0-3]{1}[0-9]{1}/[0-9]{1}/[0-9]{1}$|^[2]{1}[0]{1}[0-3]{1}[0-9]{1}/[0-9]{1,2}/[0-3]{1}[0-9]{1}$|^[2]{1}[0]{1}[0-3]{1}[0-9]{1}/[0-9]{1}/[0-3]{1}[0-9]{1}$|^[1]{1}[9]{1}[0-9]{2}/[0-9]{1,2}/[0-3]{1}[0-9]{1}$",
                                      x = substr(t_len[[x]], 1, 8)) & grepl(pattern = "[0-9]{1,2}:[0-9]{2}$",
-                                                                           substr(t_len[[x]], 9, nchar(t_len[[x]])))) {
+                                                                           substr(t_len[[x]], 9, n_char(t_len[[x]])))) {
         df_date[[x]] = paste0(df_date[[x]], ":00")
         df_date[[x]] = as.POSIXct(as.character(df_date[[x]]),
                                   format = "%Y/%m/%d %H:%M:%S")
       }
       if (t_sample[[x]] > 10 & grepl(pattern = "^[2]{1}[0]{1}[0-3]{1}[0-9]{1}/[0-9]{1,2}/[0-9]{1,2}$|^[2]{1}[0]{1}[0-3]{1}[0-9]{1}/[0-9]{1}/[0-9]{1}$|^[2]{1}[0]{1}[0-3]{1}[0-9]{1}/[0-9]{1,2}/[0-3]{1}[0-9]{1}$|^[2]{1}[0]{1}[0-3]{1}[0-9]{1}/[0-9]{1}/[0-3]{1}[0-9]{1}$|^[1]{1}[9]{1}[0-9]{2}/[0-9]{1,2}/[0-3]{1}[0-9]{1}$",
                                      x = substr(t_len[[x]], 1, 10)) & grepl(pattern = "[0-9]{1,2}:[0-9]{2}:[0-9]{2}$",
-                                                                            substr(t_len[[x]], 11, nchar(t_len[[x]])))) {
+                                                                            substr(t_len[[x]], 11, n_char(t_len[[x]])))) {
         df_date[[x]] = as.POSIXct(as.character(df_date[[x]]),
                                   format = "%Y/%m/%d %H:%M:%S")
       }
@@ -441,7 +444,7 @@ time_transfer = function (dat, date_cols = NULL, ex_cols = NULL, note = FALSE)
                                   origin = "1970-01-01 00:00:00")
       }
     }
-    dat[df_date_cols] <- df_date
+    dat[df_date_cols] = df_date
     rm(df_date)
   }
   else {
@@ -470,7 +473,7 @@ time_transfer = function (dat, date_cols = NULL, ex_cols = NULL, note = FALSE)
 #' @export
 
 
-derived_ts_vars <- function(dat, grx = NULL, td = NULL, ID = NULL, ex_cols = NULL, x_list = NULL,
+derived_ts_vars = function(dat, grx = NULL, td = NULL, ID = NULL, ex_cols = NULL, x_list = NULL,
 							der = c("cvs", "sums", "means", "maxs", "max_mins",
 									"time_intervals", "cnt_intervals", "total_pcts",
 									"cum_pcts", "partial_acfs"),
@@ -479,10 +482,10 @@ derived_ts_vars <- function(dat, grx = NULL, td = NULL, ID = NULL, ex_cols = NUL
 
 	dat = checking_data(dat, note = FALSE)
 	if (parallel) {
-		parallel <- start_parallel_computing(parallel)
-		stopCluster <- TRUE
+		parallel = start_parallel_computing(parallel)
+		stopCluster = TRUE
 	} else {
-		parallel <- stopCluster <- FALSE
+		parallel = stopCluster = FALSE
 	}
 	if (is.null(ID)) {
 		dat$ID = as.character(rownames(dat))
@@ -495,22 +498,22 @@ derived_ts_vars <- function(dat, grx = NULL, td = NULL, ID = NULL, ex_cols = NUL
 	on.exit(if (parallel & stopCluster) stop_parallel_computing(attr(parallel, "cluster")))
 	i. = j. = NULL
 	if (!parallel) {
-		df_cv_list <- lapply(unlist(grx), function(grx_x) derived_ts(dat, grx_x = grx_x, td = td,
+		df_cv_list = lapply(unlist(grx), function(grx_x) derived_ts(dat, grx_x = grx_x, td = td,
 								   ID = ID, ex_cols = ex_cols, x_list = x_list, der = der))
 		if (length(df_cv_list) > 1) {
 			df_cv_list = multi_left_join(df_list = df_cv_list, by = ID)
 		} else {
-			df_cv_list <- as.data.frame(df_cv_list)
+			df_cv_list = as.data.frame(df_cv_list)
 		}
 	} else {
-		df_cv_list <- foreach(i. = unlist(grx),
+		df_cv_list = foreach(i. = unlist(grx),
 							  .errorhandling = c('pass')) %dopar% {
 								try(do.call(derived_ts, args = list(dat = dat, grx_x = i., td = td, ID = ID, ex_cols = ex_cols, x_list = x_list, der = der)), silent = TRUE)
 					  		}
 		if (length(df_cv_list) > 1) {
 			df_cv_list = multi_left_join(df_list = df_cv_list, by = ID)
 		} else {
-			df_cv_list <- as.data.frame(df_cv_list)
+			df_cv_list = as.data.frame(df_cv_list)
 		}
 	}
 	return(df_cv_list)
@@ -519,7 +522,7 @@ derived_ts_vars <- function(dat, grx = NULL, td = NULL, ID = NULL, ex_cols = NUL
 #' @rdname derived_ts_vars
 #' @export
 
-derived_ts <- function(dat, grx_x = NULL, x_list = NULL, td = NULL, ID = NULL, ex_cols = NULL,
+derived_ts = function(dat, grx_x = NULL, x_list = NULL, td = NULL, ID = NULL, ex_cols = NULL,
 					   der = c("cvs", "sums", "means", "maxs", "max_mins",
 							   "time_intervals", "cnt_intervals", "total_pcts",
 							   "cum_pcts", "partial_acfs")) {
@@ -635,7 +638,7 @@ derived_ts <- function(dat, grx_x = NULL, x_list = NULL, td = NULL, ID = NULL, e
 #' time_series_proc(dat = dat, ID = 'id', group = 'terms',time = 'time')
 #' @export
 
-time_series_proc <- function(dat, ID = NULL, group = NULL, time = NULL) {
+time_series_proc = function(dat, ID = NULL, group = NULL, time = NULL) {
   time_interval = NULL
   if (is.null(time)) stop("time variable is missing.\n")
   dat$time = as.numeric(dat[[time]])
@@ -771,35 +774,35 @@ time_vars_process = function(df_tm = df_tm, x, enddate = NULL,
 		newname = c()
 		for(unit in units){
 			   if(length(unit) > 0 && is.element("days",unit)) {
-				   df_tm <- within(df_tm, {
+				   df_tm = within(df_tm, {
 					   diff_days = floor(as.numeric(difftime(df_tm[[enddate]], df_tm[[x]],units = "days")))
 				   })
 				   newname[unit] = paste0(x, "_to_", enddate, "_diff_days")
 				   df_tm = re_name(df_tm, oldname =  c("diff_days"),  newname = newname[unit])
 			   }else{
 				      if(length(unit) > 0 && is.element("secs",unit)) {
-						  df_tm <- within(df_tm, {
+						  df_tm = within(df_tm, {
 							  diff_secs = floor(as.numeric(difftime(df_tm[[enddate]], df_tm[[x]],units = "secs")))
 						  })
 						  newname[unit] = paste0(x, "_to_", enddate, "_diff_secs")
 						  df_tm = re_name(df_tm, oldname =  c("diff_secs"),  newname = newname[unit])
 					  }else{
 						     if(length(unit) > 0 && is.element("mins",unit)) {
-								 df_tm <- within(df_tm, {
+								 df_tm = within(df_tm, {
 									 diff_mins = floor(as.numeric(difftime(df_tm[[enddate]], df_tm[[x]],units = "mins")))
 								 })
 								 newname[unit] = paste0(x, "_to_", enddate, "_diff_mins")
 								 df_tm = re_name(df_tm, oldname =  c("diff_mins"),  newname = newname[unit])
 							 }else{
 								    if(length(unit) > 0 && is.element("hours",unit)) {
-										df_tm <- within(df_tm, {
+										df_tm = within(df_tm, {
 											diff_hours = floor(as.numeric(difftime(df_tm[[enddate]], df_tm[[x]],units = "hours")))
 										})
 										newname[unit] = paste0(x, "_to_", enddate, "_diff_hours")
 										df_tm = re_name(df_tm, oldname =  c("diff_hours"),  newname = newname[unit])
 									}else{
 										   if(length(unit) > 0 && is.element("weeks",unit)) {
-											   df_tm <- within(df_tm, {
+											   df_tm = within(df_tm, {
 												   diff_weeks = floor(as.numeric(difftime(df_tm[[enddate]], df_tm[[x]],units = "weeks")))
 											   })
 											   newname[unit] = paste0(x, "_to_", enddate, "_diff_weeks")
@@ -830,26 +833,26 @@ time_variable = function(dat, date_cols = NULL, enddate = NULL,
 	dat = checking_data(dat = dat)
 	date_cols1 = NULL
 	if (!is.null(date_cols)) {
-		date_cols1 <- names(dat)[colnames(dat) %islike% c(enddate, date_cols)]
+		date_cols1 = names(dat)[colnames(dat) %islike% c(enddate, date_cols)]
 	} else {
 		date_cols1 = names(dat)
 	}
 	df_date = dat[date_cols1]
 	df_date = time_transfer(dat = df_date, date_cols = c(enddate, date_cols))
-	df_date <- df_date[!colAllnas(df_date)]
+	df_date = df_date[!colAllnas(df_date)]
 	df_tm = df_date[sapply(df_date, is_date)]
 
-	time_vars_list <- lapply(date_cols1, function(x) time_vars_process(df_tm = df_tm, x, enddate 
+	time_vars_list = lapply(date_cols1, function(x) time_vars_process(df_tm = df_tm, x, enddate 
 		= enddate,units = units))
-	index <- 0;
-	j <- 1
+	index = 0;
+	j = 1
 	for (i in 1:length(time_vars_list)) {
 		if (is.null(time_vars_list[[i]])) {
-			index[j] <- i
-			j <- j + 1
+			index[j] = i
+			j = j + 1
 		}
 	}
-	tm_vars_tbl <- as.data.frame(Reduce("cbind", time_vars_list[-index]))
+	tm_vars_tbl = as.data.frame(Reduce("cbind", time_vars_list[-index]))
 	dat = cbind(dat, tm_vars_tbl)
 	return(dat)
 }
@@ -870,21 +873,21 @@ time_variable = function(dat, date_cols = NULL, enddate = NULL,
 
 city_varieble_process = function(df_city, x, city_class) {
 	if (class(df_city)[1] != "data.frame") {
-		df_city <- quick_as_df(df_city)
+		df_city = quick_as_df(df_city)
 	}
 	df_city = within(df_city, {
-		city_level <- NA
-		city_level[df_city[[x]] %alike% city_class[1]] <- 1
-		city_level[df_city[[x]] %alike% city_class[2]] <- 2
-		city_level[df_city[[x]] %alike% city_class[3]] <- 3
-		city_level[df_city[[x]] %alike% city_class[4]] <- 4
-		city_level[df_city[[x]] %alike% city_class[5]] <- 5
-		city_level[df_city[[x]] %alike% city_class[6]] <- 6
+		city_level = NA
+		city_level[df_city[[x]] %alike% city_class[1]] = 1
+		city_level[df_city[[x]] %alike% city_class[2]] = 2
+		city_level[df_city[[x]] %alike% city_class[3]] = 3
+		city_level[df_city[[x]] %alike% city_class[4]] = 4
+		city_level[df_city[[x]] %alike% city_class[5]] = 5
+		city_level[df_city[[x]] %alike% city_class[6]] = 6
 		city_level[is.null(df_city[[x]]) | df_city[[x]] == "NULL" | df_city[[x]] == "" | df_city[[x]] == "missing"|
 			df_city[[x]] == "Missing" | city_level == "null" | df_city[[x]] == "NA"] = -1
 		city_level[is.na(city_level)] = -1
 	})
-	city_level_name <- paste(x, "city_level", sep = "_")
+	city_level_name = paste(x, "city_level", sep = "_")
 	df_city = re_name(dat = df_city, oldname = "city_level", newname = city_level_name)
 	return(df_city[city_level_name])
 }
@@ -913,17 +916,17 @@ city_varieble = function(df = df, city_cols = NULL,
 		df  = quick_as_df(df)
 	}
 	if (is.null(city_cols)) {
-		city_index <- grepl(city_pattern, paste(colnames(df)))
+		city_index = grepl(city_pattern, paste(colnames(df)))
 		city_cols = names(df[city_index])
 	} else {
 		city_cols = names(df[city_cols])
 	}
 	df_city = df[city_cols]
 	if (parallel) {
-		parallel <- start_parallel_computing(parallel)
-		stopCluster <- TRUE
+		parallel = start_parallel_computing(parallel)
+		stopCluster = TRUE
 	} else {
-		parallel <- stopCluster <- FALSE
+		parallel = stopCluster = FALSE
 	}
 	on.exit(if (parallel & stopCluster) stop_parallel_computing(attr(parallel, "cluster")))
 	i. = NULL
@@ -983,10 +986,10 @@ replace_value = function(dat = dat, x_list = NULL,
 
 	}
 	if (parallel) {
-		parallel <- start_parallel_computing(parallel)
-		stopCluster <- TRUE
+		parallel = start_parallel_computing(parallel)
+		stopCluster = TRUE
 	} else {
-		parallel <- stopCluster <- FALSE
+		parallel = stopCluster = FALSE
 	}
 	on.exit(if (parallel & stopCluster) stop_parallel_computing(attr(parallel, "cluster")))
 	i. = NULL
@@ -1040,13 +1043,13 @@ replace_value_x = function(dat, x, replace_dat, MARGIN = 2,
 #'
 #' @param  add  A data.frame contained address variables.
 #' @export
-add_variable_process <- function(add) {
+add_variable_process = function(add) {
     # acquire a sets of addresses
     add1 = as.data.frame(add)
     sim1 = colname1 = list()
     for (i in 1:ncol(add1)) {
         if (i >= ncol(add1)) break
-        sim1[[i]] <- apply(add1[, i:ncol(add1)], 2,
+        sim1[[i]] = apply(add1[, i:ncol(add1)], 2,
                        function(x) {
                            ifelse(add1[, i] %alike% x, 1, 0)
                        })
@@ -1055,18 +1058,18 @@ add_variable_process <- function(add) {
     sim1 = data.frame(t(unlist(sim1)), stringsAsFactors = FALSE)
     names(sim1) = unlist(colname1)
     # find the variables which are computing similarity with themselves
-    splitvar <- strsplit(names(sim1), "_WITH_")
-    vars <- c()
+    splitvar = strsplit(names(sim1), "_WITH_")
+    vars = c()
     for (i in 1:(length(sim1))) {
         if (splitvar[[i]][1] == splitvar[[i]][2]) {
-            vars[[i]] <- names(sim1)[i]
+            vars[[i]] = names(sim1)[i]
         } else {
-            vars[[i]] <- NA
+            vars[[i]] = NA
         }
     }
     # get the final results
     sim = sim1[is.na(vars)]
-    simm <- as.vector(sim)
+    simm = as.vector(sim)
     return(simm)
 }
 
@@ -1084,34 +1087,34 @@ add_variable_process <- function(add) {
 #' @importFrom doParallel registerDoParallel
 #' @importFrom foreach foreach %dopar% %do%  registerDoSEQ
 #' @export
-address_varieble <- function(df, address_cols = NULL, address_pattern = NULL, parallel = TRUE) {
+address_varieble = function(df, address_cols = NULL, address_pattern = NULL, parallel = TRUE) {
     if (class(df)[1] != "data.frame") {
-        df <- as.data.frame(df)
+        df = as.data.frame(df)
     }
     if (is.null(address_cols)) {
-        address_cols <- grepl(address_pattern, paste(colnames(df)))
+        address_cols = grepl(address_pattern, paste(colnames(df)))
         address_vars = names(df)[address_cols]
     } else {
-        address_vars <- names(df[address_cols])
+        address_vars = names(df[address_cols])
     }
     df_add = df[address_vars]
     if (parallel) {
-        parallel <- start_parallel_computing(parallel)
-        stopCluster <- TRUE
+        parallel = start_parallel_computing(parallel)
+        stopCluster = TRUE
     } else {
-        parallel <- stopCluster <- FALSE
+        parallel = stopCluster = FALSE
     }
     on.exit(if (parallel & stopCluster) stop_parallel_computing(attr(parallel, "cluster")))
     i. = NULL
     df_add_list = list()
     if (!parallel) {
-        df_add_list <- lapply(1:nrow(df_add), function(i.) add_variable_process(add = df_add[i.,]))
-        df_add_tbl <- Reduce("cbind", df_add_list) %>% as.data.frame()
+        df_add_list = lapply(1:nrow(df_add), function(i.) add_variable_process(add = df_add[i.,]))
+        df_add_tbl = Reduce("cbind", df_add_list) %>% as.data.frame()
     } else {
-        df_add_list <- foreach(i. = 1:nrow(df_add), .combine = "c") %dopar% {
+        df_add_list = foreach(i. = 1:nrow(df_add), .combine = "c") %dopar% {
             try(do.call(add_variable_process, args = list(add = df_add[i.,])), silent = TRUE)
         }
-        df_add_tbl <- as.data.frame(df_add_list)
+        df_add_tbl = as.data.frame(df_add_list)
     }
     return(df_add_tbl)
 }
@@ -1125,12 +1128,12 @@ address_varieble <- function(df, address_cols = NULL, address_pattern = NULL, pa
 #' @param  add  A data.frame
 #' @importFrom data.table :=
 #' @export
-variable_process <- function(add) {
+variable_process = function(add) {
     td = new3 = new2 = grx_x = colname1 = NULL
 
     # acquire a sets of addresses
-    cv_cols <- grep(grx_x, paste(colnames(dat)))[1:td]
-    cv_cols <- cv_cols[!is.na(cv_cols)]
+    cv_cols = grep(grx_x, paste(colnames(dat)))[1:td]
+    cv_cols = cv_cols[!is.na(cv_cols)]
     #cv_folds
     if (length(cv_cols) > 0) {
         dat = dat[, new2 := ifelse(rowAllnas(dat[, cv_cols, with = FALSE]), NA,
@@ -1141,18 +1144,18 @@ variable_process <- function(add) {
     sim1 = data.frame(t(unlist(sim1)), stringsAsFactors = FALSE)
     names(sim1) = unlist(colname1)
     # find the variables which are computing similarity with themselves
-    splitvar <- strsplit(names(sim1), "_WITH_")
-    vars <- c()
+    splitvar = strsplit(names(sim1), "_WITH_")
+    vars = c()
     for (i in 1:(length(sim1))) {
         if (splitvar[[i]][1] == splitvar[[i]][2]) {
-            vars[[i]] <- names(sim1)[i]
+            vars[[i]] = names(sim1)[i]
         } else {
-            vars[[i]] <- NA
+            vars[[i]] = NA
         }
     }
     # get the final results
     sim = sim1[is.na(vars)]
-    simm <- as.vector(sim)
+    simm = as.vector(sim)
     return(simm)
 }
 
@@ -1165,16 +1168,16 @@ variable_process <- function(add) {
 #' @param interval_type  Available of c("cnt_interval", "time_interval")
 #' @export
 #' @importFrom data.table first
-derived_interval <- function(dat_s, interval_type = c("cnt_interval", "time_interval")) {
+derived_interval = function(dat_s, interval_type = c("cnt_interval", "time_interval")) {
 
-	interval_list <- apply(dat_s, 1, function(m) {
+	interval_list = apply(dat_s, 1, function(m) {
 		if (interval_type == "time_interval") {
 			cnt_ind = inter_ind = which(!is.na(m) | m != 0)
-			interval <- rep(NA, length(m))
+			interval = rep(NA, length(m))
 			if (length(cnt_ind) > 1) {
 
 
-				interval[cnt_ind] <- vapply(1:(length(inter_ind)), function(i) {
+				interval[cnt_ind] = vapply(1:(length(inter_ind)), function(i) {
 
 					ifelse(i <= length(inter_ind), abs(inter_ind[i] - inter_ind[i + 1]), NA)
 
@@ -1184,11 +1187,11 @@ derived_interval <- function(dat_s, interval_type = c("cnt_interval", "time_inte
 		} else {
 			cnt_ind = which(m >= 0)
 			inter_ind = unlist(m, use.names = FALSE)[c(cnt_ind)]
-			interval <- rep(NA, length(m))
+			interval = rep(NA, length(m))
 			if (length(cnt_ind) > 1) {
 
 
-				interval[cnt_ind] <- vapply(1:(length(inter_ind)), function(i) {
+				interval[cnt_ind] = vapply(1:(length(inter_ind)), function(i) {
 
 					ifelse(i < length(inter_ind), abs(inter_ind[i] - inter_ind[i + 1]), inter_ind[i])
 
@@ -1210,8 +1213,8 @@ derived_interval <- function(dat_s, interval_type = c("cnt_interval", "time_inte
 #' @param  dat_s  A data.frame contained only predict variables.
 #' @param pct_type  Available of "total_pct"
 #' @export
-derived_pct <- function(dat_s, pct_type = "total_pct") {
-    dat_s[is.na(dat_s)] <- 0
+derived_pct = function(dat_s, pct_type = "total_pct") {
+    dat_s[is.na(dat_s)] = 0
     if (pct_type == "total_pct") {
         pct_list = dat_s / rowSums(dat_s, na.rm = TRUE)
     } else {
@@ -1231,7 +1234,7 @@ derived_pct <- function(dat_s, pct_type = "total_pct") {
 #' @param  dat_s  A data.frame
 #' @export
 
-derived_partial_acf <- function(dat_s) {
+derived_partial_acf = function(dat_s) {
     dat_s[is.na(dat_s)] = 0
     p_acf = apply(dat_s, 1, function(x) ifelse(length(unique(x)) > 2, mean(abs(ar(ts(x), FALSE,
     length(unique(x)) - 1, na.action = na.pass)$partialacf)), NA))
@@ -1246,7 +1249,7 @@ derived_partial_acf <- function(dat_s) {
 #' @param b  A string
 #' @param sep Seprater of strings. Default is "_|[.]|[A-Z]".
 #' @export
-sim_str <- function(a, b, sep = "_|[.]|[A-Z]") {
+sim_str = function(a, b, sep = "_|[.]|[A-Z]") {
     intersect(strsplit(a, sep)[[1]], strsplit(b, sep)[[1]])
 }
 
@@ -1261,7 +1264,7 @@ sim_str <- function(a, b, sep = "_|[.]|[A-Z]") {
 #' de_percent("24%")
 #' @export
 
-de_percent <- function(x, digits = 2) {
+de_percent = function(x, digits = 2) {
     x = as.character(x)
     round(as.numeric(gsub("%", "", x)) / 100, digits = digits)
 }
@@ -1285,7 +1288,7 @@ de_percent <- function(x, digits = 2) {
 #' @export
 
 
-merge_category <- function(dat, char_list = NULL, ex_cols = NULL,  m = 30, note = TRUE) {
+merge_category = function(dat, char_list = NULL, ex_cols = NULL,  m = 10, note = TRUE) {
 	opt = options(scipen = 200, stringsAsFactors = FALSE, "warn" = -1)
 	if (note) cat_line(paste0("-- Merging categories..."), col = love_color("dark_green"))
 	dat = char_to_num(dat = dat, char_list = char_list, ex_cols = ex_cols, note = FALSE)
@@ -1327,34 +1330,39 @@ merge_category <- function(dat, char_list = NULL, ex_cols = NULL,  m = 30, note 
 #' str(dat_sub)
 #' @export
 
-char_to_num = function (dat, char_list = NULL, m = 0, p = 1, note = TRUE,
-						ex_cols = NULL) {
-    opt = options(scipen = 200, warn = -1, stringsAsFactors = FALSE)
-    if (note)
-        cat_line(paste("-- Transfering character variables which are actually numerical to numeric"),
-            col = love_color("dark_green"))
-    if (is.null(char_list)) {
-        char_list = get_names(dat = dat, types = c("factor",
-            "character"), ex_cols = ex_cols, get_ex = FALSE)
+char_to_num = function (dat, char_list = NULL, m = 0, p = 0.5, note = FALSE,
+                        ex_cols = NULL) {
+  opt = options(scipen = 200, warn = -1, stringsAsFactors = FALSE)
+  if (note)
+    cat_line(paste("-- Transfering character variables which are actually numerical to numeric"),
+             col = love_color("dark_green"))
+  if (is.null(char_list)) {
+    char_list = get_names(dat = dat, types = c("factor",
+                                               "character"), ex_cols = ex_cols, get_ex = FALSE)
+  }
+  
+  for (x in char_list) {
+    dt_x = table(as.character(dat[, x]), useNA = "no")
+    if(any(grepl("\\,",names(dt_x)))){
+      x_name = gsub("\\,","",names(dt_x))
+    }else{
+      x_name = names(dt_x)
     }
-
-    for (x in char_list) {
-        dt_x = table(as.character(dat[, x]), useNA = "no")
-        char_num = tryCatch({
-            as.numeric(names(dt_x))
-        }, error = function(e) {
-            cat("ERROR :", conditionMessage(e), "\n")
-        }, warning = function(w) {
-            as.numeric(names(dt_x))
-        })
-        char_num_ind = which(!is.na(char_num))
-        if (length(char_num_ind) > m && length(dt_x) > m && round(length(char_num_ind)/length
-			(dt_x),  2) >= p ) {
-            dat[, x] = as.numeric(as.character(dat[, x]))
-        }
+    char_num = tryCatch({
+      as.numeric(x_name)
+    }, error = function(e) {
+      cat("ERROR :", conditionMessage(e), "\n")
+    }, warning = function(w) {
+      as.numeric(x_name)
+    })
+    char_num_ind = which(!is.na(char_num))
+    if (length(char_num_ind) > m && length(dt_x) > m &&
+        round(length(char_num_ind)/length(dt_x),  2) > p ) {
+      dat[, x] = as.numeric(gsub("\\,","",as.character(dat[, x])))
     }
-    return(dat)
-    options(opt)
+  }
+  return(dat)
+  options(opt)
 }
 
 
@@ -1377,7 +1385,7 @@ char_to_num = function (dat, char_list = NULL, m = 0, p = 1, note = TRUE,
 #' @export
 
 
-log_trans <- function(dat, target, x_list = NULL,cor_dif = 0.01,ex_cols = NULL, note = TRUE){
+log_trans = function(dat, target, x_list = NULL,cor_dif = 0.01,ex_cols = NULL, note = TRUE){
   log_x = log_vars(dat = dat, target = target, x_list = x_list, cor_dif = cor_dif,ex_cols = ex_cols )
   if(!is.null(log_x)){
     if(note)cat_line("-- Logarithmic transformation", col = love_color("deep_green"))
@@ -1399,7 +1407,7 @@ log_trans <- function(dat, target, x_list = NULL,cor_dif = 0.01,ex_cols = NULL, 
 #' @rdname log_trans
 #' @export
 
-log_vars <- function(dat, x_list = NULL, target = NULL,cor_dif = 0.01,ex_cols = NULL){
+log_vars = function(dat, x_list = NULL, target = NULL,cor_dif = 0.01,ex_cols = NULL){
   log_x_list = list()
   dat = checking_data(dat = dat,target = target)
   if(is.null(x_list)){
@@ -1449,7 +1457,7 @@ log_vars <- function(dat, x_list = NULL, target = NULL,cor_dif = 0.01,ex_cols = 
 #' @importFrom data.table is.data.table
 #' @export
 
-ranking_percent_proc <- function(dat, ex_cols = NULL, x_list = NULL, rank_dict = NULL,pct = 0.01,
+ranking_percent_proc = function(dat, ex_cols = NULL, x_list = NULL, rank_dict = NULL,pct = 0.01,
                              parallel = FALSE, note = FALSE, save_data = FALSE,file_name = NULL,dir_path= tempdir(), ... ){
     if (note) cat_line("-- Processing ranking percent variables.\n", col = love_color("dark_green"))
     x_list = get_x_list(x_list = x_list, dat_train = dat, dat_test = NULL, ex_cols = ex_cols)
@@ -1489,7 +1497,7 @@ ranking_percent_proc <- function(dat, ex_cols = NULL, x_list = NULL, rank_dict =
 #' @rdname ranking_percent_proc
 #' @export
 
-ranking_percent_proc_x <- function(dat, x,rank_dict = NULL,pct = 0.01) {
+ranking_percent_proc_x = function(dat, x,rank_dict = NULL,pct = 0.01) {
     if ((!is.null(x) && is.character(x)) & !is.null(dat)) {
         dat_x = abs(dat[, x][complete.cases(dat[, x])])
     } else {
@@ -1507,11 +1515,11 @@ ranking_percent_proc_x <- function(dat, x,rank_dict = NULL,pct = 0.01) {
         }
     }
     if (is.null(rank_dict)) {
-        QL <- quantile(dat_x, 0.01)
-        QU <- quantile(dat_x, 0.99)
-        QU_QL <- QU - QL
-        outliers <- QU + 4 * QU_QL
-        dat_x[dat_x > QU + 4 * QU_QL] <- outliers
+        QL = quantile(dat_x, 0.01)
+        QU = quantile(dat_x, 0.99)
+        QU_QL = QU - QL
+        outliers = QU + 4 * QU_QL
+        dat_x[dat_x > QU + 4 * QU_QL] = outliers
         rank_dict_x = NULL
         rank_x = quantile(ecdf(unique(dat_x)), seq(0, 1, by = pct))
         rank_percent = as.double(sub("%", "", names(rank_x))) / 100
@@ -1533,7 +1541,7 @@ ranking_percent_proc_x <- function(dat, x,rank_dict = NULL,pct = 0.01) {
 
 #' @rdname ranking_percent_proc
 #' @export
-ranking_percent_dict <- function(dat, x_list = NULL, ex_cols = NULL, pct = 0.01, parallel = FALSE,
+ranking_percent_dict = function(dat, x_list = NULL, ex_cols = NULL, pct = 0.01, parallel = FALSE,
 			   save_data = FALSE, file_name = NULL, dir_path = tempdir(), ...) {
 	x_list = get_x_list(x_list = x_list, dat_train = dat, dat_test = NULL, ex_cols = ex_cols)
 	if (length(x_list) > 0) {
@@ -1566,7 +1574,7 @@ ranking_percent_dict <- function(dat, x_list = NULL, ex_cols = NULL, pct = 0.01,
 #' @rdname ranking_percent_proc
 #' @export
 
-ranking_percent_dict_x <- function(dat, x = NULL, pct = 0.01) {
+ranking_percent_dict_x = function(dat, x = NULL, pct = 0.01) {
 	if ((!is.null(x) && is.character(x)) & !is.null(dat)) {
 		dat_x = abs(dat[, x][complete.cases(dat[, x])])
 	} else {

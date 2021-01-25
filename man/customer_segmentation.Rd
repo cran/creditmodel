@@ -51,7 +51,7 @@ A "data.frame" object contains cluster results.
 \code{customer_segmentation} is  a function for clustering and find the best segment variable.
 }
 \examples{
-clust <- customer_segmentation(dat = lendingclub[1:10000,20:30],
+clust = customer_segmentation(dat = lendingclub[1:10000,20:30],
                               x_list = NULL, ex_cols = "id$|loan_status",
                               cluster_control = list(meth = "FCM", kc = 2),  save_data = FALSE,
                               tree_control = list(minbucket = round(nrow(lendingclub) / 10)),
@@ -59,5 +59,5 @@ clust <- customer_segmentation(dat = lendingclub[1:10000,20:30],
 }
 \references{
 Bezdek, James C. "FCM: The fuzzy c-means clustering algorithm".
-Computers & Geosciences (0098-3004),\url{https://doi.org/10.1016/0098-3004(84)90020-7}
+Computers & Geosciences (0098-3004),\doi{10.1016/0098-3004(84)90020-7}
 }

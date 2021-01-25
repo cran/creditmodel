@@ -81,7 +81,7 @@
 #' @importFrom cli cat_rule cat_line cat_bullet
 #' @export
 
-training_model <- function(model_name = "mymodel",
+training_model = function(model_name = "mymodel",
 						   dat,
 						   dat_test = NULL,
 						   target = NULL,
@@ -152,10 +152,10 @@ training_model <- function(model_name = "mymodel",
 	cat_bullet(paste0(format(names(paths)), ": ", unname(paths)), col = "darkgrey")
 	#prepare parallel computing
 	if (parallel) {
-		parallel <- start_parallel_computing(parallel)
-		stopCluster <- TRUE
+		parallel = start_parallel_computing(parallel)
+		stopCluster = TRUE
 	} else {
-		parallel <- stopCluster <- FALSE
+		parallel = stopCluster = FALSE
 	}
 	if (is.null(cores_num)) {
 		cores_num = parallel::detectCores()
@@ -232,7 +232,7 @@ training_model <- function(model_name = "mymodel",
 
 	if (is.null(dat_test)) {
 		cat_rule("Spliting train & test", col = love_color("light_cyan"))
-		train_test <- train_test_split(dat, split_type = split_type,
+		train_test = train_test_split(dat, split_type = split_type,
 								   prop = prop, occur_time = occur_time, note = TRUE,
 								   save_data = TRUE, dir_path = data_dir_path,
 								   file_name = NULL,
@@ -647,7 +647,7 @@ training_model <- function(model_name = "mymodel",
 				if (!requireNamespace("pmml", quietly = TRUE) & !requireNamespace("XML", quietly = TRUE)) {
 					cat_rule("Package `pmml`,`XML` needed for PMML transfering to work. Use 'require_packages(pmml,XML)' to install and load it.\n", col = love_color("deep_red"))
 				} else {
-					model_pmml <- pmml::pmml(lr_model_new,
+					model_pmml = pmml::pmml(lr_model_new,
 						   model.name = "Logistic_Regression_Model",
 						   description = "Logistic Regression Model",
 						   copyright = NULL,
@@ -756,8 +756,8 @@ training_model <- function(model_name = "mymodel",
 			  dir_path = XGB_model_dir_path, note = TRUE)
 			}
 			# feature importance1111
-			dat_names <- dimnames(x_train)[[2]]
-			imp_XGB <- xgb.importance(dat_names, model = xgb_model_new)
+			dat_names = dimnames(x_train)[[2]]
+			imp_XGB = xgb.importance(dat_names, model = xgb_model_new)
 			imp_XGB = as.data.frame(imp_XGB)
 			dt_imp_XGB = data.frame(Feature = imp_XGB[, "Feature"],
 							  Importance = round(imp_XGB[, 'Gain'], 5),
@@ -1033,7 +1033,7 @@ training_model <- function(model_name = "mymodel",
 				#Fit the Random Forest Model After Tuning
 				Formula = as.formula(paste(target, paste(vars_rf, collapse = ' + '), sep = ' ~ '))
 				if (!is.null(seed)) set.seed(seed) else set.seed(46)
-				rf_model_new <- foreach(n_tree = rep(round(ntree / cores_num), cores_num),
+				rf_model_new = foreach(n_tree = rep(round(ntree / cores_num), cores_num),
 							  .combine = randomForest::combine,
 							  .packages = "randomForest") %DO% {
 								randomForest::randomForest(Formula,
@@ -1143,7 +1143,7 @@ training_model <- function(model_name = "mymodel",
 #' @seealso  \code{\link{training_model}}, \code{\link{xgb_params}}, \code{\link{gbm_params}}, \code{\link{rf_params}}
 #' @export
 
-lr_params <- function(tree_control = list(p = 0.02, cp = 0.00000001, xval = 5, maxdepth = 10),
+lr_params = function(tree_control = list(p = 0.02, cp = 0.00000001, xval = 5, maxdepth = 10),
                      bins_control = list(bins_num = 10, bins_pct = 0.05, b_chi = 0.02,
                                          b_odds = 0.1, b_psi = 0.03, b_or = 0.15,
                                          mono = 0.2, odds_psi = 0.15, kc = 1),
@@ -1170,7 +1170,7 @@ lr_params <- function(tree_control = list(p = 0.02, cp = 0.00000001, xval = 5, m
 #' @param occur_time The name of the variable that represents the time at which each observation takes place.Default is NULL.
 #' @export
 
-lr_params_search <- function( method = "random_search",dat_train, target,
+lr_params_search = function( method = "random_search",dat_train, target,
                              dat_test = NULL,occur_time= NULL,
                              x_list = NULL , prop = 0.7,iters = 10,
                              tree_control = list(p = 0.02,
@@ -1703,7 +1703,7 @@ lr_params_search <- function( method = "random_search",dat_train, target,
 #' @export
 
 
-train_lr <- function(dat_train,dat_test = NULL, target,x_list= NULL, occur_time = NULL,prop = 0.7,
+train_lr = function(dat_train,dat_test = NULL, target,x_list= NULL, occur_time = NULL,prop = 0.7,
                     tree_control = list(p = 0.02, cp = 0.00000001,
                                         xval = 5, maxdepth = 10),
                     bins_control = list(bins_num = 10, bins_pct = 0.05,
@@ -1872,7 +1872,7 @@ train_lr <- function(dat_train,dat_test = NULL, target,x_list= NULL, occur_time 
 #' @seealso \code{\link{training_model}}, \code{\link{lr_params}},\code{\link{gbm_params}}, \code{\link{rf_params}}
 #' @export
 
-xgb_params <- function(nrounds = 1000,
+xgb_params = function(nrounds = 1000,
                       params = list(max_depth = 6, eta = 0.01, gamma = 0,min_child_weight = 1,
                                     subsample = 1,colsample_bytree = 1,
                                     scale_pos_weight = 1),
@@ -1893,7 +1893,7 @@ xgb_params <- function(nrounds = 1000,
 #' @param occur_time The name of the variable that represents the time at which each observation takes place.Default is NULL.
 #' @export
 
-xgb_params_search <- function(dat_train, target,dat_test = NULL, x_list = NULL, prop = 0.7,occur_time = NULL,
+xgb_params_search = function(dat_train, target,dat_test = NULL, x_list = NULL, prop = 0.7,occur_time = NULL,
                              method = "random_search", iters = 10,
                              nrounds = 100,
                              early_stopping_rounds = 10,
@@ -2369,7 +2369,7 @@ xgb_params_search <- function(dat_train, target,dat_test = NULL, x_list = NULL, 
 #' @importFrom xgboost xgb.importance xgb.train xgb.DMatrix xgb.dump xgb.save xgb.cv getinfo
 #' @export
 
-xgb_data <- function(dat_train, target, dat_test = NULL,x_list = NULL,prop = 0.7,occur_time = NULL){
+xgb_data = function(dat_train, target, dat_test = NULL,x_list = NULL,prop = 0.7,occur_time = NULL){
   if (is.null(dat_test)) {
     train_test = train_test_split(dat_train,split_type = "OOT",prop = prop,occur_time = occur_time)
     dat_train = train_test$train
@@ -2401,8 +2401,8 @@ xgb_data <- function(dat_train, target, dat_test = NULL,x_list = NULL,prop = 0.7
   x_test = as.matrix(dat_test[, x_list])
   y_test = as.numeric(as.character(dat_test[, target]))
   xgb_test = list(data = x_test, label = y_test)
-  dtest <- xgb.DMatrix(data = xgb_test$data, label = xgb_test$label)
-  watchlist <- list(train = dtrain, eval = dtest)
+  dtest = xgb.DMatrix(data = xgb_test$data, label = xgb_test$label)
+  watchlist = list(train = dtrain, eval = dtest)
   return(list(dtrain = dtrain, dtest = dtest,watchlist = watchlist,x_list = x_list,x_train = x_train,x_test = x_test, y_train = y_train,y_test = y_test))
 }
 
@@ -2425,7 +2425,7 @@ xgb_data <- function(dat_train, target, dat_test = NULL,x_list = NULL,prop = 0.7
 #' @importFrom xgboost xgb.importance xgb.train xgb.DMatrix xgb.dump xgb.save xgb.cv getinfo
 #' @export
 
-train_xgb <- function(seed_number = 1234, dtrain,
+train_xgb = function(seed_number = 1234, dtrain,
                      nthread = 2,
                      nfold = 1,
                      watchlist = NULL,
@@ -2525,7 +2525,7 @@ train_xgb <- function(seed_number = 1234, dtrain,
 #' @export
 
 
-gbm_params <- function(n.trees = 1000, interaction.depth = 6, shrinkage = 0.01,
+gbm_params = function(n.trees = 1000, interaction.depth = 6, shrinkage = 0.01,
                       bag.fraction = 0.5, train.fraction = 0.7, n.minobsinnode = 30,
                       cv.folds = 5, ...) {
   structure(list(n.trees = n.trees, interaction.depth = interaction.depth,
@@ -2547,7 +2547,7 @@ gbm_params <- function(n.trees = 1000, interaction.depth = 6, shrinkage = 0.01,
 #' @seealso  \code{\link{training_model}}, \code{\link{lr_params}}, \code{\link{gbm_params}}, \code{\link{xgb_params}}
 #' @export
 
-rf_params <- function(ntree = 100, nodesize = 30, samp_rate = 0.5, tune_rf = FALSE, ...) {
+rf_params = function(ntree = 100, nodesize = 30, samp_rate = 0.5, tune_rf = FALSE, ...) {
   structure(list(ntree = ntree, nodesize = nodesize,
                  samp_rate = samp_rate, tune_rf = tune_rf))
 }
@@ -2575,13 +2575,13 @@ rf_params <- function(ntree = 100, nodesize = 30, samp_rate = 0.5, tune_rf = FAL
 #' dat = data_cleansing(dat, target = "target", obs_id = "ID",
 #' occur_time = "apply_date", miss_values =  list("", -1))
 #' #train_ test pliting
-#' train_test <- train_test_split(dat, split_type = "OOT", prop = 0.7,
+#' train_test = train_test_split(dat, split_type = "OOT", prop = 0.7,
 #'                                 occur_time = "apply_date")
 #' dat_train = train_test$train
 #' dat_test = train_test$test
 #' #get breaks of all predictive variables
 #' x_list = c("PAY_0", "LIMIT_BAL", "PAY_AMT5", "EDUCATION", "PAY_3", "PAY_2")
-#' breaks_list <- get_breaks_all(dat = dat_train, target = "target",
+#' breaks_list = get_breaks_all(dat = dat_train, target = "target",
 #'                               x_list = x_list, occur_time = "apply_date", ex_cols = "ID",
 #' save_data = FALSE, note = FALSE)
 #' #woe transforming
@@ -2602,7 +2602,7 @@ rf_params <- function(ntree = 100, nodesize = 30, samp_rate = 0.5, tune_rf = FAL
 #'                                 x_list = x_list,dat_test = dat_test,
 #'                                breaks_list = breaks_list, note = FALSE)
 #' #score card
-#' LR_score_card <- get_score_card(lg_model = lr_model, bins_table, target = "target")
+#' LR_score_card = get_score_card(lg_model = lr_model, bins_table, target = "target")
 #' #scoring
 #' train_pred = dat_train[, c("ID", "apply_date", "target")]
 #' test_pred = dat_test[, c("ID", "apply_date", "target")]
@@ -2614,11 +2614,11 @@ rf_params <- function(ntree = 100, nodesize = 30, samp_rate = 0.5, tune_rf = FAL
 #' tbl_woe = test_woe, save_data = FALSE)[, "score"]
 #' @export
 
-score_transfer <- function(model, tbl_woe, a = 600, b = 50,
+score_transfer = function(model, tbl_woe, a = 600, b = 50,
                            file_name = NULL, dir_path = tempdir(),
                            save_data = FALSE) {
   coef = model$coefficients
-  glm_vars <- names(coef)[-1]
+  glm_vars = names(coef)[-1]
   A = a
   B = b / log(2)
   base_score = A - B * coef[1]
@@ -2630,8 +2630,8 @@ score_transfer <- function(model, tbl_woe, a = 600, b = 50,
     score_name[i] = gsub("_woe", "_score", i)
   }
   names(tbl_woe) = score_name
-  tbl_woe$score <- apply(tbl_woe[1:length(tbl_woe)], MARGIN = 1, function(x) sum(x))
-  tbl_woe$score <- round(tbl_woe$score + base_score, 2)
+  tbl_woe$score = apply(tbl_woe[1:length(tbl_woe)], MARGIN = 1, function(x) sum(x))
+  tbl_woe$score = round(tbl_woe$score + base_score, 2)
   if (save_data) {
     dir_path = ifelse(!is.character(dir_path),
                       tempdir(), dir_path)
@@ -2665,13 +2665,13 @@ score_transfer <- function(model, tbl_woe, a = 600, b = 50,
 #' dat = data_cleansing(dat, target = "target", obs_id = "ID",
 #' occur_time = "apply_date", miss_values =  list("", -1))
 #' #train_ test pliting
-#' train_test <- train_test_split(dat, split_type = "OOT", prop = 0.7,
+#' train_test = train_test_split(dat, split_type = "OOT", prop = 0.7,
 #'                                 occur_time = "apply_date")
 #' dat_train = train_test$train
 #' dat_test = train_test$test
 #' #get breaks of all predictive variables
 #' x_list = c("PAY_0", "LIMIT_BAL", "PAY_AMT5", "EDUCATION", "PAY_3", "PAY_2")
-#' breaks_list <- get_breaks_all(dat = dat_train, target = "target",
+#' breaks_list = get_breaks_all(dat = dat_train, target = "target",
 #'                               x_list = x_list, occur_time = "apply_date", ex_cols = "ID",
 #' save_data = FALSE, note = FALSE)
 #' #woe transforming
@@ -2693,7 +2693,7 @@ score_transfer <- function(model, tbl_woe, a = 600, b = 50,
 #'                                 x_list = x_list,
 #'                                breaks_list = breaks_list, note = FALSE)
 #' #score card
-#' LR_score_card <- get_score_card(lg_model = lr_model, bins_table, target = "target")
+#' LR_score_card = get_score_card(lg_model = lr_model, bins_table, target = "target")
 #' #scoring
 #' train_pred = dat_train[, c("ID", "apply_date", "target")]
 #' test_pred = dat_test[, c("ID", "apply_date", "target")]
@@ -2704,16 +2704,16 @@ score_transfer <- function(model, tbl_woe, a = 600, b = 50,
 #' test_pred$pred_LR = score_transfer(model = lr_model,
 #' tbl_woe = test_woe, save_data = FALSE)[, "score"]
 
-get_score_card <- function(lg_model, target, bins_table, a = 600, b = 50,
+get_score_card = function(lg_model, target, bins_table, a = 600, b = 50,
                            file_name = NULL, dir_path = tempdir(),
                            save_data = FALSE) {
   coef = lg_model$coefficients
-  glm_vars <- gsub("_woe", "", names(coef))
-  names(coef) <- glm_vars
+  glm_vars = gsub("_woe", "", names(coef))
+  names(coef) = glm_vars
   A = a
   B = b / log(2)
   base_score = A - B * coef[1]
-  dt_score_card <- bins_table[which(as.character(bins_table[, "Feature"]) %in% glm_vars),
+  dt_score_card = bins_table[which(as.character(bins_table[, "Feature"]) %in% glm_vars),
                               c("Feature", "cuts", "bins", "woe")]
 
   for (i in glm_vars) {
@@ -2755,13 +2755,13 @@ get_score_card <- function(lg_model, target, bins_table, a = 600, b = 50,
 #' dat = data_cleansing(dat, target = "target", obs_id = "ID",
 #' occur_time = "apply_date", miss_values =  list("", -1))
 #' #train_ test pliting
-#' train_test <- train_test_split(dat, split_type = "OOT", prop = 0.7,
+#' train_test = train_test_split(dat, split_type = "OOT", prop = 0.7,
 #'                                 occur_time = "apply_date")
 #' dat_train = train_test$train
 #' dat_test = train_test$test
 #' #get breaks of all predictive variables
 #' x_list = c("PAY_0", "LIMIT_BAL", "PAY_AMT5", "EDUCATION", "PAY_3", "PAY_2")
-#' breaks_list <- get_breaks_all(dat = dat_train, target = "target",
+#' breaks_list = get_breaks_all(dat = dat_train, target = "target",
 #'                               x_list = x_list, occur_time = "apply_date", ex_cols = "ID",
 #' save_data = FALSE, note = FALSE)
 #' #woe transforming
@@ -2782,7 +2782,7 @@ get_score_card <- function(lg_model, target, bins_table, a = 600, b = 50,
 #'                                 x_list = x_list,dat_test = dat_test,
 #'                                breaks_list = breaks_list, note = FALSE)
 #' #score card
-#' LR_score_card <- get_score_card(lg_model = lr_model, bins_table, target = "target")
+#' LR_score_card = get_score_card(lg_model = lr_model, bins_table, target = "target")
 #' #scoring
 #' train_pred = dat_train[, c("ID", "apply_date", "target")]
 #' test_pred = dat_test[, c("ID", "apply_date", "target")]
@@ -2793,7 +2793,7 @@ get_score_card <- function(lg_model, target, bins_table, a = 600, b = 50,
 #' test_pred$pred_LR = score_transfer(model = lr_model,
 #' tbl_woe = test_woe, save_data = FALSE)[, "score"]
 #' @export
-get_logistic_coef <- function(lg_model, file_name = NULL,
+get_logistic_coef = function(lg_model, file_name = NULL,
                              dir_path = tempdir(), save_data = FALSE) {
   lg_coef = data.frame(summary(lg_model)$coefficients)
   lg_coef[4] = round(lg_coef[4], 5)
@@ -2803,7 +2803,7 @@ get_logistic_coef <- function(lg_model, file_name = NULL,
   } else {
     lg_coef[-1, "vif"] = 0
   }
-  names(lg_coef) <- c("estimate", "std.error", "Z_value", "P_value", "Feature", "vif")
+  names(lg_coef) = c("estimate", "std.error", "Z_value", "P_value", "Feature", "vif")
   lg_coef = lg_coef[c("Feature", "estimate", "std.error", "Z_value", "P_value", "vif")]
   if (save_data) {
     dir_path = ifelse(!is.character(dir_path), tempdir(), dir_path)
@@ -2827,7 +2827,7 @@ get_logistic_coef <- function(lg_model, file_name = NULL,
 #'
 #' dat = data_cleansing(dat, miss_values = list("", -1))
 #'
-#' train_test <- train_test_split(dat,  prop = 0.7)
+#' train_test = train_test_split(dat,  prop = 0.7)
 #' dat_train = train_test$train
 #' dat_test = train_test$test
 #'
@@ -2841,16 +2841,16 @@ get_logistic_coef <- function(lg_model, file_name = NULL,
 #' lr_vif(lr_model)
 #' @importFrom stats coefficients cov2cor vcov
 #' @export
-lr_vif <- function(lr_model) {
+lr_vif = function(lr_model) {
   if (any(is.na(coef(lr_model)))){
     stop ("Some coefficients is NA in the model.\n")
   }
   if(length(coef(lr_model)[which(names(coefficients(lr_model)) != "(Intercept)")]) < 2){
     stop("There are only one predictor in  the model.\n")
   }
-  cov_coef <- vcov(lr_model)[-1,-1]
-  cor_coef <- cov2cor(cov_coef)
-  det_R <- det(cor_coef)
+  cov_coef = vcov(lr_model)[-1,-1]
+  cor_coef = cov2cor(cov_coef)
+  det_R = det(cor_coef)
   vif_res = c()
   for(i in 1:ncol(cor_coef)){
     coef_name = colnames(cor_coef)[i]
@@ -2868,15 +2868,15 @@ lr_vif <- function(lr_model) {
 #' @param bins_table a data.frame generated by \code{\link{get_bins_table}}
 #' @param obs_id  The name of ID of observations or key variable of data. Default is NULL.
 #' @param miss_values Special values.
-#' @param woe_name Logical. Whether woe variable's name contains 'woe'.Default is TRUE.
+#' @param woe_name Logical. Whether woe variable's name contains 'woe'.Default is FALSE.
 #' @return new scores.
 #' @seealso \code{\link{training_model}}, \code{\link{lr_params}}, \code{\link{xgb_params}}, \code{\link{rf_params}}
 #' @export
 
 
-pred_score <- function(model, dat, x_list = NULL, bins_table = NULL, obs_id = NULL, miss_values = list(-1,"-1","NULL","-1","-9999","-9996","-9997","-9995","-9998",
+pred_score = function(model, dat, x_list = NULL, bins_table = NULL, obs_id = NULL, miss_values = list(-1,"-1","NULL","-1","-9999","-9996","-9997","-9995","-9998",
                                                                     -9999,-9998,-9997,-9996,-9995),
-                      woe_name = TRUE) {
+                      woe_name = FALSE) {
   dat = data_cleansing(dat,low_var = FALSE, miss_values = miss_values, merge_cat = FALSE)
   dat = process_nas(dat = dat, class_var = FALSE, x_list = x_list, ex_cols = c(obs_id), default_miss = TRUE)
   dat_woe = woe_trans_all(dat = dat, x_list = x_list, target = NULL, ex_cols = NULL, bins_table = bins_table,
@@ -2901,7 +2901,7 @@ pred_score <- function(model, dat, x_list = NULL, bins_table = NULL, obs_id = NU
 #' @importFrom xgboost xgb.load
 #' @export
 
-pred_xgb <- function(xgb_model = NULL, dat, x_list = NULL, miss_values = NULL, model_name = NULL, model_path = getwd()) {
+pred_xgb = function(xgb_model = NULL, dat, x_list = NULL, miss_values = NULL, model_name = NULL, model_path = getwd()) {
     if (is.null(xgb_model)) {
         model_path_s = paste0(paste0(model_path, "/", model_name), "/model", "/XGB/", paste0(model_name, "_xgb.model"))
         xgb_model = xgb.load(model_path_s)
@@ -2930,7 +2930,7 @@ pred_xgb <- function(xgb_model = NULL, dat, x_list = NULL, miss_values = NULL, m
 #' @export
 
 
-p_to_score <- function(p, PDO=20, base=600, ratio = 1){
+p_to_score = function(p, PDO=20, base=600, ratio = 1){
   B = PDO/log(2)
   A = base + B * log(ratio)
   y = log(p / (1 - p))

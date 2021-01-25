@@ -12,7 +12,7 @@ pred_score(
   obs_id = NULL,
   miss_values = list(-1, "-1", "NULL", "-1", "-9999", "-9996", "-9997", "-9995",
     "-9998", -9999, -9998, -9997, -9996, -9995),
-  woe_name = TRUE
+  woe_name = FALSE
 )
 }
 \arguments{
@@ -28,7 +28,7 @@ pred_score(
 
 \item{miss_values}{Special values.}
 
-\item{woe_name}{Logical. Whether woe variable's name contains 'woe'.Default is TRUE.}
+\item{woe_name}{Logical. Whether woe variable's name contains 'woe'.Default is FALSE.}
 }
 \value{
 new scores.

@@ -22,13 +22,13 @@
 #' dat = data_cleansing(dat, target = "target", obs_id = "ID", occur_time = "apply_date",
 #' miss_values =  list("", -1))
 #'
-#' train_test <- train_test_split(dat, split_type = "OOT", prop = 0.7,
+#' train_test = train_test_split(dat, split_type = "OOT", prop = 0.7,
 #'                                 occur_time = "apply_date")
 #' dat_train = train_test$train
 #' dat_test = train_test$test
 #' #get breaks of all predictive variables
 #' x_list = c("PAY_0", "LIMIT_BAL", "PAY_AMT5", "EDUCATION", "PAY_3", "PAY_2")
-#' breaks_list <- get_breaks_all(dat = dat_train, target = "target",
+#' breaks_list = get_breaks_all(dat = dat_train, target = "target",
 #'                               x_list = x_list, occur_time = "apply_date", ex_cols = "ID",
 #' save_data = FALSE, note  = FALSE)
 #' #woe transform
@@ -85,75 +85,177 @@ split_bins_all = function(dat, x_list = NULL, ex_cols = NULL, breaks_list = NULL
 #' @param x  The name of an independent variable.
 #' @param breaks  Breaks for binning.
 #' @param bins_no Number the generated bins. Default is TRUE.
+#' @param as_factor Whether to convert to factor type.
+#' @param labels Labels of bins.
+#' @param use_NA Whether to process NAs.
 #' @return  A data.frame with Bined x.
 #' @examples
 #' bins = split_bins(dat = UCICreditCard,
 #' x = "PAY_AMT1", breaks = NULL, bins_no = TRUE)
 #' @export
 
-split_bins = function (dat, x, breaks = NULL, bins_no = TRUE){
-  opt = options(scipen = 200, stringsAsFactors = FALSE)
+split_bins = function (dat, x, breaks = NULL, bins_no = TRUE, as_factor = FALSE,
+                       labels = NULL, use_NA = TRUE) {
+  opt = options(scipen = 200, stringsAsFactors = FALSE,digits = 4)
   dat = checking_data(dat)
   if (length(breaks) < 1) {
     breaks = get_breaks(dat, x, target = NULL, best = FALSE, 
                         equal_bins = TRUE, g = 5, note = FALSE)
   }
   sp_value_num = sp_value_char = NULL
-  if (any(c("integer", "numeric", "double") == class(dat[, x])[1])) {
+  type_x = class(dat[, x])[1]
+  if (any(c("integer", "numeric", "double","Date") == 
+          type_x )) {
     dat[, x] = as.numeric(dat[, x])
-    breaks = sort(unlist(unique(c(-Inf, breaks, Inf))))
-    bins_1 = cut(dat[, x], breaks = unique(breaks), dig.lab = 12,
-                 ordered = TRUE, include.lowest = FALSE, right = TRUE)
-    
-    if (bins_no) {
-      bins_0 = ifelse(is.na(bins_1), '00', paste("0", as.numeric(bins_1), sep = ""))
-      bins = paste(bins_0, bins_1, sep = ".")
-      bins[which(as.numeric(bins_1) >= 10)] =
-        paste(as.numeric(bins_1[which(as.numeric(bins_1) >= 10)]),
-              bins_1[which(as.numeric(bins_1) >= 10)], sep = ".")
-    } else {
-      bins = as.character(bins_1)
+    if(any(c("Date") == type_x)){
+      breaks = sort(unlist(unique(c(-Inf,  as.numeric(as.Date(breaks)), Inf))))
+    }else{
+      breaks = sort(unlist(unique(c(-Inf, breaks, Inf))))
     }
-  }else {
-    breaks = sort(unlist(unique(breaks)))
+
+    bins_1 = cut(dat[, x], breaks = unique(breaks), dig.lab = 12, 
+                 ordered = TRUE, include.lowest = FALSE, right = TRUE)
+ 
+    if (bins_no) {
+      if(use_NA){
+        bins_0 = ifelse(is.na(bins_1), "00", paste("0", as.numeric(bins_1), sep = "")) 
+        bins = paste(bins_0, bins_1, sep = ".")
+      }else{
+        bins = ifelse(is.na(bins_1), NA, paste(paste("0", as.numeric(bins_1), sep = ""),
+                                               bins_1,sep=".")) 
+      }
+      bins[which(as.numeric(bins_1) >= 10)] = paste(as.numeric(bins_1[which(as.numeric(bins_1) >=10)]), 
+                                                    bins_1[which(as.numeric(bins_1) >= 10)],sep = ".")
+    }else{
+      if(use_NA){
+        bins = ifelse(is.na(bins_1), ".NA", as.character(bins_1))
+      }else{
+        bins = as.character(bins_1)
+      }
+    }
+    if(any(c("Date") == type_x)){
+      for(i in 1:length((breaks[-c(1,length(breaks))]))){
+        bins =  gsub(breaks[-c(1,length(breaks))][i],as.Date(breaks[-c(1,length(breaks))][i]), bins)
+      }
+    }
+   
+    if(!is.null(labels)){
+      if(length(breaks) -1 == length(labels)){
+          if(use_NA){
+            if(any(bins == "00.NA")){
+              levels = sort(names(table(bins)))
+              labels = c("00.NA",labels)
+            }else{
+              if(any(bins == ".NA")){
+                levels = sort(names(table(bins)))
+                labels = c(labels,".NA")
+              }
+            }
+          }else{
+            levels = sort(names(table(bins,useNA = "no")))
+            bins[which(bins == "00.NA"|bins == ".NA")] = NA
+          }
+          if(length(levels) == length(labels)){
+            bins = factor(bins,labels = labels,levels = levels )
+          }else{
+            stop(paste("'levels' is not right: length", length(levels) ,"should be", length(labels)))
+          }
+      }else{
+        stop(paste("'labels' is not right: length", length(labels) ,"should be", length(breaks) -1))
+      }
+    }
+  } else {
     if (any(grepl("\\|", breaks))) {
-      breaks_s = strsplit(breaks, "\\|")
+      breaks_s = sapply(breaks,function(s)strsplit(s, split="\\|"))
     } else {
       breaks_s = breaks
     }
+    
     dat[, x] = as.character(dat[, x])
-    dat[which(!(dat[, x] %in% unlist(breaks_s))), x] = get_median(dat[, 
-                                                                      x])
+    
     if (length(breaks_s) > 0) {
       for (i in 1:length(breaks_s)) {
-        if (length(which(dat[, x] %in% unlist(breaks_s[[i]]))) > 
+        if (length(which(dat[, x] %in% unlist(c(breaks_s[[i]])))) > 
             1) {
           if (i < 10) {
-            split_ind = which(dat[, x] %in% unlist(breaks_s[[i]]))
+            split_ind = which(dat[, x] %in% unlist(c(breaks_s[[i]])))
             if (length(split_ind) > 0) {
-              dat[split_ind, x] = ifelse(bins_no, paste(ifelse(is.na(dat[split_ind, 
-                                                                         x]), "00", paste0("0", i)), 
-                                                        paste(breaks_s[[i]], collapse = ";"), 
-                                                        sep = "."), paste(breaks_s[[i]], 
-                                                                          collapse = ";"))
+              if(use_NA){
+                dat[split_ind, x] = ifelse(bins_no, paste(paste0("0", i), 
+                                                          paste(breaks_s[[i]], collapse = ";"), 
+                                                          sep = "."), paste(breaks_s[[i]], 
+                                                                            collapse = ";"))
+                dat[which(is.na(dat[,x])), x] = ifelse(bins_no,"00.NA",".NA")
+              }else{
+                dat[split_ind, x] = ifelse(is.na(dat[split_ind,x]), NA, ifelse(bins_no, paste(paste0("0", i), 
+                                                                                              paste(breaks_s[[i]], collapse = ";"), 
+                                                                                              sep = "."), paste(breaks_s[[i]], 
+                                                                                                                collapse = ";"))) 
+                
+              }
             }
-          } else {
+          }else{
             split_ind = which(dat[, x] %in% unlist(breaks_s[[i]]))
             if (length(split_ind) > 0) {
-              dat[split_ind, x] = ifelse(bins_no, paste(ifelse(is.na(dat[split_ind, 
-                                                                         x]), "00", paste0(i)), paste(breaks_s[[i]], 
-                                                                                                      collapse = ";"), sep = "."), 
-                                         paste(breaks_s[[i]], collapse = ";"))
+              if(use_NA){
+                dat[split_ind, x] = ifelse(bins_no, paste(ifelse(is.na(dat[split_ind, x]), "00", 
+                                                                 paste0(i)), paste(breaks_s[[i]], 
+                                                                                   collapse = ";"), 
+                                                          sep = "."), 
+                                           paste(breaks_s[[i]], collapse = ";"))
+                dat[which(is.na(dat[,x])), x] = ifelse(bins_no,"00.NA",".NA")
+                
+              }else{
+                dat[split_ind, x] = ifelse(bins_no, paste(ifelse(is.na(dat[split_ind, x]), "00", 
+                                                                 paste0(i)), paste(breaks_s[[i]], 
+                                                                                   collapse = ";"), 
+                                                          sep = "."), 
+                                           paste(breaks_s[[i]], collapse = ";"))
+              }
             }
           }
         }
       }
     }
-    bins = dat[, x]
+    bins = dat[,x]
+    if(!is.null(labels)){
+      if(length(breaks_s)  == length(labels)){
+          if(use_NA){
+            if(any(bins == "00.NA")){
+              levels = sort(names(table(bins)))
+              labels = c("00.NA",labels)
+            }else{
+              if(any(bins == ".NA")){
+                levels = sort(names(table(bins)))
+                labels = c(labels,".NA")
+              }else{
+                levels = sort(names(table(bins)))
+              }
+            }
+          }else{
+            levels = sort(names(table(bins,useNA = "no")))
+            bins[which(bins == "00.NA"|bins == ".NA")] = NA
+          }
+          
+          if(length(levels) == length(labels)){
+            bins = factor(bins,labels = labels )
+          }else{
+            stop(paste("'levels' is not right: length", length(levels) ,"should be", length(labels)))
+          }
+      }else{
+        stop(paste("'labels' is not right: length", length(labels) ,"should be", length(breaks) -1))
+      }
+    }
+  }
+  if(as_factor){
+    bins = as.factor(bins)
+  }else{
+    bins = as.character(bins)
   }
   return(bins)
   options(opt)
 }
+
 
 
 
@@ -207,19 +309,19 @@ split_bins = function (dat, x, breaks = NULL, bins_no = TRUE){
 #' bins_control = list(bins_num = 10, bins_pct = 0.02, b_chi = 0.02, b_odds = 0.1,
 #'                    b_psi = 0.05, b_or = 15, mono = 0.2, odds_psi = 0.1, kc = 5)
 #' # get categrory variable breaks
-#' b <-  get_breaks(dat = UCICreditCard[1:1000,], x = "MARRIAGE",
+#' b =  get_breaks(dat = UCICreditCard[1:1000,], x = "MARRIAGE",
 #'                 target = "default.payment.next.month",
 #'                 occur_time = "apply_date",
 #'                 sp_values = list(-1, "missing"),
 #'                 tree_control = tree_control, bins_control = bins_control)
 #' # get numeric variable breaks
-#' b2 <-  get_breaks(dat = UCICreditCard[1:1000,], x = "PAY_2",
+#' b2 =  get_breaks(dat = UCICreditCard[1:1000,], x = "PAY_2",
 #'                  target = "default.payment.next.month",
 #'                  occur_time = "apply_date",
 #'                  sp_values = list(-1, "missing"),
 #'                  tree_control = tree_control, bins_control = bins_control)
 #' # get breaks of all predictive variables
-#' b3 <-  get_breaks_all(dat = UCICreditCard[1:1000,], target = "default.payment.next.month",
+#' b3 =  get_breaks_all(dat = UCICreditCard[1:1000,], target = "default.payment.next.month",
 #'                      x_list = c("MARRIAGE","PAY_2"),
 #'                      occur_time = "apply_date", ex_cols = "ID",
 #'                      sp_values = list(-1, "missing"),
@@ -228,7 +330,7 @@ split_bins = function (dat, x, breaks = NULL, bins_no = TRUE){
 #'
 #' @export
 
-get_breaks_all <- function(dat, target = NULL, x_list = NULL, ex_cols = NULL,
+get_breaks_all = function(dat, target = NULL, x_list = NULL, ex_cols = NULL,
                            pos_flag = NULL, occur_time = NULL, oot_pct = 0.7,
                            best = TRUE, equal_bins = FALSE,
 						   cut_bin = 'equal_depth', g = 10, sp_values = NULL,
@@ -240,7 +342,7 @@ get_breaks_all <- function(dat, target = NULL, x_list = NULL, ex_cols = NULL,
                            parallel = FALSE, note = FALSE, save_data = FALSE,
                            file_name = NULL, dir_path = tempdir(), ...) {
     opt = options(scipen = 200, stringsAsFactors = FALSE)
-    dat <- checking_data(dat = dat, target = target, pos_flag = pos_flag)
+    dat = checking_data(dat = dat, target = target, pos_flag = pos_flag)
     if (note) {
 		 cat_line("-- Getting optimal binning breaks", col = love_color("deep_green"))
 
@@ -278,36 +380,40 @@ get_breaks_all <- function(dat, target = NULL, x_list = NULL, ex_cols = NULL,
 #' @rdname get_breaks_all
 #' @export
 get_breaks = function(dat, x, target = NULL, pos_flag = NULL,
-					   best = TRUE, equal_bins = FALSE, cut_bin = 'equal_depth', g = 10,
-					   sp_values = NULL, occur_time = NULL, oot_pct = 0.7,
-					   tree_control = NULL, bins_control = NULL, note = FALSE, ...) {
-	dat = checking_data(dat = dat, target = target, pos_flag = pos_flag, occur_time = occur_time)
-	if (equal_bins | is.null(target)) {
-		tree_breaks = cut_equal(dat_x = dat[, x], g = g, sp_values = sp_values, cut_bin = cut_bin)
-	} else {
-		tree_breaks = get_tree_breaks(dat = dat, x = x, target = target, pos_flag = pos_flag,
-			tree_control = tree_control, sp_values = sp_values)
-	}
-	if (!is.null(target) && best) {
-		if (any(c("integer", "numeric", "double") == class(dat[, x]))) {
-			breaks = select_best_breaks(dat = dat, x = x, target = target,
-											 occur_time = occur_time, oot_pct = oot_pct,
-											 breaks = tree_breaks, pos_flag = pos_flag,
-											 sp_values = sp_values,
-											 bins_control = bins_control)
-		} else {
-			breaks = select_best_class(dat = dat, x = x, target = target,
-											occur_time = occur_time, oot_pct = oot_pct,
-											breaks = tree_breaks, pos_flag = pos_flag,
-											sp_values = sp_values,
-											bins_control = bins_control)
-		}
-	} else {
-		breaks = tree_breaks
-	}
-
-	if (note) cat_bullet(paste0(format(x), ": ", paste(breaks, sep = ",", collapse = ",")), col = "darkgrey")
-	return(breaks)
+         best = TRUE, equal_bins = FALSE, cut_bin = 'equal_depth', g = 10,
+         sp_values = NULL, occur_time = NULL, oot_pct = 0.7,
+         tree_control = NULL, bins_control = NULL, note = FALSE, ...) {
+  dat = checking_data(dat = dat, target = target, pos_flag = pos_flag, occur_time = occur_time)
+  if (equal_bins | is.null(target)) {
+    tree_breaks = cut_equal(dat_x = dat[, x], g = g, sp_values = sp_values, cut_bin = cut_bin)
+  } else {
+    tree_breaks = get_tree_breaks(dat = dat, x = x, target = target, pos_flag = pos_flag,
+                                  tree_control = tree_control, sp_values = sp_values)
+  }
+  if (!is.null(target) && best) {
+    if (any(c("integer", "numeric", "double") == class(dat[, x]))) {
+      breaks = select_best_breaks(dat = dat, x = x, target = target,
+                                  occur_time = occur_time, oot_pct = oot_pct,
+                                  breaks = tree_breaks, pos_flag = pos_flag,
+                                  sp_values = sp_values,
+                                  bins_control = bins_control)
+    } else {
+      if (any(c("Date") == class(dat[, x]))) {
+        breaks = tree_breaks
+      }else{
+        breaks = select_best_class(dat = dat, x = x, target = target,
+                                   occur_time = occur_time, oot_pct = oot_pct,
+                                   breaks = tree_breaks, pos_flag = pos_flag,
+                                   sp_values = sp_values,
+                                   bins_control = bins_control)
+      }
+    }
+  } else {
+    breaks = tree_breaks
+  }
+  
+  if (note) cat_bullet(paste0(format(x), ": ", paste(breaks, sep = ",", collapse = ",")), col = "darkgrey")
+  return(breaks)
 }
 
 #' Getting the breaks for terminal nodes from decision tree
@@ -335,7 +441,7 @@ get_breaks = function(dat, x, target = NULL, pos_flag = NULL,
 #' @importFrom rpart rpart rpart.control path.rpart
 #' @export
 
-get_tree_breaks <- function(dat, x, target, pos_flag = NULL,
+get_tree_breaks = function(dat, x, target, pos_flag = NULL,
                             tree_control = list(p = 0.02, cp = 0.000001, xval = 5, maxdepth = 10),
                             sp_values = NULL) {
 
@@ -356,14 +462,14 @@ get_tree_breaks <- function(dat, x, target, pos_flag = NULL,
         xval = ifelse(!is.null(tree_control[["xval"]]), tree_control[["xval"]], 5)
         maxdepth = ifelse(!is.null(tree_control[["maxdepth"]]), tree_control[["maxdepth"]], 10)
         p = ifelse(!is.null(tree_control[["p"]]), tree_control[["p"]], 0.03)
-        trcontrol <- rpart.control(minbucket = round(nrow(dat1) * p),
+        trcontrol = rpart.control(minbucket = round(nrow(dat1) * p),
                                cp = cp,
                                xval = xval,
                                maxdepth = maxdepth)
 
-        Formula <- as.formula(paste(target, names(dat1[x]), sep = ' ~ '))
+        Formula = as.formula(paste(target, names(dat1[x]), sep = ' ~ '))
         set.seed(46)
-        fit <- rpart(data = dat1, formula = Formula
+        fit = rpart(data = dat1, formula = Formula
                  , control = trcontrol
                  , parms = list(split = "information"))
         if (any(is.element(class(dat1[, x]), c("integer", "numeric", "double")))) {
@@ -381,7 +487,7 @@ get_tree_breaks <- function(dat, x, target, pos_flag = NULL,
             if (is.null(fit$splits[, 4])) {
                 tree_breaks = cut_equal(dat1[, x], g = 10, sp_values = sp_values)
             } else {
-                rpart.rules <- path.rpart(fit,
+                rpart.rules = path.rpart(fit,
                                   rownames(fit$frame)[fit$frame$var == "<leaf>"],
                                   print.it = FALSE)
                 tree_breaks = list()
@@ -419,66 +525,87 @@ get_tree_breaks <- function(dat, x, target, pos_flag = NULL,
 #' @importFrom stats aggregate approx
 
 
-cut_equal <- function(dat_x, g = 10, sp_values = NULL, cut_bin = 'equal_depth') {
-	dat_x = unlist(dat_x)
-	digits_x = digits_num(dat_x)
-	opt = options(scipen = 200, stringsAsFactors = FALSE, digits = digits_x + 1) #
-	sp_value_char = sp_value_num = NULL
+cut_equal = function(dat_x, g = 10, sp_values = NULL, cut_bin = 'equal_depth') {
+  dat_x = unlist(dat_x)
+  if(any(is.element(class(dat_x), c("integer", "numeric", "double")))){
+    digits_x = digits_num(dat_x)
+  }else{
+    digits_x = 2
+  }
+  opt = options(scipen = 200, stringsAsFactors = FALSE, digits = digits_x + 1) #
+  sp_value_char = sp_value_num = NULL
+  
+  x_miss = any(dat_x %in% sp_values)
+  if (!is.null(sp_values) && x_miss) {
+    sp_value_char = unlist(sp_values[sapply(sp_values, is.character)])
+    sp_value_num = unlist(sp_values[sapply(sp_values, is.numeric)])
+    dat_x = dat_x[!(dat_x %in% sp_values)]
+  }
+  if (any(is.element(class(dat_x), c("integer", "numeric", "double")))) {
+    dat_x = round(dat_x, digits_x)
+    if (length(unique(dat_x)) < 2) {
+      cuts = unique(dat_x)
+    } else {
+      if (cut_bin == 'equal_depth') {
+        none_na_num = sum(!is.na(dat_x))
+        if (g < 1) stop("g must be >=1")
+        tbl_x = table(dat_x)
+        x_unique_value = as.numeric(names(tbl_x))
+        cum_sum = sort(cumsum(tbl_x))
+        cuts_sum = approx(cum_sum, x_unique_value, xout = (1:g) * round(none_na_num / g),
+                          method = "constant", ties = "ordered", rule = 2, f = 1)$y
+        n_cuts = table(cuts_sum)
+        max_n_cuts = as.numeric(names(n_cuts)[which.max(n_cuts)])
+        cuts_unique = unique(cuts_sum)
+        cuts = cuts_unique[-which.max(cuts_unique)]
+        if (length(cuts_unique) <= 2 & length(x_unique_value) > 1) {
+          x_unique_ncuts = x_unique_value[which(x_unique_value != max_n_cuts)]
+          min_x_unique_value = x_unique_ncuts[which.min(x_unique_ncuts)]
+          cuts = append(cuts, min_x_unique_value, 1)
+        }
+      } else {
+        labs = levels(cut(dat_x, breaks = g, include.lowest = FALSE, right = TRUE, dig.lab = digits_x))
+        cuts = as.numeric(sub("\\((.+),.*", "\\1", labs))[-1]
+      }
+    }
+    cuts = round(cuts, digits = digits_x)
+    if (!is.null(sp_values) && x_miss && length(sp_value_num) > 0) {
+      cuts = sort(unique(append(c(cuts, Inf), sp_value_num, 0)))
+    } else {
+      cuts = sort(unique(c(cuts, Inf)))
+    }
+  } else {
+    if(any(is.element(class(dat_x), c("Date")))){
+      if (cut_bin == 'equal_depth') {
+      cuts = c()
+      g = 9
+      p = 1/g*1:(g-1)
+      for(i in 1:(g-1)){
+        cuts[i] =  date_cut(dat_time = dat_x,pct = p[i],g = g)
+      }
+      cuts = as.Date(cuts)
+      }else{
+        labs = levels(cut(dat_x, breaks = g, include.lowest = FALSE, right = TRUE, dig.lab = digits_x))
+        cuts = sub("\\((.+),.*", "\\1", labs)[-1]
+      }
+    }else{
+      if (length(unique(dat_x)) < 2) {
+        cuts = unique(dat_x)
+      } else {
+        cuts = as.list(names(table(dat_x)))
+      }
+      if (!is.null(sp_values) && x_miss && length(sp_value_char) > 0) {
+        cuts = unique(append(sp_value_char, cuts, 0))
+      } else {
+        cuts = unique(cuts)
+      }
+      
+    }
 
-	x_miss = any(dat_x %in% sp_values)
-	if (!is.null(sp_values) && x_miss) {
-		sp_value_char = unlist(sp_values[sapply(sp_values, is.character)])
-		sp_value_num = unlist(sp_values[sapply(sp_values, is.numeric)])
-		dat_x = dat_x[!(dat_x %in% sp_values)]
-	}
-	if (any(is.element(class(dat_x), c("integer", "numeric", "double")))) {
-		dat_x = round(dat_x, digits_x)
-		if (length(unique(dat_x)) < 2) {
-			cuts = unique(dat_x)
-		} else {
-			if (cut_bin == 'equal_depth') {
-				none_na_num <- sum(!is.na(dat_x))
-				if (g < 1) stop("g must be >=1")
-				tbl_x = table(dat_x)
-				x_unique_value = as.double(names(tbl_x))
-				cum_sum = sort(cumsum(tbl_x))
-				cuts_sum = approx(cum_sum, x_unique_value, xout = (1:g) * round(none_na_num / g),
-			method = "constant", ties = "ordered", rule = 2, f = 1)$y
-				n_cuts = table(cuts_sum)
-				max_n_cuts = as.numeric(names(n_cuts)[which.max(n_cuts)])
-				cuts_unique = unique(cuts_sum)
-				cuts = cuts_unique[-which.max(cuts_unique)]
-				if (length(cuts_unique) <= 2 & length(x_unique_value) > 1) {
-					x_unique_ncuts = x_unique_value[which(x_unique_value != max_n_cuts)]
-					min_x_unique_value = x_unique_ncuts[which.min(x_unique_ncuts)]
-					cuts = append(cuts, min_x_unique_value, 1)
-				}
-			} else {
-				labs = levels(cut(dat_x, breaks = g, include.lowest = FALSE, right = TRUE, dig.lab = digits_x))
-				cuts = as.numeric(sub("\\((.+),.*", "\\1", labs))[-1]
-			}
-		}
-		cuts = round(cuts, digits = digits_x)
-		if (!is.null(sp_values) && x_miss && length(sp_value_num) > 0) {
-			cuts = sort(unique(append(c(cuts, Inf), sp_value_num, 0)))
-		} else {
-			cuts = sort(unique(c(cuts, Inf)))
-		}
-	} else {
-		if (length(unique(dat_x)) < 2) {
-			cuts = unique(dat_x)
-		} else {
-			cuts = as.list(names(table(dat_x)))
-		}
-		if (!is.null(sp_values) && x_miss && length(sp_value_char) > 0) {
-			cuts = unique(append(sp_value_char, cuts, 0))
-		} else {
-			cuts = unique(cuts)
-		}
-	}
-	rm(dat_x)
-	options(opt) # reset
-	return(unique(c(cuts)))
+  }
+  rm(dat_x)
+  options(opt) # reset
+  return(unique(c(cuts)))
 }
 
 
@@ -539,7 +666,7 @@ cut_equal <- function(dat_x, g = 10, sp_values = NULL, cut_bin = 'equal_depth') 
 #' sp_values = NULL, bins_control = bins_control)
 #' @export
 
-select_best_class <- function(dat, x, target, breaks = NULL, occur_time = NULL, oot_pct = 0.7,
+select_best_class = function(dat, x, target, breaks = NULL, occur_time = NULL, oot_pct = 0.7,
                               pos_flag = NULL, bins_control = NULL, sp_values = NULL, ...) {
   dat = checking_data(dat = dat, target = target, pos_flag = pos_flag)
   if (is.null(breaks) || any(is.na(breaks)) || length(breaks) < 1) {
@@ -710,7 +837,7 @@ select_best_class <- function(dat, x, target, breaks = NULL, occur_time = NULL, 
 #' @rdname select_best_class
 #' @export
 
-select_best_breaks <- function(dat, x, target, breaks = NULL, pos_flag = NULL,
+select_best_breaks = function(dat, x, target, breaks = NULL, pos_flag = NULL,
 							   sp_values = NULL, occur_time = NULL, oot_pct = 0.7,
 							   bins_control = NULL, ...) {
 	opt = options(scipen = 200, stringsAsFactors = FALSE, digits = 6) #

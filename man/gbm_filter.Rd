@@ -62,7 +62,7 @@ GBM.params = gbm_params(n.trees = 2, interaction.depth = 2, shrinkage = 0.1,
                        n.minobsinnode = 30,
                      cv.folds = 2)
 \dontrun{
- features <- gbm_filter(dat = UCICreditCard[1:1000, c(8:12, 26)],
+ features = gbm_filter(dat = UCICreditCard[1:1000, c(8:12, 26)],
          target = "default.payment.next.month",
       occur_time = "apply_date",
      GBM.params = GBM.params

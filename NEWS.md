@@ -1,10 +1,16 @@
+# creditmodel-1.3.0
+
+**In this version I have:**
+* Fixed some bugs in `split_bins`,`min_max_norm`,`digits_num`.
+* Add new function of `sql_hive_text_parse` for automatic production of hive SQL
+* Add new function of `sum_table` includes both univariate and bivariate analysis and ranges from univariate statistics and frequency distributions, to correlations, cross-tabulation and characteristic analysis.
+
 # creditmodel-1.2.7
 
 **In this version I have:**
 * Fixed some bugs in `split_bins`,`time_transfer`,`cohort_analysis`,`xgb_filter`,`feature_selector`.
 * Rewrite the functions of  `plot_bar`,`plot_density`,`plot_line`, `plot_box`,`plot_relative_freq_histogram`,`love_color`.
 * Add new functions of `plot_colors`
-
 
 # creditmodel-1.2.6
 

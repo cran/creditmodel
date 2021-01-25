@@ -99,7 +99,7 @@ You can use the \code{plot_vars} to produce plots that characterize the frequenc
 \code{get_plots} can loop through plots for all specified independent variables.
 }
 \examples{
-train_test <- train_test_split(UCICreditCard[1:1000,], split_type = "Random",
+train_test = train_test_split(UCICreditCard[1:1000,], split_type = "Random",
  prop = 0.8, save_data = FALSE)
 dat_train = train_test$train
 dat_test = train_test$test

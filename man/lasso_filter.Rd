@@ -65,11 +65,11 @@ A list of filtered x variables by lasso.
  dat_train = process_nas(dat_train)
  #get breaks of all predictive variables
  x_list = c("PAY_0", "LIMIT_BAL", "PAY_AMT5", "EDUCATION", "PAY_3", "PAY_2")
- breaks_list <- get_breaks_all(dat = dat_train, target = "target",
+ breaks_list = get_breaks_all(dat = dat_train, target = "target",
                                 x_list = x_list, occur_time = "apply_date", ex_cols = "ID",
   save_data = FALSE, note = FALSE)
  #woe transform
- train_woe = woe_trans_all(dat = dat_train,
+ train_woe = woe_trans_all(dat = dat_train,x_list = x_list,
                             target = "target",
                             breaks_list = breaks_list,
                             woe_name = FALSE)

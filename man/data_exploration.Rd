@@ -8,7 +8,8 @@ data_exploration(
   dat,
   save_data = FALSE,
   file_name = NULL,
-  dir_path = tempdir()
+  dir_path = tempdir(),
+  note = FALSE
 )
 }
 \arguments{
@@ -19,6 +20,8 @@ data_exploration(
 \item{file_name}{The file name for periodically saved outliers analysis file. Default is NULL.}
 
 \item{dir_path}{The path for periodically saved outliers analysis file. Default is tempdir().}
+
+\item{note}{Logical, outputs info. Default is TRUE.}
 }
 \value{
 A list contains both categrory and numeric variable analysis.

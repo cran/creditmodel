@@ -20,7 +20,7 @@ dat = dat[,c("target",x_list)]
 
 dat = data_cleansing(dat, miss_values = list("", -1))
 
-train_test <- train_test_split(dat,  prop = 0.7)
+train_test = train_test_split(dat,  prop = 0.7)
 dat_train = train_test$train
 dat_test = train_test$test
 
