@@ -1,383 +1,3 @@
-#' Plot Independent Variables Distribution
-#'
-#' You can use the \code{plot_vars} to produce plots that characterize the frequency or the distribution of your data.
-#' \code{get_plots} can loop through plots for all specified independent variables.
-#' @param dat_train A data.frame with independent variables and target variable.
-#' @param dat_test  A data.frame of test data. Default is NULL.
-#' @param target The name of target variable.
-#' @param x_list Names of independent variables.
-#' @param x  The name of an independent variable.
-#' @param ex_cols A list of excluded variables. Regular expressions can also be used to match variable names. Default is NULL.
-#' @param pos_flag Value of positive class, Default is "1".
-#' @param breaks_list A table containing a list of splitting points for each independent variable. Default is NULL.
-#' @param breaks Splitting points for an independent variable. Default is NULL.
-#' @param g_width  The width of graphs.
-#' @param best  Logical, merge initial breaks to get optimal breaks for binning.
-#' @param equal_bins  Logical, generates initial breaks for equal frequency or width binning.
-#' @param cut_bin A string, if equal_bins is TRUE, 'equal_depth' or 'equal_width', default is 'equal_depth'.
-#' @param g  Number of initial breakpoints for equal frequency binning.
-#' @param tree_control  Parameters of using Decision Tree to segment initial breaks. See detials: \code{\link{get_tree_breaks}}
-#' @param bins_control  Parameters  used to control binning.  See detials: \code{\link{select_best_class}}, \code{\link{select_best_breaks}}
-#' @param parallel Logical, parallel computing. Default is FALSE.
-#' @param fill_colors Colors of plots.See detials: \code{\link{love_color}},select some beatiful colors.
-#' @param plot_show Logical, show model performance in current graphic device. Default is FALSE.
-#' @param save_data Logical, save results in locally specified folder. Default is FALSE.
-#' @param dir_path The path for periodically saved graphic files.
-#' @param file_name  The name for periodically saved data file. Default is NULL.
-#' @examples
-#' train_test = train_test_split(UCICreditCard[1:1000,], split_type = "Random",
-#'  prop = 0.8, save_data = FALSE)
-#' dat_train = train_test$train
-#' dat_test = train_test$test
-#' get_plots(dat_train[, c(8, 26)], dat_test = dat_test[, c(8, 26)],
-#' target = "default.payment.next.month")
-#' @import ggplot2
-#' @importFrom dplyr group_by mutate summarize  summarise n  count %>% filter mutate_if distinct ungroup
-#' @importFrom data.table melt
-#' @export
-
-
-get_plots = function(dat_train, dat_test = NULL, x_list = NULL,
-                      target = NULL, ex_cols = NULL, breaks_list = NULL,
-                      pos_flag = NULL, equal_bins = FALSE, cut_bin = 'equal_depth', best = TRUE,
-                      g = 20, tree_control = NULL, bins_control = NULL, 
-                      fill_colors = love_color(type = "lightnihon_6x1"),
-                      plot_show = TRUE,
-                      save_data = FALSE, file_name = NULL,
-                      parallel = FALSE, g_width = 8, dir_path = tempdir()) {
-  
-  opt = options('warn' = -1, scipen = 200, stringsAsFactors = FALSE) #
-  if (save_data) {
-    dir_path = paste0(dir_path, "/variable_plot/")
-    if (!dir.exists(dir_path)) dir.create(dir_path)
-    if (dir.exists(dir_path)) { file.remove(list.files(dir_path, recursive = TRUE, full.names = TRUE)) }
-  }
-  dat_train = checking_data(dat = dat_train, target = target, pos_flag = pos_flag)
-  if (is.null(x_list)) {
-    if (is.null(x_list)) {
-      if (!is.null(breaks_list)) {
-        x_list = unique(as.character(breaks_list[, "Feature"]))
-      }
-      x_list = get_x_list(x_list = x_list,
-                          dat_train = dat_train,
-                          dat_test = dat_test,
-                          ex_cols = ex_cols)
-    }
-  } else {
-    x_list = get_x_list(x_list = x_list,
-                        dat_train = dat_train,
-                        dat_test = dat_test,
-                        ex_cols = ex_cols)
-  }
-  if (!is.null(dat_test)) {
-    dat_test = checking_data(dat = dat_test, target = target, pos_flag = pos_flag)
-    x_list = get_x_list(x_list = x_list, dat_train = dat_train, dat_test = dat_test,
-                        ex_cols = c(target, ex_cols))
-    com_list = unique(c(target, x_list))
-    dat_train = dat_train[, com_list]
-    dat_test = dat_test[, com_list]
-    dat_ts = rbind(dat_train, dat_test)
-    if (all(unique(dat_ts[, target]) != c("0", "1"))) {
-      if (!is.null(pos_flag)) {
-        dat_ts$target = ifelse(dat_ts[, target] %in% pos_flag, "1", "0")
-      } else {
-        pos_flag = list("1", 1, "bad", "positive")
-        dat_ts$target = ifelse(dat_ts[, target] %in% pos_flag, "1", "0")
-      }
-      if (length(unique(dat_ts$target)) == 1) {
-        stop("The value of target is unique.\n")
-      }
-    } else {
-      dat_ts$target = as.character(dat_ts[, target])
-    }
-    nr = nrow(dat_train)
-    train_test = train_test_split(dat_ts, split_type = "byRow", prop = nr / nrow(dat_ts),
-                                  seed = 46, save_data = FALSE, note = FALSE)
-    dat_train = train_test$train
-    dat_test = train_test$test
-  } else {
-    if (all(unique(dat_train[, target]) != c("0", "1"))) {
-      if (!is.null(pos_flag)) {
-        dat_train$target = ifelse(dat_train[, target] %in% pos_flag, "1", "0")
-      } else {
-        pos_flag = list("1", 1, "bad", "positive")
-        dat_train$target = ifelse(dat_train[, target] %in% pos_flag, "1", "0")
-      }
-      if (length(unique(dat_train$target)) == 1) {
-        stop("The value of target is unique.\n")
-      }
-    } else {
-      dat_train$target = as.character(dat_train[, target])
-    }
-  }
-  
-  df_ae_list = loop_function(func = plot_vars, x_list = x_list,
-                             args = list(dat_train = dat_train, 
-                                         dat_test = dat_test,
-                                         target = target, 
-                                         breaks_list = breaks_list,
-                                         pos_flag = pos_flag,
-                                         equal_bins = equal_bins,
-                                         cut_bin = cut_bin,
-                                         best = best, g = g,
-                                         tree_control = tree_control,
-                                         bins_control = bins_control,
-                                         fill_colors = fill_colors,
-                                         plot_show = plot_show,
-                                         g_width = g_width, 
-                                         dir_path = dir_path, 
-                                         save_data = save_data),
-                             bind = "rbind", parallel = parallel, as_list = FALSE)
-  
-  if (save_data) {
-    save_data(df_ae_list, dir_path = dir_path, file_name = ifelse(is.null(file_name), "plot_table", paste(file_name, "plot_table", sep = ".")), append = FALSE, note = FALSE)
-  }
-  return(df_ae_list)
-  options(opt) # reset
-}
-
-
-#' @rdname get_plots
-#' @export
-
-
-plot_vars = function(dat_train, x, target, dat_test = NULL,
-                     g_width = 8, breaks_list = NULL, breaks = NULL,
-                     pos_flag = list("1", 1, "bad", "positive"),
-                     equal_bins = TRUE, cut_bin = 'equal_depth', best = FALSE,
-                     g = 10, tree_control = NULL,
-                     bins_control = NULL,
-                     fill_colors = love_color(type = "lightnihon_6x1"),
-                     plot_show = TRUE,
-                     save_data = FALSE,
-                     dir_path = tempdir()) {
-  
-  dat_train = checking_data(dat = dat_train, target = target)
-  #dat_train = char_to_num(dat_train, char_list = x, note = FALSE)
-  digits_x = min(ifelse(is.numeric(dat_train[, x]), digits_num(dat_train[, x]), 4), 4, na.rm = FALSE)
-  opt = options('warn' = -1, scipen = 200, digits = digits_x + 1) #
-  
-  dat_train$target = as.character(dat_train[, target])
-  xn = NULL
-  if (class(dat_train[, x]) %in% c("numeric", "double", "integer") && length(unique(dat_train[, x])) > 5) {
-    
-    med = dat_train %>%
-      dplyr::mutate(xn = dat_train[, x]) %>%
-      dplyr::group_by(target) %>%
-      dplyr::summarise(grp.mean = quantile(xn, 0.5, na.rm = TRUE, type = 3))
-    none_na_num = sum(!is.na(dat_train[, x]))
-    tbl_x = table(dat_train[, x])
-    x_unique_value = as.double(names(tbl_x))
-    cum_sum = cumsum(tbl_x)
-    cuts_sum = approx(cum_sum, x_unique_value, xout = (1:100) * none_na_num / 100,
-                       method = "constant", rule = 2, f = 1)$y
-    
-    dat_train_sub = dat_train
-    if (length(unique(cuts_sum)) > 10) {
-      x_cuts = cuts_sum[length(cuts_sum) - 1]
-      dat_train_sub = subset(dat_train, dat_train[, x] <= x_cuts)
-    }
-    #desity plot
-    plot_1 = ggplot(dat_train_sub, aes(x = dat_train_sub[, x])) +
-      geom_density(aes(fill = dat_train_sub$target), alpha = 0.3) +
-      stat_density(geom = "line", position = "identity", size = 0.6,
-                   aes(color = dat_train_sub$target)) +
-      scale_fill_manual(values = fill_colors[1:2]) +
-      scale_color_manual(values = fill_colors[1:2]) +
-      geom_vline(data = med, linetype = "dashed", size = 0.7,
-                 aes(xintercept = med$grp.mean, color = med$target)) +
-      xlab(x) +
-      ggtitle(paste("Density of", x)) +
-      plot_theme(legend.position = c(.9, .9), title_size = 9,
-                 axis_title_size = 8)
-    
-  } else {
-    #relative frequency histogram
-    dat_tr = dat_train
-    dat_tr[, x] = as.character(dat_tr[, x])
-    
-    #relative frequency histogram
-    dat_tr$target = as.character(dat_tr[, target])
-    data1 = dat_tr %>%
-      dplyr::mutate(xn = dat_tr[, x]) %>%
-      dplyr::group_by(xn) %>% dplyr::count( xn,target) %>%
-      dplyr::mutate(percent = n / sum(n))
-    plot_1 = ggplot(data1, aes(x = data1$xn, y = data1$percent, fill = reorder(data1$target, n))) +
-      geom_bar(stat = "identity", position = position_stack()) +
-      geom_text(aes(label = paste(as_percent(data1$percent, digits = 3))),
-                size = ifelse(length(data1$xn) > 10, 2.1,
-                              ifelse(length(data1$xn) > 5, 2.5,
-                                     ifelse(length(data1$xn) > 3, 3, 3.3))), vjust = 1, colour = 'white', position = position_stack()) +
-      guides(fill = guide_legend(reverse = F)) +
-      ggtitle(paste("Relative Frequency of", x)) +
-      ylab("Percent") + xlab(x) +
-      scale_fill_manual(values = fill_colors[1:2]) +
-      plot_theme(legend.position = "top", title_size = 9,
-                 axis_title_size = 8)
-  }
-  
-  if (!is.null(dat_test) || length(dat_test) > 1) {
-    dat_test = char_to_num(dat_test, char_list = x, note = FALSE)
-    if (class(dat_test[, x])[1] != class(dat_train[, x])[1]) {
-      warning("The types of x in dat_test and dat_train are different!")
-    }
-    df_ae = get_psi_iv(dat = dat_train, dat_test = dat_test,
-                       x = x, target = target, pos_flag = pos_flag,
-                       breaks_list = breaks_list,
-                       breaks = breaks,
-                       equal_bins = equal_bins,
-                       cut_bin = cut_bin,
-                       tree_control = tree_control,
-                       bins_control = bins_control,
-                       bins_total = FALSE,
-                       best = best, g = g, as_table = TRUE,
-                       note = FALSE, bins_no = TRUE)
-    ae_total = data.table::melt(as.data.table(df_ae[c("bins", "%actual", "%expected")]),
-                                 id.vars = c("bins"),
-                                 variable.name = "actual_expected",
-                                 value.name = "value")
-    ae_1 = data.table::melt(as.data.table(df_ae[c("bins", "%actual_1", "%expected_1")]),
-                             id.vars = c("bins"),
-                             variable.name = "actual_expected",
-                             value.name = "value")
-    
-    plot_2 = ggplot(ae_total, aes(x = ae_total$bins,
-                                   y = ae_total$value,
-                                   fill = ae_total$actual_expected)) +
-      geom_bar(stat = "identity", position = position_dodge(width = 0.7)) +
-      geom_text(aes(y = ae_total$value,
-                    label = paste(as_percent(ae_total$value, digits = 3))),
-                position = position_dodge(width = 0.7),
-                size = ifelse(nrow(ae_total) > 10, 2.6,
-                              ifelse(nrow(ae_total) > 5, 2.8,
-                                     ifelse(nrow(ae_total) > 3, 3, 3.2))), vjust = 1, hjust = 0.3, colour = "white") +
-      geom_line(aes(x = factor(ae_1[[1]]),
-                    y = as.numeric(ae_1$value) * max(ae_total$value) * 4,
-                    color = ae_1$actual_expected,
-                    linetype = ae_1$actual_expected,
-                    group = ae_1$actual_expected),
-                position = position_dodge(width = 0.5), size = 1) +
-      geom_point(aes(y = as.numeric(ae_1$value) * max(ae_total$value) * 4,
-                     color = ae_1$actual_expected,
-                     group = ae_1$actual_expected),
-                 position = position_dodge(width = 0.5),
-                 fill = 'white', color = love_color("deep_red"), size = 2, shape = 21) +
-      geom_text(aes(y = as.numeric(ae_1$value) * max(ae_total$value) * 4,
-                    label = paste(as_percent(ae_1$value, digits = 3))),
-                position = position_dodge(width = 0.5),
-                colour = 'black',
-                size = ifelse(nrow(ae_total) > 10, 2.6,
-                              ifelse(nrow(ae_total) > 5, 2.8,
-                                     ifelse(nrow(ae_total) > 3, 3, 3.2))), vjust = -0.1) +
-      annotate(geom = 'text',
-               x = dim(ae_total)[1] / 3,
-               y = max(c(ae_total$value, as.numeric(ae_1$value) * max(ae_total$value) * 4)) + 0.09,
-               label = paste(paste("IV:", sum(df_ae$IVi)), paste('PSI:', sum(df_ae$PSIi)), sep = "   ")) +
-      scale_fill_manual(values =fill_colors[1:2]) +
-      scale_color_manual(values = fill_colors[3:4]) +
-      ylim(c(-0.01, max(c(ae_total$value, as.numeric(ae_1$value) * max(ae_total$value) * 4)) + 0.1)) +
-      xlab(x) + ylab("Total Percent") +
-      ggtitle(paste(x, "Distribution of Train/Expected and Test/Actual")) +
-      plot_theme(legend.position = "top",
-                 title_size = 9,
-                 axis_title_size = 8,
-                 angle = ifelse(nrow(ae_total) > 10, 60,
-                                ifelse(nrow(ae_total) > 5, 40,
-                                       ifelse(nrow(ae_total) > 3, 20, 10))),
-                 axis_size_x = ifelse(max(n_char(ae_total$bins)) > 30, 5,
-                                      ifelse(max(n_char(ae_total$bins)) > 20, 6,
-                                             ifelse(max(n_char(ae_total$bins)) > 10, 7, 8))))
-    
-  } else {
-    
-    if (is.null(breaks) & is.null(breaks_list)) {
-      
-      breaks = get_breaks(dat = dat_train, dat_test = dat_test,
-                          x = x, target = target, pos_flag = pos_flag,
-                          equal_bins = equal_bins,
-                          cut_bin = cut_bin,
-                          tree_control = tree_control,
-                          bins_control = bins_control,
-                          bins_total = FALSE,
-                          best = best, g = g, as_table = FALSE,
-                          note = FALSE, bins_no = TRUE)
-      
-    }
-    df_ae = get_bins_table(dat = dat_train,
-                            x = x, target = target, pos_flag = pos_flag,
-                            breaks_list = breaks_list,
-                            breaks = breaks,
-                            bins_total = FALSE,
-                            note = FALSE)
-    tar_var = paste0("%", target)
-    plot_2 = ggplot(df_ae, aes(x = df_ae$bins,
-                                y = de_percent(df_ae$`%total`, 3))) +
-      geom_bar(aes(fill = "%total"), stat = "identity", position = position_dodge(width = 0.7)) +
-      geom_text(aes(y = de_percent(df_ae$`%total`, 3),
-                    label = paste(df_ae$`%total`)),
-                position = position_dodge(width = 0.7),
-                size = ifelse(nrow(df_ae) > 10, 2.6,
-                              ifelse(nrow(df_ae) > 5, 2.8,
-                                     ifelse(nrow(df_ae) > 3, 3, 3.2))), vjust = 1, hjust = 0.3,
-                colour = "white") +
-      geom_line(aes(x = factor(df_ae[['bins']]),
-                    y = de_percent(df_ae$bad_rate, 3) * max(de_percent(df_ae$`%total`, 3)) * 4,
-                    color = tar_var
-      ),
-      linetype = 1,
-      group = "%total",
-      position = position_dodge(width = 0.5), size = 1) +
-      geom_point(aes(y = de_percent(df_ae$bad_rate, 3) * max(de_percent(df_ae$`%total`, 3)) * 4
-      ),
-      color = love_color("deep_orange"),
-      group = 1,
-      position = position_dodge(width = 0.5),
-      fill = 'white', color = love_color("deep_red"), size = 2, shape = 21) +
-      geom_text(aes(y = de_percent(df_ae$bad_rate, 3) * max(de_percent(df_ae$`%total`, 3)) * 4,
-                    label = paste(df_ae$bad_rate)),
-                position = position_dodge(width = 0.5),
-                colour = 'black',
-                size = ifelse(nrow(df_ae) > 10, 2.6,
-                              ifelse(nrow(df_ae) > 5, 2.8,
-                                     ifelse(nrow(df_ae) > 3, 3, 3.2))), vjust = -0.1) +
-      annotate(geom = 'text',
-               x = dim(df_ae)[1] / 3,
-               y = max(c(de_percent(df_ae$`%total`, 3),
-                         de_percent(df_ae$bad_rate, 3) * max(de_percent(df_ae$`%total`, 3)) * 4))
-               + 0.05,
-               label = paste(paste("IV:", sum(df_ae$iv, na.rm = TRUE)))) +
-      scale_fill_manual(values = fill_colors[1]) +
-      scale_color_manual(values = fill_colors[2]) +
-      ylim(c(-0.01, max(c(de_percent(df_ae$`%total`, 3),
-                          de_percent(df_ae$bad_rate, 3) * max(de_percent(df_ae$`%total`, 3)) * 4)) + 0.05)) +
-      
-      guides(fill = guide_legend(title = NULL)) +
-      xlab(x) + ylab("percent") +
-      ggtitle(paste(x, " Distribution")) +
-      plot_theme(legend.position = "top",
-                 title_size = 9,
-                 axis_title_size = 8,
-                 angle = ifelse(nrow(df_ae) > 10, 60,
-                                ifelse(nrow(df_ae) > 5, 40,
-                                       ifelse(nrow(df_ae) > 3, 20, 10))),
-                 axis_size_x = ifelse(max(n_char(df_ae$bins)) > 30, 5,
-                                      ifelse(max(n_char(df_ae$bins)) > 20, 6,
-                                             ifelse(max(n_char(df_ae$bins)) > 10, 7, 8))))
-    
-    
-  }
-  if (save_data) {
-    ggsave(paste0(dir_path, paste(x, "png", sep = '.')),
-           plot = multi_grid(grobs = list(plot_1, plot_2), ncol = 2, nrow = 1),
-           width = g_width, height = g_width / 2, dpi = "retina")
-  }
-  if (plot_show) {
-    plot(multi_grid(grobs = list(plot_1, plot_2), ncol = 2, nrow = 1))
-  }
-  return(df_ae)
-  options(opt) # reset
-}
-
 #' Plot PSI(Population Stability Index)
 #'
 #' You can use the \code{psi_plot} to plot PSI of your data.
@@ -1113,14 +733,18 @@ model_key_index = function(tb_pred) {
 #'
 #' \code{love_color} is for get plots for a  variable.
 #' @param color The name of colors.
-#' @param type The type of colors, "deep".
-#' @param all all of colors.
+#' @param type The type of colors, "deep", or the name of palette:.
+#' The sequential palettes names are Blues BuGn BuPu GnBu Greens Greys Oranges OrRd PuBu PuBuGn PuRd Purples RdPu Reds YlGn YlGnBu YlOrBr YlOrRd
+#' The diverging palettes are BrBG PiYG PRGn PuOr RdBu RdGy RdYlBu RdYlGn Spectral
+#' The qualitative palettes are Accent, Dark2, Paired, Pastel1, Pastel2, Set1, Set2, Set3
+#' @param n Number of different colors, minimum is 1.
+#' @param ... Other parameters.
 #' @examples
 #' love_color(color="dark_cyan")
 #' @import ggplot2
 #' @export
 
-love_color = function(color =NULL, type = NULL,all = FALSE) {
+love_color = function(color =NULL, type = 'Blues', n = 10,...) {
   NISEMURASAKI = rgb(86,46,55 , maxColorValue = 255 )
   TETSUKON = rgb(38,30,71 , maxColorValue = 255 )
   UMENEZUMI = rgb(158,122,122 , maxColorValue = 255 )
@@ -1402,6 +1026,673 @@ love_color = function(color =NULL, type = NULL,all = FALSE) {
     lightnihon_green_purples[6]
   )
   
+  brewer_pal = function (n = 9, name = type) {
+    switch(name, Accent = switch(n - 2, rgb(c(127, 190, 253), 
+                                            c(201, 174, 192), c(127, 212, 134), maxColorValue = 255), 
+                                 rgb(c(127, 190, 253, 255), c(201, 174, 192, 255), c(127, 
+                                                                                     212, 134, 153), maxColorValue = 255), rgb(c(127, 
+                                                                                                                                 190, 253, 255, 56), c(201, 174, 192, 255, 108), c(127, 
+                                                                                                                                                                                   212, 134, 153, 176), maxColorValue = 255), rgb(c(127, 
+                                                                                                                                                                                                                                    190, 253, 255, 56, 240), c(201, 174, 192, 255, 108, 
+                                                                                                                                                                                                                                                               2), c(127, 212, 134, 153, 176, 127), maxColorValue = 255), 
+                                 rgb(c(127, 190, 253, 255, 56, 240, 191), c(201, 174, 
+                                                                            192, 255, 108, 2, 91), c(127, 212, 134, 153, 176, 
+                                                                                                     127, 23), maxColorValue = 255), rgb(c(127, 190, 253, 
+                                                                                                                                           255, 56, 240, 191, 102), c(201, 174, 192, 255, 108, 
+                                                                                                                                                                      2, 91, 102), c(127, 212, 134, 153, 176, 127, 23, 
+                                                                                                                                                                                     102), maxColorValue = 255)), 
+           Blues = switch(n - 2, 
+                          rgb(c(222, 158, 49), c(235, 202, 130), c(247, 225, 189), 
+                              maxColorValue = 255), rgb(c(239, 189, 107, 33), c(243, 
+                                                                                215, 174, 113), c(255, 231, 214, 181), maxColorValue = 255), 
+                          rgb(c(239, 189, 107, 49, 8), c(243, 215, 174, 130, 81), 
+                              c(255, 231, 214, 189, 156), maxColorValue = 255), 
+                          rgb(c(239, 198, 158, 107, 49, 8), c(243, 219, 202, 174, 
+                                                              130, 81), c(255, 239, 225, 214, 189, 156), maxColorValue = 255), 
+                          rgb(c(239, 198, 158, 107, 66, 33, 8), c(243, 219, 202, 
+                                                                  174, 146, 113, 69), c(255, 239, 225, 214, 198, 181, 
+                                                                                        148), maxColorValue = 255), rgb(c(247, 222, 198, 
+                                                                                                                          158, 107, 66, 33, 8), c(251, 235, 219, 202, 174, 
+                                                                                                                                                  146, 113, 69), c(255, 247, 239, 225, 214, 198, 181, 
+                                                                                                                                                                   148), maxColorValue = 255), rgb(c(247, 222, 198, 
+                                                                                                                                                                                                     158, 107, 66, 33, 8, 8), c(251, 235, 219, 202, 174, 
+                                                                                                                                                                                                                                146, 113, 81, 48), c(255, 247, 239, 225, 214, 198, 
+                                                                                                                                                                                                                                                     181, 156, 107), maxColorValue = 255)), BrBG = switch(n - 
+                                                                                                                                                                                                                                                                                                            2, rgb(c(216, 245, 90), c(179, 245, 180), c(101, 245, 
+                                                                                                                                                                                                                                                                                                                                                        172), maxColorValue = 255), rgb(c(166, 223, 128, 1), 
+                                                                                                                                                                                                                                                                                                                                                                                        c(97, 194, 205, 133), c(26, 125, 193, 113), maxColorValue = 255), 
+                                                                                                                                                                                                                                                                                                          rgb(c(166, 223, 245, 128, 1), c(97, 194, 245, 205, 133), 
+                                                                                                                                                                                                                                                                                                              c(26, 125, 245, 193, 113), maxColorValue = 255), 
+                                                                                                                                                                                                                                                                                                          rgb(c(140, 216, 246, 199, 90, 1), c(81, 179, 232, 234, 
+                                                                                                                                                                                                                                                                                                                                              180, 102), c(10, 101, 195, 229, 172, 94), maxColorValue = 255), 
+                                                                                                                                                                                                                                                                                                          rgb(c(140, 216, 246, 245, 199, 90, 1), c(81, 179, 232, 
+                                                                                                                                                                                                                                                                                                                                                   245, 234, 180, 102), c(10, 101, 195, 245, 229, 172, 
+                                                                                                                                                                                                                                                                                                                                                                          94), maxColorValue = 255), rgb(c(140, 191, 223, 246, 
+                                                                                                                                                                                                                                                                                                                                                                                                           199, 128, 53, 1), c(81, 129, 194, 232, 234, 205, 
+                                                                                                                                                                                                                                                                                                                                                                                                                               151, 102), c(10, 45, 125, 195, 229, 193, 143, 94), 
+                                                                                                                                                                                                                                                                                                                                                                                                         maxColorValue = 255), rgb(c(140, 191, 223, 246, 245, 
+                                                                                                                                                                                                                                                                                                                                                                                                                                     199, 128, 53, 1), c(81, 129, 194, 232, 245, 234, 
+                                                                                                                                                                                                                                                                                                                                                                                                                                                         205, 151, 102), c(10, 45, 125, 195, 245, 229, 193, 
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                           143, 94), maxColorValue = 255), rgb(c(84, 140, 191, 
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 223, 246, 199, 128, 53, 1, 0), c(48, 81, 129, 194, 
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  232, 234, 205, 151, 102, 60), c(5, 10, 45, 125, 195, 
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  229, 193, 143, 94, 48), maxColorValue = 255), rgb(c(84, 
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      140, 191, 223, 246, 245, 199, 128, 53, 1, 0), c(48, 
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      81, 129, 194, 232, 245, 234, 205, 151, 102, 60), 
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    c(5, 10, 45, 125, 195, 245, 229, 193, 143, 94, 48), 
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    maxColorValue = 255)), BuGn = switch(n - 2, rgb(c(229, 
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      153, 44), c(245, 216, 162), c(249, 201, 95), maxColorValue = 255), 
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         rgb(c(237, 178, 102, 35), c(248, 226, 194, 139), c(251, 
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            226, 164, 69), maxColorValue = 255), rgb(c(237, 178, 
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       102, 44, 0), c(248, 226, 194, 162, 109), c(251, 226, 
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  164, 95, 44), maxColorValue = 255), rgb(c(237, 204, 
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            153, 102, 44, 0), c(248, 236, 216, 194, 162, 109), 
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          c(251, 230, 201, 164, 95, 44), maxColorValue = 255), 
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         rgb(c(237, 204, 153, 102, 65, 35, 0), c(248, 236, 216, 
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 194, 174, 139, 88), c(251, 230, 201, 164, 118, 69, 
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       36), maxColorValue = 255), rgb(c(247, 229, 204, 153, 
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        102, 65, 35, 0), c(252, 245, 236, 216, 194, 174, 
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           139, 88), c(253, 249, 230, 201, 164, 118, 69, 36), 
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      maxColorValue = 255), rgb(c(247, 229, 204, 153, 102, 
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  65, 35, 0, 0), c(252, 245, 236, 216, 194, 174, 139, 
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   109, 68), c(253, 249, 230, 201, 164, 118, 69, 44, 
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               27), maxColorValue = 255)), BuPu = switch(n - 2, 
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         rgb(c(224, 158, 136), c(236, 188, 86), c(244, 218, 167), 
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             maxColorValue = 255), rgb(c(237, 179, 140, 136), 
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       c(248, 205, 150, 65), c(251, 227, 198, 157), maxColorValue = 255), 
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         rgb(c(237, 179, 140, 136, 129), c(248, 205, 150, 86, 
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           15), c(251, 227, 198, 167, 124), maxColorValue = 255), 
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         rgb(c(237, 191, 158, 140, 136, 129), c(248, 211, 188, 
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                150, 86, 15), c(251, 230, 218, 198, 167, 124), maxColorValue = 255), 
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         rgb(c(237, 191, 158, 140, 140, 136, 110), c(248, 211, 
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     188, 150, 107, 65, 1), c(251, 230, 218, 198, 177, 
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              157, 107), maxColorValue = 255), rgb(c(247, 224, 
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     191, 158, 140, 140, 136, 110), c(252, 236, 211, 188, 
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      150, 107, 65, 1), c(253, 244, 230, 218, 198, 177, 
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          157, 107), maxColorValue = 255), rgb(c(247, 224, 
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 191, 158, 140, 140, 136, 129, 77), c(252, 236, 211, 
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      188, 150, 107, 65, 15, 0), c(253, 244, 230, 218, 
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   198, 177, 157, 124, 75), maxColorValue = 255)), Dark2 = switch(n - 
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    2, rgb(c(27, 217, 117), c(158, 95, 112), c(119, 2, 179), 
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           maxColorValue = 255), rgb(c(27, 217, 117, 231), c(158, 
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             95, 112, 41), c(119, 2, 179, 138), maxColorValue = 255), 
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  rgb(c(27, 217, 117, 231, 102), c(158, 95, 112, 41, 166), 
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      c(119, 2, 179, 138, 30), maxColorValue = 255), rgb(c(27, 
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           217, 117, 231, 102, 230), c(158, 95, 112, 41, 166, 
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       171), c(119, 2, 179, 138, 30, 2), maxColorValue = 255), 
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  rgb(c(27, 217, 117, 231, 102, 230, 166), c(158, 95, 112, 
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             41, 166, 171, 118), c(119, 2, 179, 138, 30, 2, 29), 
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      maxColorValue = 255), rgb(c(27, 217, 117, 231, 102, 
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  230, 166, 102), c(158, 95, 112, 41, 166, 171, 118, 
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    102), c(119, 2, 179, 138, 30, 2, 29, 102), maxColorValue = 255)), 
+           GnBu = switch(n - 2, rgb(c(224, 168, 67), c(243, 221, 
+                                                       162), c(219, 181, 202), maxColorValue = 255), rgb(c(240, 
+                                                                                                           186, 123, 43), c(249, 228, 204, 140), c(232, 188, 
+                                                                                                                                                   196, 190), maxColorValue = 255), rgb(c(240, 186, 
+                                                                                                                                                                                          123, 67, 8), c(249, 228, 204, 162, 104), c(232, 188, 
+                                                                                                                                                                                                                                     196, 202, 172), maxColorValue = 255), rgb(c(240, 
+                                                                                                                                                                                                                                                                                 204, 168, 123, 67, 8), c(249, 235, 221, 204, 162, 
+                                                                                                                                                                                                                                                                                                          104), c(232, 197, 181, 196, 202, 172), maxColorValue = 255), 
+                         rgb(c(240, 204, 168, 123, 78, 43, 8), c(249, 235, 
+                                                                 221, 204, 179, 140, 88), c(232, 197, 181, 196, 
+                                                                                            211, 190, 158), maxColorValue = 255), rgb(c(247, 
+                                                                                                                                        224, 204, 168, 123, 78, 43, 8), c(252, 243, 235, 
+                                                                                                                                                                          221, 204, 179, 140, 88), c(240, 219, 197, 181, 
+                                                                                                                                                                                                     196, 211, 190, 158), maxColorValue = 255), rgb(c(247, 
+                                                                                                                                                                                                                                                      224, 204, 168, 123, 78, 43, 8, 8), c(252, 243, 
+                                                                                                                                                                                                                                                                                           235, 221, 204, 179, 140, 104, 64), c(240, 219, 
+                                                                                                                                                                                                                                                                                                                                197, 181, 196, 211, 190, 172, 129), maxColorValue = 255)), 
+           Greens = switch(n - 2, rgb(c(229, 161, 49), c(245, 217, 
+                                                         163), c(224, 155, 84), maxColorValue = 255), rgb(c(237, 
+                                                                                                            186, 116, 35), c(248, 228, 196, 139), c(233, 179, 
+                                                                                                                                                    118, 69), maxColorValue = 255), rgb(c(237, 186, 116, 
+                                                                                                                                                                                          49, 0), c(248, 228, 196, 163, 109), c(233, 179, 118, 
+                                                                                                                                                                                                                                84, 44), maxColorValue = 255), rgb(c(237, 199, 161, 
+                                                                                                                                                                                                                                                                     116, 49, 0), c(248, 233, 217, 196, 163, 109), c(233, 
+                                                                                                                                                                                                                                                                                                                     192, 155, 118, 84, 44), maxColorValue = 255), rgb(c(237, 
+                                                                                                                                                                                                                                                                                                                                                                         199, 161, 116, 65, 35, 0), c(248, 233, 217, 196, 
+                                                                                                                                                                                                                                                                                                                                                                                                      171, 139, 90), c(233, 192, 155, 118, 93, 69, 50), 
+                                                                                                                                                                                                                                                                                                                                                                       maxColorValue = 255), rgb(c(247, 229, 199, 161, 116, 
+                                                                                                                                                                                                                                                                                                                                                                                                   65, 35, 0), c(252, 245, 233, 217, 196, 171, 139, 
+                                                                                                                                                                                                                                                                                                                                                                                                                 90), c(245, 224, 192, 155, 118, 93, 69, 50), maxColorValue = 255), 
+                           rgb(c(247, 229, 199, 161, 116, 65, 35, 0, 0), c(252, 
+                                                                           245, 233, 217, 196, 171, 139, 109, 68), c(245, 
+                                                                                                                     224, 192, 155, 118, 93, 69, 44, 27), maxColorValue = 255)), 
+           Greys = switch(n - 2, rgb(c(240, 189, 99), c(240, 189, 
+                                                        99), c(240, 189, 99), maxColorValue = 255), rgb(c(247, 
+                                                                                                          204, 150, 82), c(247, 204, 150, 82), c(247, 204, 
+                                                                                                                                                 150, 82), maxColorValue = 255), rgb(c(247, 204, 150, 
+                                                                                                                                                                                       99, 37), c(247, 204, 150, 99, 37), c(247, 204, 150, 
+                                                                                                                                                                                                                            99, 37), maxColorValue = 255), rgb(c(247, 217, 189, 
+                                                                                                                                                                                                                                                                 150, 99, 37), c(247, 217, 189, 150, 99, 37), c(247, 
+                                                                                                                                                                                                                                                                                                                217, 189, 150, 99, 37), maxColorValue = 255), rgb(c(247, 
+                                                                                                                                                                                                                                                                                                                                                                    217, 189, 150, 115, 82, 37), c(247, 217, 189, 150, 
+                                                                                                                                                                                                                                                                                                                                                                                                   115, 82, 37), c(247, 217, 189, 150, 115, 82, 37), 
+                                                                                                                                                                                                                                                                                                                                                                  maxColorValue = 255), rgb(c(255, 240, 217, 189, 150, 
+                                                                                                                                                                                                                                                                                                                                                                                              115, 82, 37), c(255, 240, 217, 189, 150, 115, 82, 
+                                                                                                                                                                                                                                                                                                                                                                                                              37), c(255, 240, 217, 189, 150, 115, 82, 37), maxColorValue = 255), 
+                          rgb(c(255, 240, 217, 189, 150, 115, 82, 37, 0), c(255, 
+                                                                            240, 217, 189, 150, 115, 82, 37, 0), c(255, 240, 
+                                                                                                                   217, 189, 150, 115, 82, 37, 0), maxColorValue = 255)), 
+           Oranges = switch(n - 2, rgb(c(254, 253, 230), c(230, 
+                                                           174, 85), c(206, 107, 13), maxColorValue = 255), 
+                            rgb(c(254, 253, 253, 217), c(237, 190, 141, 71), 
+                                c(222, 133, 60, 1), maxColorValue = 255), rgb(c(254, 
+                                                                                253, 253, 230, 166), c(237, 190, 141, 85, 54), 
+                                                                              c(222, 133, 60, 13, 3), maxColorValue = 255), 
+                            rgb(c(254, 253, 253, 253, 230, 166), c(237, 208, 
+                                                                   174, 141, 85, 54), c(222, 162, 107, 60, 13, 3), 
+                                maxColorValue = 255), rgb(c(254, 253, 253, 253, 
+                                                            241, 217, 140), c(237, 208, 174, 141, 105, 72, 
+                                                                              45), c(222, 162, 107, 60, 19, 1, 4), maxColorValue = 255), 
+                            rgb(c(255, 254, 253, 253, 253, 241, 217, 140), c(245, 
+                                                                             230, 208, 174, 141, 105, 72, 45), c(235, 206, 
+                                                                                                                 162, 107, 60, 19, 1, 4), maxColorValue = 255), 
+                            rgb(c(255, 254, 253, 253, 253, 241, 217, 166, 127), 
+                                c(245, 230, 208, 174, 141, 105, 72, 54, 39), 
+                                c(235, 206, 162, 107, 60, 19, 1, 3, 4), maxColorValue = 255)), 
+           OrRd = switch(n - 2, rgb(c(254, 253, 227), c(232, 187, 
+                                                        74), c(200, 132, 51), maxColorValue = 255), rgb(c(254, 
+                                                                                                          253, 252, 215), c(240, 204, 141, 48), c(217, 138, 
+                                                                                                                                                  89, 31), maxColorValue = 255), rgb(c(254, 253, 252, 
+                                                                                                                                                                                       227, 179), c(240, 204, 141, 74, 0), c(217, 138, 89, 
+                                                                                                                                                                                                                             51, 0), maxColorValue = 255), rgb(c(254, 253, 253, 
+                                                                                                                                                                                                                                                                 252, 227, 179), c(240, 212, 187, 141, 74, 0), c(217, 
+                                                                                                                                                                                                                                                                                                                 158, 132, 89, 51, 0), maxColorValue = 255), rgb(c(254, 
+                                                                                                                                                                                                                                                                                                                                                                   253, 253, 252, 239, 215, 153), c(240, 212, 187, 141, 
+                                                                                                                                                                                                                                                                                                                                                                                                    101, 48, 0), c(217, 158, 132, 89, 72, 31, 0), maxColorValue = 255), 
+                         rgb(c(255, 254, 253, 253, 252, 239, 215, 153), c(247, 
+                                                                          232, 212, 187, 141, 101, 48, 0), c(236, 200, 
+                                                                                                             158, 132, 89, 72, 31, 0), maxColorValue = 255), 
+                         rgb(c(255, 254, 253, 253, 252, 239, 215, 179, 127), 
+                             c(247, 232, 212, 187, 141, 101, 48, 0, 0), c(236, 
+                                                                          200, 158, 132, 89, 72, 31, 0, 0), maxColorValue = 255)), 
+           Paired = switch(n - 2, rgb(c(166, 31, 178), c(206, 120, 
+                                                         223), c(227, 180, 138), maxColorValue = 255), rgb(c(166, 
+                                                                                                             31, 178, 51), c(206, 120, 223, 160), c(227, 180, 
+                                                                                                                                                    138, 44), maxColorValue = 255), rgb(c(166, 31, 178, 
+                                                                                                                                                                                          51, 251), c(206, 120, 223, 160, 154), c(227, 180, 
+                                                                                                                                                                                                                                  138, 44, 153), maxColorValue = 255), rgb(c(166, 31, 
+                                                                                                                                                                                                                                                                             178, 51, 251, 227), c(206, 120, 223, 160, 154, 26), 
+                                                                                                                                                                                                                                                                           c(227, 180, 138, 44, 153, 28), maxColorValue = 255), 
+                           rgb(c(166, 31, 178, 51, 251, 227, 253), c(206, 120, 
+                                                                     223, 160, 154, 26, 191), c(227, 180, 138, 44, 
+                                                                                                153, 28, 111), maxColorValue = 255), rgb(c(166, 
+                                                                                                                                           31, 178, 51, 251, 227, 253, 255), c(206, 120, 
+                                                                                                                                                                               223, 160, 154, 26, 191, 127), c(227, 180, 138, 
+                                                                                                                                                                                                               44, 153, 28, 111, 0), maxColorValue = 255), rgb(c(166, 
+                                                                                                                                                                                                                                                                 31, 178, 51, 251, 227, 253, 255, 202), c(206, 
+                                                                                                                                                                                                                                                                                                          120, 223, 160, 154, 26, 191, 127, 178), c(227, 
+                                                                                                                                                                                                                                                                                                                                                    180, 138, 44, 153, 28, 111, 0, 214), maxColorValue = 255), 
+                           rgb(c(166, 31, 178, 51, 251, 227, 253, 255, 202, 
+                                 106), c(206, 120, 223, 160, 154, 26, 191, 127, 
+                                         178, 61), c(227, 180, 138, 44, 153, 28, 111, 
+                                                     0, 214, 154), maxColorValue = 255), rgb(c(166, 
+                                                                                               31, 178, 51, 251, 227, 253, 255, 202, 106, 255), 
+                                                                                             c(206, 120, 223, 160, 154, 26, 191, 127, 178, 
+                                                                                               61, 255), c(227, 180, 138, 44, 153, 28, 111, 
+                                                                                                           0, 214, 154, 153), maxColorValue = 255), rgb(c(166, 
+                                                                                                                                                          31, 178, 51, 251, 227, 253, 255, 202, 106, 255, 
+                                                                                                                                                          177), c(206, 120, 223, 160, 154, 26, 191, 127, 
+                                                                                                                                                                  178, 61, 255, 89), c(227, 180, 138, 44, 153, 
+                                                                                                                                                                                       28, 111, 0, 214, 154, 153, 40), maxColorValue = 255)), 
+           Pastel1 = switch(n - 2, rgb(c(251, 179, 204), c(180, 
+                                                           205, 235), c(174, 227, 197), maxColorValue = 255), 
+                            rgb(c(251, 179, 204, 222), c(180, 205, 235, 203), 
+                                c(174, 227, 197, 228), maxColorValue = 255), 
+                            rgb(c(251, 179, 204, 222, 254), c(180, 205, 235, 
+                                                              203, 217), c(174, 227, 197, 228, 166), maxColorValue = 255), 
+                            rgb(c(251, 179, 204, 222, 254, 255), c(180, 205, 
+                                                                   235, 203, 217, 255), c(174, 227, 197, 228, 166, 
+                                                                                          204), maxColorValue = 255), rgb(c(251, 179, 204, 
+                                                                                                                            222, 254, 255, 229), c(180, 205, 235, 203, 217, 
+                                                                                                                                                   255, 216), c(174, 227, 197, 228, 166, 204, 189), 
+                                                                                                                          maxColorValue = 255), rgb(c(251, 179, 204, 222, 
+                                                                                                                                                      254, 255, 229, 253), c(180, 205, 235, 203, 217, 
+                                                                                                                                                                             255, 216, 218), c(174, 227, 197, 228, 166, 204, 
+                                                                                                                                                                                               189, 236), maxColorValue = 255), rgb(c(251, 179, 
+                                                                                                                                                                                                                                      204, 222, 254, 255, 229, 253, 242), c(180, 205, 
+                                                                                                                                                                                                                                                                            235, 203, 217, 255, 216, 218, 242), c(174, 227, 
+                                                                                                                                                                                                                                                                                                                  197, 228, 166, 204, 189, 236, 242), maxColorValue = 255)), 
+           Pastel2 = switch(n - 2, rgb(c(179, 253, 203), c(226, 
+                                                           205, 213), c(205, 172, 232), maxColorValue = 255), 
+                            rgb(c(179, 253, 203, 244), c(226, 205, 213, 202), 
+                                c(205, 172, 232, 228), maxColorValue = 255), 
+                            rgb(c(179, 253, 203, 244, 230), c(226, 205, 213, 
+                                                              202, 245), c(205, 172, 232, 228, 201), maxColorValue = 255), 
+                            rgb(c(179, 253, 203, 244, 230, 255), c(226, 205, 
+                                                                   213, 202, 245, 242), c(205, 172, 232, 228, 201, 
+                                                                                          174), maxColorValue = 255), rgb(c(179, 253, 203, 
+                                                                                                                            244, 230, 255, 241), c(226, 205, 213, 202, 245, 
+                                                                                                                                                   242, 226), c(205, 172, 232, 228, 201, 174, 204), 
+                                                                                                                          maxColorValue = 255), rgb(c(179, 253, 203, 244, 
+                                                                                                                                                      230, 255, 241, 204), c(226, 205, 213, 202, 245, 
+                                                                                                                                                                             242, 226, 204), c(205, 172, 232, 228, 201, 174, 
+                                                                                                                                                                                               204, 204), maxColorValue = 255)), PiYG = switch(n - 
+                                                                                                                                                                                                                                                 2, rgb(c(233, 247, 161), c(163, 247, 215), c(201, 
+                                                                                                                                                                                                                                                                                              247, 106), maxColorValue = 255), rgb(c(208, 241, 
+                                                                                                                                                                                                                                                                                                                                     184, 77), c(28, 182, 225, 172), c(139, 218, 134, 
+                                                                                                                                                                                                                                                                                                                                                                       38), maxColorValue = 255), rgb(c(208, 241, 247, 184, 
+                                                                                                                                                                                                                                                                                                                                                                                                        77), c(28, 182, 247, 225, 172), c(139, 218, 247, 
+                                                                                                                                                                                                                                                                                                                                                                                                                                          134, 38), maxColorValue = 255), rgb(c(197, 233, 253, 
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                230, 161, 77), c(27, 163, 224, 245, 215, 146), c(125, 
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 201, 239, 208, 106, 33), maxColorValue = 255), rgb(c(197, 
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      233, 253, 247, 230, 161, 77), c(27, 163, 224, 247, 
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      245, 215, 146), c(125, 201, 239, 247, 208, 106, 33), 
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    maxColorValue = 255), rgb(c(197, 222, 241, 253, 230, 
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                184, 127, 77), c(27, 119, 182, 224, 245, 225, 188, 
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 146), c(125, 174, 218, 239, 208, 134, 65, 33), maxColorValue = 255), 
+                                                                                                                                                                                                                                               rgb(c(197, 222, 241, 253, 247, 230, 184, 127, 77), 
+                                                                                                                                                                                                                                                   c(27, 119, 182, 224, 247, 245, 225, 188, 146), 
+                                                                                                                                                                                                                                                   c(125, 174, 218, 239, 247, 208, 134, 65, 33), 
+                                                                                                                                                                                                                                                   maxColorValue = 255), rgb(c(142, 197, 222, 241, 
+                                                                                                                                                                                                                                                                               253, 230, 184, 127, 77, 39), c(1, 27, 119, 182, 
+                                                                                                                                                                                                                                                                                                              224, 245, 225, 188, 146, 100), c(82, 125, 174, 
+                                                                                                                                                                                                                                                                                                                                               218, 239, 208, 134, 65, 33, 25), maxColorValue = 255), 
+                                                                                                                                                                                                                                               rgb(c(142, 197, 222, 241, 253, 247, 230, 184, 127, 
+                                                                                                                                                                                                                                                     77, 39), c(1, 27, 119, 182, 224, 247, 245, 225, 
+                                                                                                                                                                                                                                                                188, 146, 100), c(82, 125, 174, 218, 239, 247, 
+                                                                                                                                                                                                                                                                                  208, 134, 65, 33, 25), maxColorValue = 255)), 
+           PRGn = switch(n - 2, rgb(c(175, 247, 127), c(141, 247, 
+                                                        191), c(195, 247, 123), maxColorValue = 255), rgb(c(123, 
+                                                                                                            194, 166, 0), c(50, 165, 219, 136), c(148, 207, 160, 
+                                                                                                                                                  55), maxColorValue = 255), rgb(c(123, 194, 247, 166, 
+                                                                                                                                                                                   0), c(50, 165, 247, 219, 136), c(148, 207, 247, 160, 
+                                                                                                                                                                                                                    55), maxColorValue = 255), rgb(c(118, 175, 231, 217, 
+                                                                                                                                                                                                                                                     127, 27), c(42, 141, 212, 240, 191, 120), c(131, 
+                                                                                                                                                                                                                                                                                                 195, 232, 211, 123, 55), maxColorValue = 255), rgb(c(118, 
+                                                                                                                                                                                                                                                                                                                                                      175, 231, 247, 217, 127, 27), c(42, 141, 212, 247, 
+                                                                                                                                                                                                                                                                                                                                                                                      240, 191, 120), c(131, 195, 232, 247, 211, 123, 55), 
+                                                                                                                                                                                                                                                                                                                                                    maxColorValue = 255), rgb(c(118, 153, 194, 231, 217, 
+                                                                                                                                                                                                                                                                                                                                                                                166, 90, 27), c(42, 112, 165, 212, 240, 219, 174, 
+                                                                                                                                                                                                                                                                                                                                                                                                120), c(131, 171, 207, 232, 211, 160, 97, 55), maxColorValue = 255), 
+                         rgb(c(118, 153, 194, 231, 247, 217, 166, 90, 27), 
+                             c(42, 112, 165, 212, 247, 240, 219, 174, 120), 
+                             c(131, 171, 207, 232, 247, 211, 160, 97, 55), 
+                             maxColorValue = 255), rgb(c(64, 118, 153, 194, 
+                                                         231, 217, 166, 90, 27, 0), c(0, 42, 112, 165, 
+                                                                                      212, 240, 219, 174, 120, 68), c(75, 131, 171, 
+                                                                                                                      207, 232, 211, 160, 97, 55, 27), maxColorValue = 255), 
+                         rgb(c(64, 118, 153, 194, 231, 247, 217, 166, 90, 
+                               27, 0), c(0, 42, 112, 165, 212, 247, 240, 219, 
+                                         174, 120, 68), c(75, 131, 171, 207, 232, 247, 
+                                                          211, 160, 97, 55, 27), maxColorValue = 255)), 
+           PuBu = switch(n - 2, rgb(c(236, 166, 43), c(231, 189, 
+                                                       140), c(242, 219, 190), maxColorValue = 255), rgb(c(241, 
+                                                                                                           189, 116, 5), c(238, 201, 169, 112), c(246, 225, 
+                                                                                                                                                  207, 176), maxColorValue = 255), rgb(c(241, 189, 
+                                                                                                                                                                                         116, 43, 4), c(238, 201, 169, 140, 90), c(246, 225, 
+                                                                                                                                                                                                                                   207, 190, 141), maxColorValue = 255), rgb(c(241, 
+                                                                                                                                                                                                                                                                               208, 166, 116, 43, 4), c(238, 209, 189, 169, 140, 
+                                                                                                                                                                                                                                                                                                        90), c(246, 230, 219, 207, 190, 141), maxColorValue = 255), 
+                         rgb(c(241, 208, 166, 116, 54, 5, 3), c(238, 209, 
+                                                                189, 169, 144, 112, 78), c(246, 230, 219, 207, 
+                                                                                           192, 176, 123), maxColorValue = 255), rgb(c(255, 
+                                                                                                                                       236, 208, 166, 116, 54, 5, 3), c(247, 231, 209, 
+                                                                                                                                                                        189, 169, 144, 112, 78), c(251, 242, 230, 219, 
+                                                                                                                                                                                                   207, 192, 176, 123), maxColorValue = 255), rgb(c(255, 
+                                                                                                                                                                                                                                                    236, 208, 166, 116, 54, 5, 4, 2), c(247, 231, 
+                                                                                                                                                                                                                                                                                        209, 189, 169, 144, 112, 90, 56), c(251, 242, 
+                                                                                                                                                                                                                                                                                                                            230, 219, 207, 192, 176, 141, 88), maxColorValue = 255)), 
+           PuBuGn = switch(n - 2, rgb(c(236, 166, 28), c(226, 189, 
+                                                         144), c(240, 219, 153), maxColorValue = 255), rgb(c(246, 
+                                                                                                             189, 103, 2), c(239, 201, 169, 129), c(247, 225, 
+                                                                                                                                                    207, 138), maxColorValue = 255), rgb(c(246, 189, 
+                                                                                                                                                                                           103, 28, 1), c(239, 201, 169, 144, 108), c(247, 225, 
+                                                                                                                                                                                                                                      207, 153, 89), maxColorValue = 255), rgb(c(246, 208, 
+                                                                                                                                                                                                                                                                                 166, 103, 28, 1), c(239, 209, 189, 169, 144, 108), 
+                                                                                                                                                                                                                                                                               c(247, 230, 219, 207, 153, 89), maxColorValue = 255), 
+                           rgb(c(246, 208, 166, 103, 54, 2, 1), c(239, 209, 
+                                                                  189, 169, 144, 129, 100), c(247, 230, 219, 207, 
+                                                                                              192, 138, 80), maxColorValue = 255), rgb(c(255, 
+                                                                                                                                         236, 208, 166, 103, 54, 2, 1), c(247, 226, 209, 
+                                                                                                                                                                          189, 169, 144, 129, 100), c(251, 240, 230, 219, 
+                                                                                                                                                                                                      207, 192, 138, 80), maxColorValue = 255), rgb(c(255, 
+                                                                                                                                                                                                                                                      236, 208, 166, 103, 54, 2, 1, 1), c(247, 226, 
+                                                                                                                                                                                                                                                                                          209, 189, 169, 144, 129, 108, 70), c(251, 240, 
+                                                                                                                                                                                                                                                                                                                               230, 219, 207, 192, 138, 89, 54), maxColorValue = 255)), 
+           PuOr = switch(n - 2, rgb(c(241, 247, 153), c(163, 247, 
+                                                        142), c(64, 247, 195), maxColorValue = 255), rgb(c(230, 
+                                                                                                           253, 178, 94), c(97, 184, 171, 60), c(1, 99, 210, 
+                                                                                                                                                 153), maxColorValue = 255), rgb(c(230, 253, 247, 
+                                                                                                                                                                                   178, 94), c(97, 184, 247, 171, 60), c(1, 99, 247, 
+                                                                                                                                                                                                                         210, 153), maxColorValue = 255), rgb(c(179, 241, 
+                                                                                                                                                                                                                                                                254, 216, 153, 84), c(88, 163, 224, 218, 142, 39), 
+                                                                                                                                                                                                                                                              c(6, 64, 182, 235, 195, 136), maxColorValue = 255), 
+                         rgb(c(179, 241, 254, 247, 216, 153, 84), c(88, 163, 
+                                                                    224, 247, 218, 142, 39), c(6, 64, 182, 247, 235, 
+                                                                                               195, 136), maxColorValue = 255), rgb(c(179, 224, 
+                                                                                                                                      253, 254, 216, 178, 128, 84), c(88, 130, 184, 
+                                                                                                                                                                      224, 218, 171, 115, 39), c(6, 20, 99, 182, 235, 
+                                                                                                                                                                                                 210, 172, 136), maxColorValue = 255), rgb(c(179, 
+                                                                                                                                                                                                                                             224, 253, 254, 247, 216, 178, 128, 84), c(88, 
+                                                                                                                                                                                                                                                                                       130, 184, 224, 247, 218, 171, 115, 39), c(6, 
+                                                                                                                                                                                                                                                                                                                                 20, 99, 182, 247, 235, 210, 172, 136), maxColorValue = 255), 
+                         rgb(c(127, 179, 224, 253, 254, 216, 178, 128, 84, 
+                               45), c(59, 88, 130, 184, 224, 218, 171, 115, 
+                                      39, 0), c(8, 6, 20, 99, 182, 235, 210, 172, 136, 
+                                                75), maxColorValue = 255), rgb(c(127, 179, 224, 
+                                                                                 253, 254, 247, 216, 178, 128, 84, 45), c(59, 
+                                                                                                                          88, 130, 184, 224, 247, 218, 171, 115, 39, 0), 
+                                                                               c(8, 6, 20, 99, 182, 247, 235, 210, 172, 136, 
+                                                                                 75), maxColorValue = 255)), PuRd = switch(n - 
+                                                                                                                             2, rgb(c(231, 201, 221), c(225, 148, 28), c(239, 
+                                                                                                                                                                         199, 119), maxColorValue = 255), rgb(c(241, 215, 
+                                                                                                                                                                                                                223, 206), c(238, 181, 101, 18), c(246, 216, 176, 
+                                                                                                                                                                                                                                                   86), maxColorValue = 255), rgb(c(241, 215, 223, 221, 
+                                                                                                                                                                                                                                                                                    152), c(238, 181, 101, 28, 0), c(246, 216, 176, 119, 
+                                                                                                                                                                                                                                                                                                                     67), maxColorValue = 255), rgb(c(241, 212, 201, 223, 
+                                                                                                                                                                                                                                                                                                                                                      221, 152), c(238, 185, 148, 101, 28, 0), c(246, 218, 
+                                                                                                                                                                                                                                                                                                                                                                                                 199, 176, 119, 67), maxColorValue = 255), rgb(c(241, 
+                                                                                                                                                                                                                                                                                                                                                                                                                                                 212, 201, 223, 231, 206, 145), c(238, 185, 148, 101, 
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  41, 18, 0), c(246, 218, 199, 176, 138, 86, 63), maxColorValue = 255), 
+                                                                                                                           rgb(c(247, 231, 212, 201, 223, 231, 206, 145), c(244, 
+                                                                                                                                                                            225, 185, 148, 101, 41, 18, 0), c(249, 239, 218, 
+                                                                                                                                                                                                              199, 176, 138, 86, 63), maxColorValue = 255), 
+                                                                                                                           rgb(c(247, 231, 212, 201, 223, 231, 206, 152, 103), 
+                                                                                                                               c(244, 225, 185, 148, 101, 41, 18, 0, 0), c(249, 
+                                                                                                                                                                           239, 218, 199, 176, 138, 86, 67, 31), maxColorValue = 255)), 
+           Purples = switch(n - 2, rgb(c(239, 188, 117), c(237, 
+                                                           189, 107), c(245, 220, 177), maxColorValue = 255), 
+                            rgb(c(242, 203, 158, 106), c(240, 201, 154, 81), 
+                                c(247, 226, 200, 163), maxColorValue = 255), 
+                            rgb(c(242, 203, 158, 117, 84), c(240, 201, 154, 107, 
+                                                             39), c(247, 226, 200, 177, 143), maxColorValue = 255), 
+                            rgb(c(242, 218, 188, 158, 117, 84), c(240, 218, 189, 
+                                                                  154, 107, 39), c(247, 235, 220, 200, 177, 143), 
+                                maxColorValue = 255), rgb(c(242, 218, 188, 158, 
+                                                            128, 106, 74), c(240, 218, 189, 154, 125, 81, 
+                                                                             20), c(247, 235, 220, 200, 186, 163, 134), maxColorValue = 255), 
+                            rgb(c(252, 239, 218, 188, 158, 128, 106, 74), c(251, 
+                                                                            237, 218, 189, 154, 125, 81, 20), c(253, 245, 
+                                                                                                                235, 220, 200, 186, 163, 134), maxColorValue = 255), 
+                            rgb(c(252, 239, 218, 188, 158, 128, 106, 84, 63), 
+                                c(251, 237, 218, 189, 154, 125, 81, 39, 0), c(253, 
+                                                                              245, 235, 220, 200, 186, 163, 143, 125), maxColorValue = 255)), 
+           RdBu = switch(n - 2, rgb(c(239, 247, 103), c(138, 247, 
+                                                        169), c(98, 247, 207), maxColorValue = 255), rgb(c(202, 
+                                                                                                           244, 146, 5), c(0, 165, 197, 113), c(32, 130, 222, 
+                                                                                                                                                176), maxColorValue = 255), rgb(c(202, 244, 247, 
+                                                                                                                                                                                  146, 5), c(0, 165, 247, 197, 113), c(32, 130, 247, 
+                                                                                                                                                                                                                       222, 176), maxColorValue = 255), rgb(c(178, 239, 
+                                                                                                                                                                                                                                                              253, 209, 103, 33), c(24, 138, 219, 229, 169, 102), 
+                                                                                                                                                                                                                                                            c(43, 98, 199, 240, 207, 172), maxColorValue = 255), 
+                         rgb(c(178, 239, 253, 247, 209, 103, 33), c(24, 138, 
+                                                                    219, 247, 229, 169, 102), c(43, 98, 199, 247, 
+                                                                                                240, 207, 172), maxColorValue = 255), rgb(c(178, 
+                                                                                                                                            214, 244, 253, 209, 146, 67, 33), c(24, 96, 165, 
+                                                                                                                                                                                219, 229, 197, 147, 102), c(43, 77, 130, 199, 
+                                                                                                                                                                                                            240, 222, 195, 172), maxColorValue = 255), rgb(c(178, 
+                                                                                                                                                                                                                                                             214, 244, 253, 247, 209, 146, 67, 33), c(24, 
+                                                                                                                                                                                                                                                                                                      96, 165, 219, 247, 229, 197, 147, 102), c(43, 
+                                                                                                                                                                                                                                                                                                                                                77, 130, 199, 247, 240, 222, 195, 172), maxColorValue = 255), 
+                         rgb(c(103, 178, 214, 244, 253, 209, 146, 67, 33, 
+                               5), c(0, 24, 96, 165, 219, 229, 197, 147, 102, 
+                                     48), c(31, 43, 77, 130, 199, 240, 222, 195, 172, 
+                                            97), maxColorValue = 255), rgb(c(103, 178, 214, 
+                                                                             244, 253, 247, 209, 146, 67, 33, 5), c(0, 24, 
+                                                                                                                    96, 165, 219, 247, 229, 197, 147, 102, 48), c(31, 
+                                                                                                                                                                  43, 77, 130, 199, 247, 240, 222, 195, 172, 97), 
+                                                                           maxColorValue = 255)), RdGy = switch(n - 2, rgb(c(239, 
+                                                                                                                             255, 153), c(138, 255, 153), c(98, 255, 153), maxColorValue = 255), 
+                                                                                                                rgb(c(202, 244, 186, 64), c(0, 165, 186, 64), c(32, 
+                                                                                                                                                                130, 186, 64), maxColorValue = 255), rgb(c(202, 
+                                                                                                                                                                                                           244, 255, 186, 64), c(0, 165, 255, 186, 64), 
+                                                                                                                                                                                                         c(32, 130, 255, 186, 64), maxColorValue = 255), 
+                                                                                                                rgb(c(178, 239, 253, 224, 153, 77), c(24, 138, 219, 
+                                                                                                                                                      224, 153, 77), c(43, 98, 199, 224, 153, 77), 
+                                                                                                                    maxColorValue = 255), rgb(c(178, 239, 253, 255, 
+                                                                                                                                                224, 153, 77), c(24, 138, 219, 255, 224, 153, 
+                                                                                                                                                                 77), c(43, 98, 199, 255, 224, 153, 77), maxColorValue = 255), 
+                                                                                                                rgb(c(178, 214, 244, 253, 224, 186, 135, 77), c(24, 
+                                                                                                                                                                96, 165, 219, 224, 186, 135, 77), c(43, 77, 130, 
+                                                                                                                                                                                                    199, 224, 186, 135, 77), maxColorValue = 255), 
+                                                                                                                rgb(c(178, 214, 244, 253, 255, 224, 186, 135, 77), 
+                                                                                                                    c(24, 96, 165, 219, 255, 224, 186, 135, 77), 
+                                                                                                                    c(43, 77, 130, 199, 255, 224, 186, 135, 77), 
+                                                                                                                    maxColorValue = 255), rgb(c(103, 178, 214, 244, 
+                                                                                                                                                253, 224, 186, 135, 77, 26), c(0, 24, 96, 165, 
+                                                                                                                                                                               219, 224, 186, 135, 77, 26), c(31, 43, 77, 130, 
+                                                                                                                                                                                                              199, 224, 186, 135, 77, 26), maxColorValue = 255), 
+                                                                                                                rgb(c(103, 178, 214, 244, 253, 255, 224, 186, 135, 
+                                                                                                                      77, 26), c(0, 24, 96, 165, 219, 255, 224, 186, 
+                                                                                                                                 135, 77, 26), c(31, 43, 77, 130, 199, 255, 224, 
+                                                                                                                                                 186, 135, 77, 26), maxColorValue = 255)), RdPu = switch(n - 
+                                                                                                                                                                                                           2, rgb(c(253, 250, 197), c(224, 159, 27), c(221, 
+                                                                                                                                                                                                                                                       181, 138), maxColorValue = 255), rgb(c(254, 251, 
+                                                                                                                                                                                                                                                                                              247, 174), c(235, 180, 104, 1), c(226, 185, 161, 
+                                                                                                                                                                                                                                                                                                                                126), maxColorValue = 255), rgb(c(254, 251, 247, 
+                                                                                                                                                                                                                                                                                                                                                                  197, 122), c(235, 180, 104, 27, 1), c(226, 185, 161, 
+                                                                                                                                                                                                                                                                                                                                                                                                        138, 119), maxColorValue = 255), rgb(c(254, 252, 
+                                                                                                                                                                                                                                                                                                                                                                                                                                               250, 247, 197, 122), c(235, 197, 159, 104, 27, 1), 
+                                                                                                                                                                                                                                                                                                                                                                                                                                             c(226, 192, 181, 161, 138, 119), maxColorValue = 255), 
+                                                                                                                                                                                                         rgb(c(254, 252, 250, 247, 221, 174, 122), c(235, 
+                                                                                                                                                                                                                                                     197, 159, 104, 52, 1, 1), c(226, 192, 181, 161, 
+                                                                                                                                                                                                                                                                                 151, 126, 119), maxColorValue = 255), rgb(c(255, 
+                                                                                                                                                                                                                                                                                                                             253, 252, 250, 247, 221, 174, 122), c(247, 224, 
+                                                                                                                                                                                                                                                                                                                                                                   197, 159, 104, 52, 1, 1), c(243, 221, 192, 181, 
+                                                                                                                                                                                                                                                                                                                                                                                               161, 151, 126, 119), maxColorValue = 255), rgb(c(255, 
+                                                                                                                                                                                                                                                                                                                                                                                                                                                253, 252, 250, 247, 221, 174, 122, 73), c(247, 
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          224, 197, 159, 104, 52, 1, 1, 0), c(243, 221, 
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              192, 181, 161, 151, 126, 119, 106), maxColorValue = 255)), 
+           Reds = switch(n - 2, rgb(c(254, 252, 222), c(224, 146, 
+                                                        45), c(210, 114, 38), maxColorValue = 255), rgb(c(254, 
+                                                                                                          252, 251, 203), c(229, 174, 106, 24), c(217, 145, 
+                                                                                                                                                  74, 29), maxColorValue = 255), rgb(c(254, 252, 251, 
+                                                                                                                                                                                       222, 165), c(229, 174, 106, 45, 15), c(217, 145, 
+                                                                                                                                                                                                                              74, 38, 21), maxColorValue = 255), rgb(c(254, 252, 
+                                                                                                                                                                                                                                                                       252, 251, 222, 165), c(229, 187, 146, 106, 45, 15), 
+                                                                                                                                                                                                                                                                     c(217, 161, 114, 74, 38, 21), maxColorValue = 255), 
+                         rgb(c(254, 252, 252, 251, 239, 203, 153), c(229, 
+                                                                     187, 146, 106, 59, 24, 0), c(217, 161, 114, 74, 
+                                                                                                  44, 29, 13), maxColorValue = 255), rgb(c(255, 
+                                                                                                                                           254, 252, 252, 251, 239, 203, 153), c(245, 224, 
+                                                                                                                                                                                 187, 146, 106, 59, 24, 0), c(240, 210, 161, 114, 
+                                                                                                                                                                                                              74, 44, 29, 13), maxColorValue = 255), rgb(c(255, 
+                                                                                                                                                                                                                                                           254, 252, 252, 251, 239, 203, 165, 103), c(245, 
+                                                                                                                                                                                                                                                                                                      224, 187, 146, 106, 59, 24, 15, 0), c(240, 210, 
+                                                                                                                                                                                                                                                                                                                                            161, 114, 74, 44, 29, 21, 13), maxColorValue = 255)), 
+           RdYlBu = switch(n - 2, rgb(c(252, 255, 145), c(141, 255, 
+                                                          191), c(89, 191, 219), maxColorValue = 255), rgb(c(215, 
+                                                                                                             253, 171, 44), c(25, 174, 217, 123), c(28, 97, 233, 
+                                                                                                                                                    182), maxColorValue = 255), rgb(c(215, 253, 255, 
+                                                                                                                                                                                      171, 44), c(25, 174, 255, 217, 123), c(28, 97, 191, 
+                                                                                                                                                                                                                             233, 182), maxColorValue = 255), rgb(c(215, 252, 
+                                                                                                                                                                                                                                                                    254, 224, 145, 69), c(48, 141, 224, 243, 191, 117), 
+                                                                                                                                                                                                                                                                  c(39, 89, 144, 248, 219, 180), maxColorValue = 255), 
+                           rgb(c(215, 252, 254, 255, 224, 145, 69), c(48, 141, 
+                                                                      224, 255, 243, 191, 117), c(39, 89, 144, 191, 
+                                                                                                  248, 219, 180), maxColorValue = 255), rgb(c(215, 
+                                                                                                                                              244, 253, 254, 224, 171, 116, 69), c(48, 109, 
+                                                                                                                                                                                   174, 224, 243, 217, 173, 117), c(39, 67, 97, 
+                                                                                                                                                                                                                    144, 248, 233, 209, 180), maxColorValue = 255), 
+                           rgb(c(215, 244, 253, 254, 255, 224, 171, 116, 69), 
+                               c(48, 109, 174, 224, 255, 243, 217, 173, 117), 
+                               c(39, 67, 97, 144, 191, 248, 233, 209, 180), 
+                               maxColorValue = 255), rgb(c(165, 215, 244, 253, 
+                                                           254, 224, 171, 116, 69, 49), c(0, 48, 109, 174, 
+                                                                                          224, 243, 217, 173, 117, 54), c(38, 39, 67, 97, 
+                                                                                                                          144, 248, 233, 209, 180, 149), maxColorValue = 255), 
+                           rgb(c(165, 215, 244, 253, 254, 255, 224, 171, 116, 
+                                 69, 49), c(0, 48, 109, 174, 224, 255, 243, 217, 
+                                            173, 117, 54), c(38, 39, 67, 97, 144, 191, 248, 
+                                                             233, 209, 180, 149), maxColorValue = 255)), RdYlGn = switch(n - 
+                                                                                                                           2, rgb(c(252, 255, 145), c(141, 255, 207), c(89, 
+                                                                                                                                                                        191, 96), maxColorValue = 255), rgb(c(215, 253, 166, 
+                                                                                                                                                                                                              26), c(25, 174, 217, 150), c(28, 97, 106, 65), maxColorValue = 255), 
+                                                                                                                         rgb(c(215, 253, 255, 166, 26), c(25, 174, 255, 217, 
+                                                                                                                                                          150), c(28, 97, 191, 106, 65), maxColorValue = 255), 
+                                                                                                                         rgb(c(215, 252, 254, 217, 145, 26), c(48, 141, 224, 
+                                                                                                                                                               239, 207, 152), c(39, 89, 139, 139, 96, 80), 
+                                                                                                                             maxColorValue = 255), rgb(c(215, 252, 254, 255, 
+                                                                                                                                                         217, 145, 26), c(48, 141, 224, 255, 239, 207, 
+                                                                                                                                                                          152), c(39, 89, 139, 191, 139, 96, 80), maxColorValue = 255), 
+                                                                                                                         rgb(c(215, 244, 253, 254, 217, 166, 102, 26), c(48, 
+                                                                                                                                                                         109, 174, 224, 239, 217, 189, 152), c(39, 67, 
+                                                                                                                                                                                                               97, 139, 139, 106, 99, 80), maxColorValue = 255), 
+                                                                                                                         rgb(c(215, 244, 253, 254, 255, 217, 166, 102, 26), 
+                                                                                                                             c(48, 109, 174, 224, 255, 239, 217, 189, 152), 
+                                                                                                                             c(39, 67, 97, 139, 191, 139, 106, 99, 80), maxColorValue = 255), 
+                                                                                                                         rgb(c(165, 215, 244, 253, 254, 217, 166, 102, 26, 
+                                                                                                                               0), c(0, 48, 109, 174, 224, 239, 217, 189, 152, 
+                                                                                                                                     104), c(38, 39, 67, 97, 139, 139, 106, 99, 80, 
+                                                                                                                                             55), maxColorValue = 255), rgb(c(165, 215, 244, 
+                                                                                                                                                                              253, 254, 255, 217, 166, 102, 26, 0), c(0, 48, 
+                                                                                                                                                                                                                      109, 174, 224, 255, 239, 217, 189, 152, 104), 
+                                                                                                                                                                            c(38, 39, 67, 97, 139, 191, 139, 106, 99, 80, 
+                                                                                                                                                                              55), maxColorValue = 255)), Set1 = switch(n - 
+                                                                                                                                                                                                                          2, rgb(c(228, 55, 77), c(26, 126, 175), c(28, 184, 
+                                                                                                                                                                                                                                                                    74), maxColorValue = 255), rgb(c(228, 55, 77, 152), 
+                                                                                                                                                                                                                                                                                                   c(26, 126, 175, 78), c(28, 184, 74, 163), maxColorValue = 255), 
+                                                                                                                                                                                                                        rgb(c(228, 55, 77, 152, 255), c(26, 126, 175, 78, 
+                                                                                                                                                                                                                                                        127), c(28, 184, 74, 163, 0), maxColorValue = 255), 
+                                                                                                                                                                                                                        rgb(c(228, 55, 77, 152, 255, 255), c(26, 126, 175, 
+                                                                                                                                                                                                                                                             78, 127, 255), c(28, 184, 74, 163, 0, 51), maxColorValue = 255), 
+                                                                                                                                                                                                                        rgb(c(228, 55, 77, 152, 255, 255, 166), c(26, 126, 
+                                                                                                                                                                                                                                                                  175, 78, 127, 255, 86), c(28, 184, 74, 163, 0, 
+                                                                                                                                                                                                                                                                                            51, 40), maxColorValue = 255), rgb(c(228, 55, 
+                                                                                                                                                                                                                                                                                                                                 77, 152, 255, 255, 166, 247), c(26, 126, 175, 
+                                                                                                                                                                                                                                                                                                                                                                 78, 127, 255, 86, 129), c(28, 184, 74, 163, 0, 
+                                                                                                                                                                                                                                                                                                                                                                                           51, 40, 191), maxColorValue = 255), rgb(c(228, 
+                                                                                                                                                                                                                                                                                                                                                                                                                                     55, 77, 152, 255, 255, 166, 247, 153), c(26, 
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                              126, 175, 78, 127, 255, 86, 129, 153), c(28, 
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       184, 74, 163, 0, 51, 40, 191, 153), maxColorValue = 255)), 
+           Set2 = switch(n - 2, rgb(c(102, 252, 141), c(194, 141, 
+                                                        160), c(165, 98, 203), maxColorValue = 255), rgb(c(102, 
+                                                                                                           252, 141, 231), c(194, 141, 160, 138), c(165, 98, 
+                                                                                                                                                    203, 195), maxColorValue = 255), rgb(c(102, 252, 
+                                                                                                                                                                                           141, 231, 166), c(194, 141, 160, 138, 216), c(165, 
+                                                                                                                                                                                                                                         98, 203, 195, 84), maxColorValue = 255), rgb(c(102, 
+                                                                                                                                                                                                                                                                                        252, 141, 231, 166, 255), c(194, 141, 160, 138, 216, 
+                                                                                                                                                                                                                                                                                                                    217), c(165, 98, 203, 195, 84, 47), maxColorValue = 255), 
+                         rgb(c(102, 252, 141, 231, 166, 255, 229), c(194, 
+                                                                     141, 160, 138, 216, 217, 196), c(165, 98, 203, 
+                                                                                                      195, 84, 47, 148), maxColorValue = 255), rgb(c(102, 
+                                                                                                                                                     252, 141, 231, 166, 255, 229, 179), c(194, 141, 
+                                                                                                                                                                                           160, 138, 216, 217, 196, 179), c(165, 98, 203, 
+                                                                                                                                                                                                                            195, 84, 47, 148, 179), maxColorValue = 255)), 
+           Set3 = switch(n - 2, rgb(c(141, 255, 190), c(211, 255, 
+                                                        186), c(199, 179, 218), maxColorValue = 255), rgb(c(141, 
+                                                                                                            255, 190, 251), c(211, 255, 186, 128), c(199, 179, 
+                                                                                                                                                     218, 114), maxColorValue = 255), rgb(c(141, 255, 
+                                                                                                                                                                                            190, 251, 128), c(211, 255, 186, 128, 177), c(199, 
+                                                                                                                                                                                                                                          179, 218, 114, 211), maxColorValue = 255), rgb(c(141, 
+                                                                                                                                                                                                                                                                                           255, 190, 251, 128, 253), c(211, 255, 186, 128, 177, 
+                                                                                                                                                                                                                                                                                                                       180), c(199, 179, 218, 114, 211, 98), maxColorValue = 255), 
+                         rgb(c(141, 255, 190, 251, 128, 253, 179), c(211, 
+                                                                     255, 186, 128, 177, 180, 222), c(199, 179, 218, 
+                                                                                                      114, 211, 98, 105), maxColorValue = 255), rgb(c(141, 
+                                                                                                                                                      255, 190, 251, 128, 253, 179, 252), c(211, 255, 
+                                                                                                                                                                                            186, 128, 177, 180, 222, 205), c(199, 179, 218, 
+                                                                                                                                                                                                                             114, 211, 98, 105, 229), maxColorValue = 255), 
+                         rgb(c(141, 255, 190, 251, 128, 253, 179, 252, 217), 
+                             c(211, 255, 186, 128, 177, 180, 222, 205, 217), 
+                             c(199, 179, 218, 114, 211, 98, 105, 229, 217), 
+                             maxColorValue = 255), rgb(c(141, 255, 190, 251, 
+                                                         128, 253, 179, 252, 217, 188), c(211, 255, 186, 
+                                                                                          128, 177, 180, 222, 205, 217, 128), c(199, 179, 
+                                                                                                                                218, 114, 211, 98, 105, 229, 217, 189), maxColorValue = 255), 
+                         rgb(c(141, 255, 190, 251, 128, 253, 179, 252, 217, 
+                               188, 204), c(211, 255, 186, 128, 177, 180, 222, 
+                                            205, 217, 128, 235), c(199, 179, 218, 114, 211, 
+                                                                   98, 105, 229, 217, 189, 197), maxColorValue = 255), 
+                         rgb(c(141, 255, 190, 251, 128, 253, 179, 252, 217, 
+                               188, 204, 255), c(211, 255, 186, 128, 177, 180, 
+                                                 222, 205, 217, 128, 235, 237), c(199, 179, 218, 
+                                                                                  114, 211, 98, 105, 229, 217, 189, 197, 111), 
+                             maxColorValue = 255)), Spectral = switch(n - 
+                                                                        2, rgb(c(252, 255, 153), c(141, 255, 213), c(89, 
+                                                                                                                     191, 148), maxColorValue = 255), rgb(c(215, 253, 
+                                                                                                                                                            171, 43), c(25, 174, 221, 131), c(28, 97, 164, 186), 
+                                                                                                                                                          maxColorValue = 255), rgb(c(215, 253, 255, 171, 43), 
+                                                                                                                                                                                    c(25, 174, 255, 221, 131), c(28, 97, 191, 164, 186), 
+                                                                                                                                                                                    maxColorValue = 255), rgb(c(213, 252, 254, 230, 153, 
+                                                                                                                                                                                                                50), c(62, 141, 224, 245, 213, 136), c(79, 89, 139, 
+                                                                                                                                                                                                                                                       152, 148, 189), maxColorValue = 255), rgb(c(213, 
+                                                                                                                                                                                                                                                                                                   252, 254, 255, 230, 153, 50), c(62, 141, 224, 255, 
+                                                                                                                                                                                                                                                                                                                                   245, 213, 136), c(79, 89, 139, 191, 152, 148, 189), 
+                                                                                                                                                                                                                                                                                                 maxColorValue = 255), rgb(c(213, 244, 253, 254, 230, 
+                                                                                                                                                                                                                                                                                                                             171, 102, 50), c(62, 109, 174, 224, 245, 221, 194, 
+                                                                                                                                                                                                                                                                                                                                              136), c(79, 67, 97, 139, 152, 164, 165, 189), maxColorValue = 255), 
+                                                                      rgb(c(213, 244, 253, 254, 255, 230, 171, 102, 50), 
+                                                                          c(62, 109, 174, 224, 255, 245, 221, 194, 136), 
+                                                                          c(79, 67, 97, 139, 191, 152, 164, 165, 189), 
+                                                                          maxColorValue = 255), rgb(c(158, 213, 244, 253, 
+                                                                                                      254, 230, 171, 102, 50, 94), c(1, 62, 109, 174, 
+                                                                                                                                     224, 245, 221, 194, 136, 79), c(66, 79, 67, 97, 
+                                                                                                                                                                     139, 152, 164, 165, 189, 162), maxColorValue = 255), 
+                                                                      rgb(c(158, 213, 244, 253, 254, 255, 230, 171, 102, 
+                                                                            50, 94), c(1, 62, 109, 174, 224, 255, 245, 221, 
+                                                                                       194, 136, 79), c(66, 79, 67, 97, 139, 191, 152, 
+                                                                                                        164, 165, 189, 162), maxColorValue = 255)), YlGn = switch(n - 
+                                                                                                                                                                    2, rgb(c(247, 173, 49), c(252, 221, 163), c(185, 
+                                                                                                                                                                                                                142, 84), maxColorValue = 255), rgb(c(255, 194, 120, 
+                                                                                                                                                                                                                                                      35), c(255, 230, 198, 132), c(204, 153, 121, 67), 
+                                                                                                                                                                                                                                                    maxColorValue = 255), rgb(c(255, 194, 120, 49, 0), 
+                                                                                                                                                                                                                                                                              c(255, 230, 198, 163, 104), c(204, 153, 121, 84, 
+                                                                                                                                                                                                                                                                                                            55), maxColorValue = 255), rgb(c(255, 217, 173, 
+                                                                                                                                                                                                                                                                                                                                             120, 49, 0), c(255, 240, 221, 198, 163, 104), c(204, 
+                                                                                                                                                                                                                                                                                                                                                                                             163, 142, 121, 84, 55), maxColorValue = 255), rgb(c(255, 
+                                                                                                                                                                                                                                                                                                                                                                                                                                                 217, 173, 120, 65, 35, 0), c(255, 240, 221, 198, 
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                              171, 132, 90), c(204, 163, 142, 121, 93, 67, 50), 
+                                                                                                                                                                                                                                                                                                                                                                                                                                               maxColorValue = 255), rgb(c(255, 247, 217, 173, 120, 
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                           65, 35, 0), c(255, 252, 240, 221, 198, 171, 132, 
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         90), c(229, 185, 163, 142, 121, 93, 67, 50), maxColorValue = 255), 
+                                                                                                                                                                  rgb(c(255, 247, 217, 173, 120, 65, 35, 0, 0), c(255, 
+                                                                                                                                                                                                                  252, 240, 221, 198, 171, 132, 104, 69), c(229, 
+                                                                                                                                                                                                                                                            185, 163, 142, 121, 93, 67, 55, 41), maxColorValue = 255)), 
+           YlGnBu = switch(n - 2, rgb(c(237, 127, 44), c(248, 205, 
+                                                         127), c(177, 187, 184), maxColorValue = 255), rgb(c(255, 
+                                                                                                             161, 65, 34), c(255, 218, 182, 94), c(204, 180, 196, 
+                                                                                                                                                   168), maxColorValue = 255), rgb(c(255, 161, 65, 44, 
+                                                                                                                                                                                     37), c(255, 218, 182, 127, 52), c(204, 180, 196, 
+                                                                                                                                                                                                                       184, 148), maxColorValue = 255), rgb(c(255, 199, 
+                                                                                                                                                                                                                                                              127, 65, 44, 37), c(255, 233, 205, 182, 127, 52), 
+                                                                                                                                                                                                                                                            c(204, 180, 187, 196, 184, 148), maxColorValue = 255), 
+                           rgb(c(255, 199, 127, 65, 29, 34, 12), c(255, 233, 
+                                                                   205, 182, 145, 94, 44), c(204, 180, 187, 196, 
+                                                                                             192, 168, 132), maxColorValue = 255), rgb(c(255, 
+                                                                                                                                         237, 199, 127, 65, 29, 34, 12), c(255, 248, 233, 
+                                                                                                                                                                           205, 182, 145, 94, 44), c(217, 177, 180, 187, 
+                                                                                                                                                                                                     196, 192, 168, 132), maxColorValue = 255), rgb(c(255, 
+                                                                                                                                                                                                                                                      237, 199, 127, 65, 29, 34, 37, 8), c(255, 248, 
+                                                                                                                                                                                                                                                                                           233, 205, 182, 145, 94, 52, 29), c(217, 177, 
+                                                                                                                                                                                                                                                                                                                              180, 187, 196, 192, 168, 148, 88), maxColorValue = 255)), 
+           YlOrBr = switch(n - 2, rgb(c(255, 254, 217), c(247, 196, 
+                                                          95), c(188, 79, 14), maxColorValue = 255), rgb(c(255, 
+                                                                                                           254, 254, 204), c(255, 217, 153, 76), c(212, 142, 
+                                                                                                                                                   41, 2), maxColorValue = 255), rgb(c(255, 254, 254, 
+                                                                                                                                                                                       217, 153), c(255, 217, 153, 95, 52), c(212, 142, 
+                                                                                                                                                                                                                              41, 14, 4), maxColorValue = 255), rgb(c(255, 254, 
+                                                                                                                                                                                                                                                                      254, 254, 217, 153), c(255, 227, 196, 153, 95, 52), 
+                                                                                                                                                                                                                                                                    c(212, 145, 79, 41, 14, 4), maxColorValue = 255), 
+                           rgb(c(255, 254, 254, 254, 236, 204, 140), c(255, 
+                                                                       227, 196, 153, 112, 76, 45), c(212, 145, 79, 
+                                                                                                      41, 20, 2, 4), maxColorValue = 255), rgb(c(255, 
+                                                                                                                                                 255, 254, 254, 254, 236, 204, 140), c(255, 247, 
+                                                                                                                                                                                       227, 196, 153, 112, 76, 45), c(229, 188, 145, 
+                                                                                                                                                                                                                      79, 41, 20, 2, 4), maxColorValue = 255), rgb(c(255, 
+                                                                                                                                                                                                                                                                     255, 254, 254, 254, 236, 204, 153, 102), c(255, 
+                                                                                                                                                                                                                                                                                                                247, 227, 196, 153, 112, 76, 52, 37), c(229, 
+                                                                                                                                                                                                                                                                                                                                                        188, 145, 79, 41, 20, 2, 4, 6), maxColorValue = 255)), 
+           YlOrRd = switch(n - 2, rgb(c(255, 254, 240), c(237, 178, 
+                                                          59), c(160, 76, 32), maxColorValue = 255), rgb(c(255, 
+                                                                                                           254, 253, 227), c(255, 204, 141, 26), c(178, 92, 
+                                                                                                                                                   60, 28), maxColorValue = 255), rgb(c(255, 254, 253, 
+                                                                                                                                                                                        240, 189), c(255, 204, 141, 59, 0), c(178, 92, 60, 
+                                                                                                                                                                                                                              32, 38), maxColorValue = 255), rgb(c(255, 254, 254, 
+                                                                                                                                                                                                                                                                   253, 240, 189), c(255, 217, 178, 141, 59, 0), c(178, 
+                                                                                                                                                                                                                                                                                                                   118, 76, 60, 32, 38), maxColorValue = 255), rgb(c(255, 
+                                                                                                                                                                                                                                                                                                                                                                     254, 254, 253, 252, 227, 177), c(255, 217, 178, 141, 
+                                                                                                                                                                                                                                                                                                                                                                                                      78, 26, 0), c(178, 118, 76, 60, 42, 28, 38), maxColorValue = 255), 
+                           rgb(c(255, 255, 254, 254, 253, 252, 227, 177), c(255, 
+                                                                            237, 217, 178, 141, 78, 26, 0), c(204, 160, 118, 
+                                                                                                              76, 60, 42, 28, 38), maxColorValue = 255), rgb(c(255, 
+                                                                                                                                                               255, 254, 254, 253, 252, 227, 189, 128), c(255, 
+                                                                                                                                                                                                          237, 217, 178, 141, 78, 26, 0, 0), c(204, 160, 
+                                                                                                                                                                                                                                               118, 76, 60, 42, 28, 38, 38), maxColorValue = 255)))
+  }
+  
   color_board = c(
     dark_cyan = rgb(20, 78, 100, maxColorValue = 255),
     deep_cyan = rgb(0, 93, 125, maxColorValue = 255),
@@ -1446,139 +1737,139 @@ love_color = function(color =NULL, type = NULL,all = FALSE) {
     orange_line = rgb(236, 146, 23  , maxColorValue = 255 ),
     green_line = rgb(16, 174, 181 , maxColorValue = 255 ),
     grey_line = rgb(77 ,80, 84  , maxColorValue = 255 )
-  ,NISEMURASAKI = rgb(86,46,55 , maxColorValue = 255 )
-  ,TETSUKON = rgb(38,30,71 , maxColorValue = 255 )
-  ,UMENEZUMI = rgb(158,122,122 , maxColorValue = 255 )
-  ,YAMABUKI = rgb(255,177,27 , maxColorValue = 255 )
-  ,KON =  rgb(15,37,64 , maxColorValue = 255 )
-  ,ENTAN = rgb(215,84, 85 , maxColorValue = 255 )
-  ,OITAKE = rgb(106,131, 114 , maxColorValue = 255 )
-  ,WASURENAGUSA = rgb(125,185, 222 , maxColorValue = 255 )
-  ,MIRUCHA = rgb(98,89,44, maxColorValue = 255)
-  ,NAMARI = rgb(120,120,120, maxColorValue = 255)
-  ,BOTAN =  rgb(193,50,142, maxColorValue = 255)
-  ,BENITOBI = rgb(153,70,57, maxColorValue = 255)
-  ,OHDO = rgb(182,142,85, maxColorValue = 255)
-  ,YANAGICHA = rgb(147,150,80, maxColorValue = 255)
-  ,USUGAKI = rgb(236,184,138, maxColorValue = 255)
-  ,SUMIRE = rgb(102,50,124, maxColorValue = 255)
-  ,SHIRONEZUMI =  rgb(189,192,186, maxColorValue = 255)
-  ,KABACHA = rgb(179,92,55, maxColorValue = 255)
-  ,ASAGI  = rgb(51,166,184, maxColorValue = 255)
-  ,BENIMIDORI = rgb(123,144,210, maxColorValue = 255)
-  ,HIGOSUSUTAKE =  rgb(141,116,42, maxColorValue = 255)
-  ,KIMIRUCHA =  rgb(134,120,53, maxColorValue = 255)
-  ,AOTAKE = rgb(0,137,108, maxColorValue = 255)
-  ,NAMAKABE = rgb(125,108,70, maxColorValue = 255)
-  ,WAKATAKE = rgb(93,172,129, maxColorValue = 255)
-  ,NAE= rgb(134,193,102, maxColorValue = 255)
-  ,BENIHIWADA =  rgb(136,76,58, maxColorValue = 255)
-  ,KOHAKU =  rgb(202,122,44, maxColorValue = 255)
-  ,TERIGAKI =  rgb(196,98, 67, maxColorValue = 255)
-  ,ONANDOCHA=  rgb(70, 93, 76, maxColorValue = 255)
-  ,RURI = rgb(0, 92, 175, maxColorValue = 255)
-  ,TAIKOH = rgb(248, 195, 205, maxColorValue = 255)
-  ,SUMI  = rgb(28, 28, 28, maxColorValue = 255)
-  ,ICHIGO =   rgb(181, 73, 91, maxColorValue = 255)
-  ,MIZU =  rgb(129, 199, 212, maxColorValue = 255)
-  ,CHITOSEMIDORI =  rgb(54, 86, 60, maxColorValue = 255)
-  ,TETSUONANDO =  rgb(37, 83, 89, maxColorValue = 255)
-  ,IWAICHA =  rgb(100, 106, 88, maxColorValue = 255)
-  ,GINNEZUMI =  rgb(145, 152, 159, maxColorValue = 255)
-  ,AIKOBICHA =  rgb(75, 78, 42, maxColorValue = 255)
-  ,KOGECHA=  rgb(86, 63, 46, maxColorValue = 255)
-  ,SABISEIJI =  rgb(134, 166, 151, maxColorValue = 255)
-  ,SAKURA=  rgb(254, 223, 225, maxColorValue = 255)
-  ,KAMENOZOKI = rgb(165, 222, 228, maxColorValue = 255)
-  ,AKAKOH = rgb(227, 145, 110, maxColorValue = 255)
-  ,BENIUKON = rgb(233, 139, 42, maxColorValue = 255)
-  ,KONJYO = rgb(17, 50, 133, maxColorValue = 255)
-  ,FUTAAI = rgb(112, 100, 154, maxColorValue = 255)
-  ,TAMAMOROKOSHI =  rgb(232, 182, 71, maxColorValue = 255)
-  ,EBICHA =  rgb(115, 67, 56, maxColorValue = 255)
-  ,ENJI=  rgb(159, 53, 58, maxColorValue = 255)
-  ,AKEBONO =  rgb(241, 148, 131, maxColorValue = 255)
-  ,RIKYUSHIRACHA = rgb(180, 165, 130, maxColorValue = 255)
-  ,NOSHIMEHANA =  rgb(43, 95, 117, maxColorValue = 255)
-  ,UGUISU  =  rgb(108, 106, 45, maxColorValue = 255)
-  ,SAKURANEZUMI =  rgb(177, 150, 147, maxColorValue = 255)
-  ,KUWAZOME =  rgb(100, 54, 60, maxColorValue = 255)
-  ,EDOCHA = rgb(175, 95, 60, maxColorValue = 255)
-  ,BAIKOCHA = rgb(137, 145, 107, maxColorValue = 255)
-  ,KARACHA  = rgb(180, 113, 87, maxColorValue = 255)
-  ,HAIZAKURA = rgb(215, 196, 187, maxColorValue = 255)
-  ,SHINBASHI = rgb(0, 137, 167, maxColorValue = 255)
-  ,KURIKAWACHA = rgb(106, 64, 40, maxColorValue = 255)
-  ,SORA =  rgb(88, 178, 220, maxColorValue = 255)
-  ,URAYANAGI = rgb(181, 202, 160, maxColorValue = 255)
-  ,TOKIWA = rgb(27, 129, 62, maxColorValue = 255)
-  ,SUOH = rgb(142, 53, 74, maxColorValue = 255)
-  ,KURENAI = rgb(203, 27, 69, maxColorValue = 255)
-  ,AONI = rgb(81, 110, 65, maxColorValue = 255)
-  ,KONKIKYO = rgb(33, 30, 85, maxColorValue = 255)
-  ,MURASAKITOBI = rgb(96, 55, 62, maxColorValue = 255)
-  ,SHIRONERI= rgb(252, 250, 242, maxColorValue = 255)
-  ,YANAGISUSUTAKE = rgb(74, 89, 61, maxColorValue = 255)
-  ,JINZAMOMI =  rgb(235, 122, 119, maxColorValue = 255)
-  ,MESSHI  =  rgb(83, 61, 91, maxColorValue = 255)
-  ,NAKABENI =  rgb(219, 77, 109, maxColorValue = 255)
-  ,RURIKON = rgb(11, 52, 110, maxColorValue = 255)
-  ,AISUMICHA = rgb(55, 60, 56, maxColorValue = 255)
-  ,GINSUSUTAKE = rgb(130, 102, 58, maxColorValue = 255)
-  ,BUDOHNEZUMI = rgb(94, 61, 80, maxColorValue = 255)
-  ,AKE = rgb(204, 84, 58, maxColorValue = 255)
-  ,KORAINANDO = rgb(48, 90, 86, maxColorValue = 255)
-  ,KIKYO = rgb(106, 76, 156, maxColorValue = 255)
-  ,TAMAGO = rgb(249, 191, 69, maxColorValue = 255)
-  ,AIMIRUCHA= rgb(15, 76, 58, maxColorValue = 255)
-  ,NATANEYU = rgb(162, 140, 55, maxColorValue = 255)
-  ,MUSHIAO = rgb(32, 96, 79, maxColorValue = 255)
-  ,KOKIAKE = rgb(134, 71, 63, maxColorValue = 255)
-  ,HANABA= rgb(247, 194, 66, maxColorValue = 255)
-  ,NANOHANA =  rgb(247, 217, 76, maxColorValue = 255)
-  ,HIWACHA=  rgb(165, 160, 81, maxColorValue = 255)
-  ,AKABENI=  rgb(203, 64, 66, maxColorValue = 255)
-  ,KAKISHIBU =  rgb(163, 94, 71, maxColorValue = 255)
-  ,OHNI =  rgb(240, 94, 28, maxColorValue = 255)
-  ,SHAREGAKI = rgb(255, 186, 132, maxColorValue = 255)
-  ,SHINSYU= rgb(171, 59, 58, maxColorValue = 255)
-  ,KITSURUBAMI = rgb(186, 145, 50, maxColorValue = 255)
-  ,YANAGIZOME = rgb(145, 173, 112, maxColorValue = 255)
-  ,SEIJI= rgb(105, 176, 172, maxColorValue = 255)
-  ,HAI= rgb(130, 130, 130, maxColorValue = 255)
-  ,KANZO= rgb(252, 159, 77, maxColorValue = 255)
-  ,SODENKARACHA = rgb(160, 103, 75, maxColorValue = 255)
-  ,IMAYOH= rgb(208, 90, 110, maxColorValue = 255)
-  ,FUKAGAWANEZUMI =  rgb(119, 150, 154, maxColorValue = 255)
-  ,MATSUBA =  rgb(66, 96, 45, maxColorValue = 255)
-  ,TOKIGARACHA  =  rgb(219, 142, 113, maxColorValue = 255)
-  ,HASHITA =  rgb(152, 109, 178, maxColorValue = 255)
-  ,OMESHICHA = rgb(55, 107, 109, maxColorValue = 255)
-  ,KUCHINASHI = rgb(246, 197, 85, maxColorValue = 255)
-  ,SUNEZUMI = rgb(120, 125, 123, maxColorValue = 255)
-  ,AONIBI = rgb(83, 89, 83, maxColorValue = 255)
-  ,SABITETSUONANDO= rgb(64, 91, 85, maxColorValue = 255)
-  ,KESHIZUMI = rgb(67, 67, 67, maxColorValue = 255)
-  ,KUROBENI= rgb(63, 43, 54, maxColorValue = 255)
-  ,KIHADA= rgb(251, 226, 81, maxColorValue = 255)
-  ,TORINOKO= rgb(218, 201, 166, maxColorValue = 255)
-  ,MUSHIKURI = rgb(217, 205, 144, maxColorValue = 255)
-  ,CYOHSYUN= rgb(191, 103, 102, maxColorValue = 255)
-  ,USUBENI = rgb(232, 122, 144, maxColorValue = 255)
-  ,UMEMURASAKI = rgb(168, 73, 122, maxColorValue = 255)
-  ,FUJINEZUMI= rgb(110, 117, 164, maxColorValue = 255)
-  ,SHIROTSURUBAMI = rgb(220, 184, 121, maxColorValue = 255)
-  ,BENIKESHINEZUMI= rgb(82, 67, 61, maxColorValue = 255)
-  ,HANADA = rgb(0, 98, 132, maxColorValue = 255)
-  ,OUCHI = rgb(155, 144, 194, maxColorValue = 255)
-  ,MIZUASAGI= rgb(102, 186, 183, maxColorValue = 255)
-  ,HANAASAGI= rgb(30, 136, 168, maxColorValue = 255)
-  ,SABIONANDO= rgb(51, 103, 116, maxColorValue = 255)
-  ,SYOJYOHI = rgb(232, 48, 21, maxColorValue = 255)
-  ,TOHOH= rgb(255, 196, 8, maxColorValue = 255)
-  ,BINROJIZOME= rgb(58, 50, 38, maxColorValue = 255)
-  ,OMINAESHI = rgb(221, 210, 59, maxColorValue = 255)
-  ,BYAKUROKU= rgb(168, 216, 185, maxColorValue = 255)
+    ,NISEMURASAKI = rgb(86,46,55 , maxColorValue = 255 )
+    ,TETSUKON = rgb(38,30,71 , maxColorValue = 255 )
+    ,UMENEZUMI = rgb(158,122,122 , maxColorValue = 255 )
+    ,YAMABUKI = rgb(255,177,27 , maxColorValue = 255 )
+    ,KON =  rgb(15,37,64 , maxColorValue = 255 )
+    ,ENTAN = rgb(215,84, 85 , maxColorValue = 255 )
+    ,OITAKE = rgb(106,131, 114 , maxColorValue = 255 )
+    ,WASURENAGUSA = rgb(125,185, 222 , maxColorValue = 255 )
+    ,MIRUCHA = rgb(98,89,44, maxColorValue = 255)
+    ,NAMARI = rgb(120,120,120, maxColorValue = 255)
+    ,BOTAN =  rgb(193,50,142, maxColorValue = 255)
+    ,BENITOBI = rgb(153,70,57, maxColorValue = 255)
+    ,OHDO = rgb(182,142,85, maxColorValue = 255)
+    ,YANAGICHA = rgb(147,150,80, maxColorValue = 255)
+    ,USUGAKI = rgb(236,184,138, maxColorValue = 255)
+    ,SUMIRE = rgb(102,50,124, maxColorValue = 255)
+    ,SHIRONEZUMI =  rgb(189,192,186, maxColorValue = 255)
+    ,KABACHA = rgb(179,92,55, maxColorValue = 255)
+    ,ASAGI  = rgb(51,166,184, maxColorValue = 255)
+    ,BENIMIDORI = rgb(123,144,210, maxColorValue = 255)
+    ,HIGOSUSUTAKE =  rgb(141,116,42, maxColorValue = 255)
+    ,KIMIRUCHA =  rgb(134,120,53, maxColorValue = 255)
+    ,AOTAKE = rgb(0,137,108, maxColorValue = 255)
+    ,NAMAKABE = rgb(125,108,70, maxColorValue = 255)
+    ,WAKATAKE = rgb(93,172,129, maxColorValue = 255)
+    ,NAE= rgb(134,193,102, maxColorValue = 255)
+    ,BENIHIWADA =  rgb(136,76,58, maxColorValue = 255)
+    ,KOHAKU =  rgb(202,122,44, maxColorValue = 255)
+    ,TERIGAKI =  rgb(196,98, 67, maxColorValue = 255)
+    ,ONANDOCHA=  rgb(70, 93, 76, maxColorValue = 255)
+    ,RURI = rgb(0, 92, 175, maxColorValue = 255)
+    ,TAIKOH = rgb(248, 195, 205, maxColorValue = 255)
+    ,SUMI  = rgb(28, 28, 28, maxColorValue = 255)
+    ,ICHIGO =   rgb(181, 73, 91, maxColorValue = 255)
+    ,MIZU =  rgb(129, 199, 212, maxColorValue = 255)
+    ,CHITOSEMIDORI =  rgb(54, 86, 60, maxColorValue = 255)
+    ,TETSUONANDO =  rgb(37, 83, 89, maxColorValue = 255)
+    ,IWAICHA =  rgb(100, 106, 88, maxColorValue = 255)
+    ,GINNEZUMI =  rgb(145, 152, 159, maxColorValue = 255)
+    ,AIKOBICHA =  rgb(75, 78, 42, maxColorValue = 255)
+    ,KOGECHA=  rgb(86, 63, 46, maxColorValue = 255)
+    ,SABISEIJI =  rgb(134, 166, 151, maxColorValue = 255)
+    ,SAKURA=  rgb(254, 223, 225, maxColorValue = 255)
+    ,KAMENOZOKI = rgb(165, 222, 228, maxColorValue = 255)
+    ,AKAKOH = rgb(227, 145, 110, maxColorValue = 255)
+    ,BENIUKON = rgb(233, 139, 42, maxColorValue = 255)
+    ,KONJYO = rgb(17, 50, 133, maxColorValue = 255)
+    ,FUTAAI = rgb(112, 100, 154, maxColorValue = 255)
+    ,TAMAMOROKOSHI =  rgb(232, 182, 71, maxColorValue = 255)
+    ,EBICHA =  rgb(115, 67, 56, maxColorValue = 255)
+    ,ENJI=  rgb(159, 53, 58, maxColorValue = 255)
+    ,AKEBONO =  rgb(241, 148, 131, maxColorValue = 255)
+    ,RIKYUSHIRACHA = rgb(180, 165, 130, maxColorValue = 255)
+    ,NOSHIMEHANA =  rgb(43, 95, 117, maxColorValue = 255)
+    ,UGUISU  =  rgb(108, 106, 45, maxColorValue = 255)
+    ,SAKURANEZUMI =  rgb(177, 150, 147, maxColorValue = 255)
+    ,KUWAZOME =  rgb(100, 54, 60, maxColorValue = 255)
+    ,EDOCHA = rgb(175, 95, 60, maxColorValue = 255)
+    ,BAIKOCHA = rgb(137, 145, 107, maxColorValue = 255)
+    ,KARACHA  = rgb(180, 113, 87, maxColorValue = 255)
+    ,HAIZAKURA = rgb(215, 196, 187, maxColorValue = 255)
+    ,SHINBASHI = rgb(0, 137, 167, maxColorValue = 255)
+    ,KURIKAWACHA = rgb(106, 64, 40, maxColorValue = 255)
+    ,SORA =  rgb(88, 178, 220, maxColorValue = 255)
+    ,URAYANAGI = rgb(181, 202, 160, maxColorValue = 255)
+    ,TOKIWA = rgb(27, 129, 62, maxColorValue = 255)
+    ,SUOH = rgb(142, 53, 74, maxColorValue = 255)
+    ,KURENAI = rgb(203, 27, 69, maxColorValue = 255)
+    ,AONI = rgb(81, 110, 65, maxColorValue = 255)
+    ,KONKIKYO = rgb(33, 30, 85, maxColorValue = 255)
+    ,MURASAKITOBI = rgb(96, 55, 62, maxColorValue = 255)
+    ,SHIRONERI= rgb(252, 250, 242, maxColorValue = 255)
+    ,YANAGISUSUTAKE = rgb(74, 89, 61, maxColorValue = 255)
+    ,JINZAMOMI =  rgb(235, 122, 119, maxColorValue = 255)
+    ,MESSHI  =  rgb(83, 61, 91, maxColorValue = 255)
+    ,NAKABENI =  rgb(219, 77, 109, maxColorValue = 255)
+    ,RURIKON = rgb(11, 52, 110, maxColorValue = 255)
+    ,AISUMICHA = rgb(55, 60, 56, maxColorValue = 255)
+    ,GINSUSUTAKE = rgb(130, 102, 58, maxColorValue = 255)
+    ,BUDOHNEZUMI = rgb(94, 61, 80, maxColorValue = 255)
+    ,AKE = rgb(204, 84, 58, maxColorValue = 255)
+    ,KORAINANDO = rgb(48, 90, 86, maxColorValue = 255)
+    ,KIKYO = rgb(106, 76, 156, maxColorValue = 255)
+    ,TAMAGO = rgb(249, 191, 69, maxColorValue = 255)
+    ,AIMIRUCHA= rgb(15, 76, 58, maxColorValue = 255)
+    ,NATANEYU = rgb(162, 140, 55, maxColorValue = 255)
+    ,MUSHIAO = rgb(32, 96, 79, maxColorValue = 255)
+    ,KOKIAKE = rgb(134, 71, 63, maxColorValue = 255)
+    ,HANABA= rgb(247, 194, 66, maxColorValue = 255)
+    ,NANOHANA =  rgb(247, 217, 76, maxColorValue = 255)
+    ,HIWACHA=  rgb(165, 160, 81, maxColorValue = 255)
+    ,AKABENI=  rgb(203, 64, 66, maxColorValue = 255)
+    ,KAKISHIBU =  rgb(163, 94, 71, maxColorValue = 255)
+    ,OHNI =  rgb(240, 94, 28, maxColorValue = 255)
+    ,SHAREGAKI = rgb(255, 186, 132, maxColorValue = 255)
+    ,SHINSYU= rgb(171, 59, 58, maxColorValue = 255)
+    ,KITSURUBAMI = rgb(186, 145, 50, maxColorValue = 255)
+    ,YANAGIZOME = rgb(145, 173, 112, maxColorValue = 255)
+    ,SEIJI= rgb(105, 176, 172, maxColorValue = 255)
+    ,HAI= rgb(130, 130, 130, maxColorValue = 255)
+    ,KANZO= rgb(252, 159, 77, maxColorValue = 255)
+    ,SODENKARACHA = rgb(160, 103, 75, maxColorValue = 255)
+    ,IMAYOH= rgb(208, 90, 110, maxColorValue = 255)
+    ,FUKAGAWANEZUMI =  rgb(119, 150, 154, maxColorValue = 255)
+    ,MATSUBA =  rgb(66, 96, 45, maxColorValue = 255)
+    ,TOKIGARACHA  =  rgb(219, 142, 113, maxColorValue = 255)
+    ,HASHITA =  rgb(152, 109, 178, maxColorValue = 255)
+    ,OMESHICHA = rgb(55, 107, 109, maxColorValue = 255)
+    ,KUCHINASHI = rgb(246, 197, 85, maxColorValue = 255)
+    ,SUNEZUMI = rgb(120, 125, 123, maxColorValue = 255)
+    ,AONIBI = rgb(83, 89, 83, maxColorValue = 255)
+    ,SABITETSUONANDO= rgb(64, 91, 85, maxColorValue = 255)
+    ,KESHIZUMI = rgb(67, 67, 67, maxColorValue = 255)
+    ,KUROBENI= rgb(63, 43, 54, maxColorValue = 255)
+    ,KIHADA= rgb(251, 226, 81, maxColorValue = 255)
+    ,TORINOKO= rgb(218, 201, 166, maxColorValue = 255)
+    ,MUSHIKURI = rgb(217, 205, 144, maxColorValue = 255)
+    ,CYOHSYUN= rgb(191, 103, 102, maxColorValue = 255)
+    ,USUBENI = rgb(232, 122, 144, maxColorValue = 255)
+    ,UMEMURASAKI = rgb(168, 73, 122, maxColorValue = 255)
+    ,FUJINEZUMI= rgb(110, 117, 164, maxColorValue = 255)
+    ,SHIROTSURUBAMI = rgb(220, 184, 121, maxColorValue = 255)
+    ,BENIKESHINEZUMI= rgb(82, 67, 61, maxColorValue = 255)
+    ,HANADA = rgb(0, 98, 132, maxColorValue = 255)
+    ,OUCHI = rgb(155, 144, 194, maxColorValue = 255)
+    ,MIZUASAGI= rgb(102, 186, 183, maxColorValue = 255)
+    ,HANAASAGI= rgb(30, 136, 168, maxColorValue = 255)
+    ,SABIONANDO= rgb(51, 103, 116, maxColorValue = 255)
+    ,SYOJYOHI = rgb(232, 48, 21, maxColorValue = 255)
+    ,TOHOH= rgb(255, 196, 8, maxColorValue = 255)
+    ,BINROJIZOME= rgb(58, 50, 38, maxColorValue = 255)
+    ,OMINAESHI = rgb(221, 210, 59, maxColorValue = 255)
+    ,BYAKUROKU= rgb(168, 216, 185, maxColorValue = 255)
     ,darkbrown_blues = darkbrown_blues
     ,darkred_yellows = darkred_yellows
     ,darkred_oranges = darkred_oranges
@@ -1614,18 +1905,41 @@ love_color = function(color =NULL, type = NULL,all = FALSE) {
     darknihon_6x3 = darknihon_6x3,
     darknihon_8x1 =darknihon_8x1
   )
-  if(!is.null(color)&& all(is.element(color, names(color_board)))){
-    colors = color_board[[color]]
+  if(!is.null(color)){
+    if(all(is.element(color, names(color_board)))){
+      colors = color_board[[color]]
+    }else{
+      palette_colors = brewer_pal(9,name = color)
+      if(length(palette_colors) >0 ){
+        colors = palette_colors
+        get_colors = color_ramp_palette(colors)
+        colors = get_colors(2)[2]
+      }else{
+        warning(paste(color, "is not a valid color name for love_color, use 'dark_cyan'.\n"))
+        colors = color_board[["dark_cyan"]]
+      }
+    }
+    
   }else{
     if(!is.null(type)){
       color_index = grep(type,names(color_board))
-      colors = as.vector(color_board[color_index])
-    }else{
-      if(all){
-        colors = as.vector(color_board)
+      if(length(color_index)>0){
+        get_colors = color_ramp_palette(as.vector(color_board[color_index]))
+        colors = get_colors(n)
       }else{
-        colors = color_board[["dark_cyan"]]
+        palette_colors = brewer_pal(9,name = type)
+        if(length(palette_colors)>0){
+          get_colors = color_ramp_palette(palette_colors)
+          colors = get_colors(n)
+        }else{
+          warning(paste(type, "is not a valid color palette name for love_color, use 'YlGnBu'.\n"))
+          get_colors = color_ramp_palette(brewer_pal(9,name = "YlGnBu"))
+          colors = get_colors(n)
+        }
       }
+    }else{
+      warning(paste("color is NULL for love_color, use 'dark_cyan'.\n"))
+      colors = color_board[["dark_cyan"]]
     }
   }
   return(unique(colors))
@@ -1856,10 +2170,10 @@ perf_table = function(train_pred, test_pred = NULL, target = NULL, score = NULL,
   if (f_bad_rate < l_bad_rate) {
     train_sum_lift = train_sum[order(train_sum$bins, decreasing = TRUE),]
     train_Lift = round((cumsum(train_sum_lift$B) / cumsum(train_sum_lift$G + train_sum_lift$B)) / (sum(train_sum_lift$B) / sum(train_sum_lift$G + train_sum_lift$B)), digits)
-    train_Lift = sort(train_Lift)
+    train_Lift = sort(train_Lift,na.last=FALSE)
   } else {
     train_Lift = round((cumsum(train_sum$B) / cumsum(train_sum$G + train_sum$B)) / (sum(train_sum$B) / sum(train_sum$G + train_sum$B)), digits)
-    train_Lift = sort(train_Lift, decreasing = TRUE)
+    train_Lift = sort(train_Lift, decreasing = TRUE,na.last=FALSE)
   }
   
   train_ks = transform(train_sum,
@@ -1921,10 +2235,10 @@ perf_table = function(train_pred, test_pred = NULL, target = NULL, score = NULL,
       test_Lift = round(ifelse(test_sum_lift$G + 
                                         test_sum_lift$B == 0,1,cumsum(test_sum_lift$B) / cumsum(test_sum_lift$G + test_sum_lift$B)) / 
                           (sum(test_sum_lift$B) / sum(test_sum_lift$G + test_sum_lift$B)), digits)
-      test_Lift = sort(test_Lift)
+      test_Lift = sort(test_Lift,na.last=FALSE)
     } else {
       test_Lift = round((cumsum(test_sum$B) / cumsum(test_sum$G + test_sum$B)) / (sum(test_sum$B) / sum(test_sum$G + test_sum$B)), digits)
-      test_Lift = sort(test_Lift, decreasing = TRUE)
+      test_Lift = sort(test_Lift, decreasing = TRUE,na.last=FALSE)
     }
     test_ks = transform(test_sum,
                          test_total = G + B,
@@ -2464,21 +2778,21 @@ plot_oot_perf = function(dat_test, x, occur_time, target, k = 3, g = 10, period 
   cohort_dat = rbindlist(perf_list)
   bins_n = length(unique(as.character(cohort_group)))
   if (bins_n <= 4) {
-    values = love_color(all = TRUE, type = "line")
+    values = love_color(type = "Greens",n = 4)
   } else {
     if (bins_n <= 7) {
-      values = love_color(all = TRUE, type = "deep")
+      values = love_color(type = "Blues",n = 7)
     } else {
       if (bins_n > 7 & bins_n <= 15) {
-        values = love_color(all = TRUE, type = "deep|light")
+        values = love_color(type = "deep|light",n = 15)
       } else {
         if (bins_n > 15 & bins_n <= 21) {
-          values = love_color(all = TRUE, type = "deep|light|pale")
+          values = love_color(type = "deep|light|pale",n = 21)
         } else {
           if (bins_n > 21 & bins_n <= 27) {
-            values = love_color(all = TRUE, type = "deep|light|shallow|pale")
+            values = love_color(type = "deep|light|shallow|pale", n = 27)
           } else {
-            values = love_color(all = TRUE)
+            values = love_color(type = "deep|light|shallow|pale", n = 100)
           }
         }
       }
@@ -3102,884 +3416,6 @@ new_data_frame = function(x = list(), n = NULL) {
   x
 }
 
-#' Plot Density
-#'
-#' You can use the \code{plot_density} to produce plots that characterize the density.
-#' @param dat A data.frame with independent variables and target variable.
-#' @param x The name of an independent variable.
-#' @param y The name of target variable.
-#' @param m  The outlier cutoff.
-#' @param g  Number of initial breakpoints for equal frequency binning.
-#' @param y_breaks Breaks points of y.
-#' @param binwidth Windth of bins for histogram.
-#' @param hist If plot the histogram,-1,1,2, default is 2.
-#' @param colors_y colors of y.
-#' @param pl_theme Theme of plot
-#' @examples
-#' plot_density(dat = lendingclub, x = "annual_inc",y = "emp_length", m =0, hist = -1)
-#' plot_density(dat = lendingclub, x = "annual_inc", m = 2,
-#' colors_y = love_color(type = "line")[c(1,3)])
-#' @import ggplot2
-#' @importFrom dplyr group_by mutate summarize  summarise n  count %>% filter mutate_if distinct ungroup
-#' @export
-
-
-
-plot_density = function(dat, x, y = NULL, m = 3, g = 5,
-                         y_breaks = NULL,
-                         hist = 2,
-                         binwidth = NULL, 
-                         pl_theme = plot_theme(legend.position = "top",
-                                               title_size = 9,
-                                               legend_size = 7,
-                                               axis_title_size = 8),
-                         colors_y = c(love_color(type = "deep"), 
-                                      love_color(type = "light"),
-                                      love_color(type = "shallow"))) {
-  dat[[x]] = outlier_fuc(dat[[x]], m = m)
-  ..density.. = NULL
-  max_min = abs(max(dat[[x]], na.rm = TRUE) - min(dat[[x]], na.rm = TRUE))
-  if (is.null(binwidth)) {
-    binwidth = 1
-    if (!is.na(max_min) && max_min != 0) {
-      if (max_min <= 100 & digits_num(dat[[x]]) == 0) {
-        binwidth = 1
-      } else {
-        n1 = floor(log(max_min / 100, 10))
-        binwidth = round(max_min / 100, - n1)
-      }
-    }
-  }
-  if (is.null(y)) {
-    if (hist == 1) {
-      densitychart = ggplot(dat, aes(dat[[x]])) +
-        geom_histogram(position = 'identity', aes(y = ..density..),
-                       fill = colors_y[2], alpha = 0.5, binwidth = binwidth) +
-        stat_density(geom = 'line', position = 'identity', color = colors_y[1], size = 1) +
-        ggtitle(paste('Density Distribution of', x)) + xlab(x) + pl_theme
-    }else{
-      if(hist == 2){
-        densitychart = ggplot(dat, aes(dat[[x]])) +
-          geom_density(fill = colors_y[2], alpha = 0.3) +
-          stat_density(geom = 'line', position = 'identity', color = colors_y[1], 
-                       size = 1) +
-          stat_density(geom = 'line', position = 'identity', color = colors_y[1], size = 1) +
-          ggtitle(paste('Density Distribution of', x)) + xlab(x) + pl_theme
-      } else {
-        densitychart = ggplot(dat, aes(dat[[x]])) +
-          stat_density(geom = 'line', position = 'identity', color = colors_y[1], size = 1) +
-          ggtitle(paste('Density Distribution of', x)) + xlab(x) + pl_theme
-        
-      }
-    }
-    
-  } else {
-    if (class(dat[, y]) %in% c("numeric", "double", "integer") && length(unique(dat[, y])) > 10) {
-      if (is.null(y_breaks)) {
-        y_breaks = get_breaks(dat, x = y, g = g, equal_bins = TRUE, cut_bin = "equal_depth")
-      }
-    } else {
-      dat[, y] = as.character(dat[, y])
-      dat = merge_category(dat = dat, char_list  = y, m = g, note = FALSE)
-      y_breaks = unique(dat[, y])
-    }
-    dat[["xs"]] = split_bins(dat = dat, x = y, breaks = y_breaks, bins_no = TRUE)
-    dat[["xs"]] = factor(dat[["xs"]], levels = sort(unique(dat[["xs"]])))
-    
-    if (is.null(colors_y) && length(colors_y) < length(unique(dat[["xs"]]))) {
-      colors_y = c(love_color(type = "deep"), love_color(type = "light"), love_color(type = "shallow"), love_color(type = "dark"))
-    }
-    
-    
-    if (hist == 2) {
-      densitychart = ggplot(dat, aes(dat[[x]])) +
-        # geom_histogram(position = 'identity', aes(y = ..density..),
-        #                alpha = 0.5, binwidth = binwidth) +
-        geom_density(aes(fill = dat[["xs"]]), alpha = 0.3) +
-        stat_density(geom = 'line', position = 'identity', aes(color = dat[["xs"]]), 
-                     size = 1) +
-        scale_fill_manual(values = colors_y) +
-        scale_color_manual(values = colors_y) +
-        ggtitle(paste('Density Distribution of', x, "-", y)) + 
-        xlab(x) + 
-        pl_theme + 
-        theme(legend.title = element_text(size = pl_theme$legend.text$size + 1))+
-        guides(fill = guide_legend(reverse = FALSE,title = y),color = 
-                 guide_legend(reverse = FALSE,title = y)) 
-      
-      
-    } else {
-      if (hist == 1) {
-        densitychart = ggplot(dat, aes(dat[[x]],fill = dat[["xs"]])) +
-          geom_histogram(position = 'identity', aes(y = ..density.. ),
-                         alpha = 0.5, binwidth = binwidth) +
-          stat_density(geom = 'line', position = 'identity', aes(color = dat[["xs"]]), 
-                       size = 1) +
-          scale_fill_manual(values = colors_y) +
-          scale_color_manual(values = colors_y) +
-          ggtitle(paste('Density Distribution of', x, "-", y)) + 
-          xlab(x) + 
-          pl_theme + 
-          theme(legend.title = element_text(size = pl_theme$legend.text$size + 1))+
-          guides(fill = guide_legend(reverse = FALSE,title = y),color = 
-                   guide_legend(reverse = FALSE,title = y)) 
-      }else{
-        densitychart = ggplot(dat, aes(dat[[x]], fill = dat[["xs"]])) +
-          stat_density(geom = 'line', position = 'identity', aes(color = dat[["xs"]]), size = 1) +
-          scale_fill_manual(values = colors_y) +
-          scale_color_manual(values = colors_y) +
-          ggtitle(paste('Density Distribution of', x, "-", y)) + 
-          xlab(x) + 
-          pl_theme + 
-          theme(legend.title = element_text(size = pl_theme$legend.text$size + 1))+
-          guides(fill = guide_legend(reverse = FALSE,title = y),color = 
-                   guide_legend(reverse = FALSE,title = y))        
-      }
-    }
-  }
-  
-  return(densitychart)
-}
-
-#' Plot Bar
-#'
-#' You can use the \code{plot_bar} to produce the barplot.
-#' @param dat A data.frame with independent variables and target variable.
-#' @param x The name of an independent variable.
-#' @param y The name of target variable. Default is NULL.
-#' @param g_x  Number of initial breakpoints for equal frequency binning of x.
-#' @param g_y  Number of initial breakpoints for equal frequency binning of y.
-#' @param string_bins Whether to process bins of classification variables.
-#' @param x_breaks Breaks points of x.
-#' @param y_breaks Breaks points of y.
-#' @param cut_bin  'equal_width' or 'equal_depth' to produce the breaks points.
-#' @param target The name of target variable.
-#' @param value The name of the variable to sum. When this parameter is NULL, the default statistics is to sum frequency.
-#' @param type Output form of the result of crosstable. 
-#' Provide these forms:"each_pct_x", "each_pct_y","total_sum","total_pct","total_mean","total_median","total_max","total_min","bad_sum","bad_pct".
-#' @param reverse Logical,whether reverse the plot.
-#' @param position Postion of bars, 'stack' or 'dodge' is available.
-#' @param dodge_width Width of width.
-#' @param pl_theme Theme of the plot
-#' @param fill_colors Colors of bar.
-#' @examples
-#' plot_bar(dat = lendingclub, x = "grade")
-#' plot_bar(dat = lendingclub, x = "grade", y= "dti", 
-#'          g_x = 5,g_y = 3,
-#' 		 position = 'dodge', dodge_width = 0.9,
-#' 		 type = "each_pct_x",
-#' 		 reverse = FALSE,
-#' 		 cut_bin = 'equal_depth',
-#'  fill_colors = c(love_color(type = "line"),
-#'   love_color(type = "line")))
-#' @import ggplot2
-#' @importFrom dplyr group_by mutate summarize  summarise n  count %>% filter mutate_if distinct ungroup
-#' @export
-
-
-plot_bar = function (dat, x, y = NULL,
-                    x_breaks = NULL,
-                    y_breaks = NULL,
-                    cut_bin = "equal_width",
-                    g_x = 10,
-					g_y = 5,
-                    string_bins = FALSE,
-                    target = NULL,
-                    value = NULL,
-                    type = "total_pct",
-                    reverse = FALSE,
-                    position  = 'dodge' ,
-                    dodge_width = 0.9,
-                    pl_theme = plot_theme(legend.position = "top",
-                                          title_size = 9,
-                                          legend_size = 7,
-                                          axis_title_size = 8),
-                    fill_colors =  c(love_color(type = "deep"), 
-                                      love_color(type = "light"),
-                                      love_color(type = "shallow"))) {
-  if (class(dat[, x]) %in% c("numeric", "double",
-                             "integer")) {
-    if (is.null(x_breaks)) {
-      x_breaks = get_breaks(dat, x = x, g = g_x, equal_bins = TRUE, cut_bin = cut_bin)
-    }
-    dat$x = split_bins(dat = dat, x = x, breaks = x_breaks, bins_no = TRUE)
-    
-  }else {
-    if (class(dat[, x]) %in% c("Date","POSIXct","POSIXlt")) {
-      if (is.null(x_breaks)) {
-        x_breaks = get_breaks(dat, x = x, g = g_x, equal_bins = TRUE, cut_bin = cut_bin)
-      }
-      dat$x = split_bins(dat = dat, x = x, breaks = x_breaks, bins_no = FALSE)
-    }else{
-      if(string_bins){
-        dat[, x] = as.character(dat[, x])
-        x_breaks = unique(dat[, x])
-        dat$x = split_bins(dat = dat, x = x, breaks = x_breaks, bins_no = FALSE)
-      }else{
-        dat$x = dat[ ,x]
-      }
-    }
-  }
-  position_x =  position_dodge(width = dodge_width)
-  if(position == "stack"){
-    position_x =  position_stack()
-  }
-  reverse_x = NULL
-  vjust = 1
-  hjust = 0.3
-  if(reverse){
-    reverse_x = coord_flip(xlim = NULL, ylim = NULL,expand = FALSE, clip = "off")
-    vjust = 0
-    hjust = 1
-  }
-  
-  if (!is.null(y)) {
-    if (class(dat[, y]) %in% c("numeric","double","integer")) {
-      if (is.null(y_breaks)) {
-        y_breaks = get_breaks(dat, x = y, g = g_y, equal_bins = TRUE,
-                              cut_bin = cut_bin)
-      }
-      dat$y = split_bins(dat = dat, x = y, breaks = y_breaks, bins_no = TRUE)
-    } else {
-      if (class(dat[ ,y]) %in% c("Date","POSIXct","POSIXlt")) {
-        if (is.null(y_breaks)) {
-          y_breaks = get_breaks(dat, x = y, g = g_y, equal_bins = TRUE, cut_bin = cut_bin)
-        }
-        dat$y = split_bins(dat = dat, x = y, breaks = y_breaks, bins_no = FALSE)
-      }else{
-        if(string_bins){
-          dat[,y] = as.character(dat[, y])
-          y_breaks = unique(dat[, y])
-          dat$y = split_bins(dat = dat, x = y, breaks = y_breaks, bins_no = FALSE)
-        }else{
-          dat$y = dat[,y]
-        }
-      }
-    }
-    
-    
-    if(type == "each_pct_y"){
-      crs_dt = cross_table(dat, cross_x = "x",cross_y = "y",target = target ,value = value,
-                           cross_type = "total_pct")
-      crs_dt_v = as.data.frame(t(apply(crs_dt[-nrow(crs_dt), -c(1,ncol(crs_dt))],1,
-                                       function(x)
-                                         de_percent(x,4)
-                                       /de_percent(crs_dt[nrow(crs_dt),-c(1,ncol(crs_dt))],4))))
-      crs_dt = crs_dt[-nrow(crs_dt),-ncol(crs_dt)]
-      crs_dt_v = cbind(crs_dt[,1],crs_dt_v)
-      names(crs_dt_v) = names(crs_dt)
-      crs_dt_v = as.data.table(crs_dt_v)
-      data1 = data.table:: melt(data = crs_dt_v,id.vars=c("x"),variable.name="y",value.name="v")
-      label_v = as.character(as_percent(data1$v,4))
-    }else{
-      if(type == "each_pct_x"){
-        crs_dt = cross_table(dat, cross_x = c("y"),cross_y = "x",target = target ,value = value,
-                             cross_type = "total_pct")
-        crs_dt_v = as.data.frame(t(apply(crs_dt[-nrow(crs_dt), -c(1,ncol(crs_dt))],1,
-                                         function(x)
-                                           de_percent(x,4)
-                                         /de_percent(crs_dt[nrow(crs_dt),-c(1,ncol(crs_dt))],4))))
-        crs_dt = crs_dt[-nrow(crs_dt),-ncol(crs_dt)]
-        crs_dt_v = cbind(crs_dt[,1],crs_dt_v)
-        names(crs_dt_v) = names(crs_dt)
-        crs_dt_v = as.data.table(crs_dt_v)
-        data1 = data.table:: melt(data = crs_dt_v,id.vars=c("y"),variable.name="x",value.name="v")
-        label_v = as.character(as_percent(data1$v,4))
-        
-      }else{
-        crs_dt = cross_table(dat, cross_x = "x",cross_y = "y",target = target ,value = value,
-                             cross_type = type)
-        crs_dt_v = crs_dt[-nrow(crs_dt),-ncol(crs_dt)]
-        crs_dt_v = as.data.table(crs_dt_v)
-        data1 = data.table:: melt(data = crs_dt_v,id.vars=c("x"),variable.name="y",value.name="v")
-        label_v = as.character(data1$v)
-        
-      }
-    }
-    if(any(grepl("_pct$",type))){
-      yv =  de_percent(data1$v,digits = 4)
-    }else{
-      yv = data1$v
-    }
-    bar_hist = ggplot(data1, aes(x = data1$x, y = yv,fill = data1$y)) +
-      geom_bar(stat = "identity", position = position_x) +
-      geom_text(aes(y = yv,label = label_v),
-                size = ifelse(length(data1$x) > 10, 2.1,
-                              ifelse(length(data1$x) > 5, 2.5,
-                                     ifelse(length(data1$x) > 3, 3, 3.3))),
-                vjust =vjust, hjust = hjust, colour = "white",
-                position =position_x) +
-      reverse_x +
-      ggtitle(paste("Distribution of",x, "-",y)) +
-      ylab(type) +
-      xlab(x) +
-      scale_fill_manual(values = fill_colors) +
-      pl_theme +
-      theme(legend.title = element_text(size = pl_theme$legend.text$size + 1))+
-      guides(fill = guide_legend(reverse = FALSE,title = y)) 
-  } else {
-    type = ifelse(type == "each_pct","total_pct",type)
-    crs_dt = cross_table(dat, cross_x = "x",cross_y = NULL,target = target ,value = value,
-                         cross_type = type)
-    crs_dt = crs_dt[-nrow(crs_dt),]
-    crs_dt = as.data.table(crs_dt)
-    data1 = data.table:: melt(data = crs_dt,id.vars=c("x"),variable.name="y",value.name="v")
-    if(any(grepl("_pct$",type))){
-      yv =  de_percent(data1$v,digits = 4)
-    }else{
-      yv = data1$v
-    }
-    bar_hist = ggplot(data1, aes(x = data1$x,
-                                 y = yv)) + geom_bar(stat = "identity",
-                                                     position = position_x, fill = fill_colors[1]) +
-      geom_text(aes(label = data1$v),
-                size = ifelse(length(data1$x) > 10, 2.1,
-                              ifelse(length(data1$x) > 5, 2.5,
-                                     ifelse(length(data1$x) > 3, 3, 3.3))),
-                vjust = vjust,
-                hjust = hjust,
-                colour = "white",
-                position = position_x) +
-      reverse_x +
-      guides(fill = guide_legend(reverse = FALSE)) +
-      ggtitle(paste("Distribution of", x)) +
-      ylab(type) +
-      xlab(x) +
-      scale_fill_manual(values = fill_colors) +
-      pl_theme
-  }
-  return(bar_hist)
-}
-
-#' Plot Line
-#'
-#' You can use the \code{plot_bar} to produce the barplot.
-#' @param dat A data.frame with independent variables and target variable.
-#' @param x The name of an independent variable.
-#' @param y The name of target variable. Default is NULL.
-#' @param g_x  Number of initial breakpoints for equal frequency binning of x.
-#' @param g_y  Number of initial breakpoints for equal frequency binning of y.
-#' @param string_bins Whether to process bins of classification variables.
-#' @param x_breaks Breaks points of x.
-#' @param y_breaks Breaks points of y.
-#' @param cut_bin  'equal_width' or 'equal_depth' to produce the breaks points.
-#' @param target The name of target variable.
-#' @param value The name of the variable to sum. When this parameter is NULL, the default statistics is to sum frequency.
-#' @param type Output form of the result of crosstable. 
-#' Provide these forms:"each_pct_x", "each_pct_y","total_sum","total_pct","total_mean","total_median","total_max","total_min","bad_sum","bad_pct".
-#' @param reverse Logical,whether reverse the plot.
-#' @param pl_theme theme of the plot
-#' @param fill_colors Colors of line.
-#' @examples
-#' plot_line(dat = lendingclub, x = "grade")
-#' plot_line(dat = lendingclub, x = "grade", 
-#'    y = "mort_acc",type = "bad_pct",g_x = 10,g_y = 3, cut_bin = 
-#'	 "equal_depth",target = "loan_status")
-#' @import ggplot2
-#' @importFrom dplyr group_by mutate summarize  summarise n  count %>% filter mutate_if distinct ungroup
-#' @export
-
-
-plot_line = function (dat, x, y = NULL,
-                       x_breaks = NULL,
-                      y_breaks = NULL,
-                      cut_bin = "equal_width",
-                      g_x = 10,g_y = 5,
-                      target = NULL,
-                      value = NULL,
-                      type = "total_pct",
-                      reverse = FALSE,
-                      string_bins = FALSE,
-                      pl_theme = plot_theme(legend.position = "right",
-                                            title_size = 9,
-                                            legend_size = 7,
-                                            axis_title_size = 8),
-                      fill_colors = c(love_color(type = "deep"), 
-                                      love_color(type = "light"),
-                                      love_color(type = "shallow")))
-{
-  
-  if (class(dat[, x]) %in% c("numeric", "double",
-                             "integer")) {
-    if (is.null(x_breaks)) {
-      x_breaks = get_breaks(dat, x = x, g = g_x, equal_bins = TRUE, cut_bin = cut_bin)
-    }
-    dat$x = split_bins(dat = dat, x = x, breaks = x_breaks, bins_no = TRUE)
-    
-  }else {
-    if (class(dat[, x]) %in% c("Date","POSIXct","POSIXlt")) {
-      if (is.null(x_breaks)) {
-        x_breaks = get_breaks(dat, x = x, g = g_x, equal_bins = TRUE, cut_bin = cut_bin)
-      }
-      dat$x = split_bins(dat = dat, x = x, breaks = x_breaks, bins_no = FALSE)
-    }else{
-      if(string_bins){
-        dat[, x] = as.character(dat[, x])
-        x_breaks = unique(dat[, x])
-        dat$x = split_bins(dat = dat, x = x, breaks = x_breaks, bins_no = FALSE)
-      }else{
-        dat$x = dat[ ,x]
-      }
-    }
-  }
-  
-  
-  reverse_x = NULL
-  vjust = 1
-  hjust = 0.3
-  if(reverse){
-    reverse_x = coord_flip(xlim = NULL, ylim = NULL,expand = FALSE, clip = "off")
-    vjust = 0
-    hjust = 1
-  }
-  
-  if (!is.null(y)) {
-    if (class(dat[, y]) %in% c("numeric","double","integer")) {
-      if (is.null(y_breaks)) {
-        y_breaks = get_breaks(dat, x = y, g = g_y, equal_bins = TRUE,
-                              cut_bin = cut_bin)
-      }
-      dat$y = split_bins(dat = dat, x = y, breaks = y_breaks, bins_no = TRUE)
-    } else {
-      if (class(dat[ ,y]) %in% c("Date","POSIXct","POSIXlt")) {
-        if (is.null(y_breaks)) {
-          y_breaks = get_breaks(dat, x = y, g = g_y, equal_bins = TRUE, cut_bin = cut_bin)
-        }
-        dat$y = split_bins(dat = dat, x = y, breaks = y_breaks, bins_no = FALSE)
-      }else{
-        if(string_bins){
-          dat[,y] = as.character(dat[, y])
-          y_breaks = unique(dat[, y])
-          dat$y = split_bins(dat = dat, x = y, breaks = y_breaks, bins_no = FALSE)
-        }else{
-          dat$y = dat[,y]
-        }
-      }
-    }
-    
-    
-    if(type == "each_pct_y"){
-      crs_dt = cross_table(dat, cross_x = "x",cross_y = "y",target = target ,value = value,
-                           cross_type = "total_pct")
-      crs_dt_v = as.data.frame(t(apply(crs_dt[-nrow(crs_dt), -c(1,ncol(crs_dt))],1,
-                                       function(x)
-                                         de_percent(x,4)
-                                       /de_percent(crs_dt[nrow(crs_dt),-c(1,ncol(crs_dt))],4))))
-      crs_dt = crs_dt[-nrow(crs_dt),-ncol(crs_dt)]
-      crs_dt_v = cbind(crs_dt[,1],crs_dt_v)
-      names(crs_dt_v) = names(crs_dt)
-      crs_dt_v = as.data.table(crs_dt_v)
-      data1 = data.table:: melt(data = crs_dt_v,id.vars=c("x"),variable.name="y",value.name="v")
-      label_v = as.character(as_percent(data1$v,4))
-    }else{
-      if(type == "each_pct_x"){
-        crs_dt = cross_table(dat, cross_x = c("y"),cross_y = "x",target = target ,value = value,
-                             cross_type = "total_pct")
-        crs_dt_v = as.data.frame(t(apply(crs_dt[-nrow(crs_dt), -c(1,ncol(crs_dt))],1,
-                                         function(x)
-                                           de_percent(x,4)
-                                         /de_percent(crs_dt[nrow(crs_dt),-c(1,ncol(crs_dt))],4))))
-        crs_dt = crs_dt[-nrow(crs_dt),-ncol(crs_dt)]
-        crs_dt_v = cbind(crs_dt[,1],crs_dt_v)
-        names(crs_dt_v) = names(crs_dt)
-        crs_dt_v = as.data.table(crs_dt_v)
-        data1 = data.table:: melt(data = crs_dt_v,id.vars=c("y"),variable.name="x",value.name="v")
-        label_v = as.character(as_percent(data1$v,4))
-        
-      }else{
-        crs_dt = cross_table(dat, cross_x = "x",cross_y = "y",target = target ,value = value,
-                             cross_type = type)
-        crs_dt_v = crs_dt[-nrow(crs_dt),-ncol(crs_dt)]
-        crs_dt_v = as.data.table(crs_dt_v)
-        data1 = data.table:: melt(data = crs_dt_v,id.vars=c("x"),variable.name="y",value.name="v")
-        label_v = as.character(data1$v)
-        
-      }
-    }
-    if(any(grepl("_pct$",type))){
-      yv =  de_percent(data1$v,digits = 4)
-    }else{
-      yv = data1$v
-    }
-    
-    pl_line = ggplot(data1, aes(x = data1$x, y = yv)) +
-      geom_line(aes(group = data1$y,color = data1$y),size = 1.3) +
-      geom_point(aes(
-        
-        color = data1$y),
-        size = 1.3,
-       shape = 21,
-        fill = "white") +
-      geom_text(aes(
-        label = label_v),
-        size = ifelse(length(data1$x) > 10, 2.1,
-                      ifelse(length(data1$x) > 5, 2.5,
-                             ifelse(length(data1$x) > 3, 3, 3.3))),
-        vjust =vjust,
-        hjust = hjust,
-        colour = "grey20") +
-      reverse_x +
-      ggtitle(paste("Distribution of",x, "-", y)) +
-      ylab(type) +
-      xlab(x) +
-      scale_fill_manual(values = fill_colors) +
-      scale_colour_manual(values = fill_colors) +
-      guides(color= guide_legend(reverse = FALSE,title = y)) +
-      pl_theme  +
-      theme(legend.title = element_text(size = pl_theme$legend.text$size + 1))
-    
-  }else{
-    type = ifelse(type == "each_pct","total_pct",type)
-    crs_dt = cross_table(dat, cross_x = "x",cross_y = NULL,target = target ,value = value,
-                         cross_type = type)
-    crs_dt = crs_dt[-nrow(crs_dt),]
-    crs_dt = as.data.table(crs_dt)
-    data1 = data.table:: melt(data = crs_dt,id.vars=c("x"),variable.name="y",value.name="v")
-    if(any(grepl("_pct$",type))){
-      yv =  de_percent(data1$v,digits = 4)
-    }else{
-      yv = data1$v
-    }
-    pl_line = ggplot(data1,  aes(x = data1$x,y = yv,
-                                 fill = data1$y)) +
-      geom_line(group =1,color = fill_colors[1], size = 1.3) +
-      geom_point( size = 1.3,
-                  shape = 21,
-                  fill = "white") +
-      geom_text(aes(label = as.character(data1$v)),
-                size = ifelse(length(data1$x) > 10, 2.1,
-                              ifelse(length(data1$x) > 5, 2.5,
-                                     ifelse(length(data1$x) > 3, 3, 3.3))),
-                vjust = vjust,
-                hjust = hjust,
-                colour = "grey20") +
-      reverse_x +
-      guides(fill = guide_legend(reverse = TRUE)) +
-      ggtitle(paste("Distribution of", x)) +
-      ylab(type) +
-      xlab(x) +
-      scale_fill_manual(values = fill_colors) +
-      pl_theme 
-  }
-  return(pl_line)
-}
-
-
-
-#' Plot Relative Frequency Histogram
-#'
-#' You can use the \code{plot_relative_freq_histogram} to produce the relative frequency histogram plots.
-#' @param dat A data.frame with independent variables and target variable.
-#' @param x The name of an independent variable.
-#' @param y The name of target variable. Default is NULL.
-#' @param g_x  Number of initial breakpoints for equal frequency binning of x.
-#' @param g_y  Number of initial breakpoints for equal frequency binning of y.
-#' @param string_bins Whether to process bins of classification variables.
-#' @param x_breaks Breaks points of x.
-#' @param y_breaks Breaks points of y.
-#' @param cut_bin  'equal_width' or 'equal_depth' to produce the breaks points.
-#' @param reverse Logical,whether reverse the plot.
-#' @param pl_theme Theme of plot.
-#' @param value The name of the variable to sum. When this parameter is NULL, the default statistics is to sum frequency.
-#' @param fill_colors Colors of bar.
-#' @examples
-#' plot_relative_freq_histogram(dat = lendingclub, x = "grade", y = "dti", g_x = 7,g_y = 3,
-#'		cut_bin = 'equal_width')
-#' @import ggplot2
-#' @importFrom dplyr group_by mutate summarize  summarise n  count %>% filter mutate_if distinct ungroup
-#' @export
-
-plot_relative_freq_histogram = function (dat, x, y = NULL, x_breaks = NULL,
-                                         y_breaks = NULL,value = NULL,
-                                         reverse = ifelse(is.null(y),TRUE,FALSE),
-                                         g_x = 10,g_y = 5,
-                                         cut_bin = "equal_width",
-                                         pl_theme = plot_theme(legend.position = "top",
-                                                               title_size = 9,
-                                                               legend_size = 7,
-                                                               axis_title_size = 8),
-                                         fill_colors =  c(love_color(type = "lightnihon_6x1"), 
-                                                           love_color(type = "deep"),
-                                                           love_color(type = "light")),
-                                         string_bins = FALSE) {
-  
-  
-  if (class(dat[, x]) %in% c("numeric", "double",
-                             "integer")) {
-    if (is.null(x_breaks)) {
-      x_breaks = get_breaks(dat, x = x, g = g_x, equal_bins = TRUE, cut_bin = cut_bin)
-    }
-    dat$x = split_bins(dat = dat, x = x, breaks = x_breaks, bins_no = TRUE)
-    
-  }else {
-    if (class(dat[, x]) %in% c("Date","POSIXct","POSIXlt")) {
-      if (is.null(x_breaks)) {
-        x_breaks = get_breaks(dat, x = x, g = g_x, equal_bins = TRUE, cut_bin = cut_bin)
-      }
-      dat$x = split_bins(dat = dat, x = x, breaks = x_breaks, bins_no = FALSE)
-    }else{
-      if(string_bins){
-        dat[, x] = as.character(dat[, x])
-        x_breaks = unique(dat[, x])
-        dat$x = split_bins(dat = dat, x = x, breaks = x_breaks, bins_no = FALSE)
-      }else{
-        dat$x = dat[ ,x]
-      }
-    }
-  }
-  if(reverse){
-    reverse_x = coord_flip(xlim = NULL, ylim = NULL,expand = FALSE, clip = "off")
-    vjust = 0
-    hjust = 1
-  }else{
-    reverse_x = NULL
-    vjust = 1
-    hjust = 0.5
-  }
-  if (!is.null(y)) {
-    if (class(dat[, y]) %in% c("numeric","double","integer")) {
-      if (is.null(y_breaks)) {
-        y_breaks = get_breaks(dat, x = y, g = g_y, equal_bins = TRUE,
-                              cut_bin = cut_bin)
-      }
-      dat$y = split_bins(dat = dat, x = y, breaks = y_breaks, bins_no = TRUE)
-    } else {
-      if (class(dat[ ,y]) %in% c("Date","POSIXct","POSIXlt")) {
-        if (is.null(y_breaks)) {
-          y_breaks = get_breaks(dat, x = y, g = g_y, equal_bins = TRUE, cut_bin = cut_bin)
-        }
-        dat$y = split_bins(dat = dat, x = y, breaks = y_breaks, bins_no = FALSE)
-      }else{
-        if(string_bins){
-          dat[,y] = as.character(dat[, y])
-          y_breaks = unique(dat[, y])
-          dat$y = split_bins(dat = dat, x = y, breaks = y_breaks, bins_no = FALSE)
-        }else{
-          dat$y = dat[,y]
-        }
-      }
-    }
-   
-    if(!is.factor(dat$x)){
-      dat$x = factor(dat[["x"]], levels = sort(unique(dat[["x"]])))
-    } 
-    
-    if(!is.factor(dat$y)){
-      dat$y = factor(dat[["y"]], levels = sort(unique(dat[["y"]])))
-    }
-  
-    data1 = dat %>% dplyr::group_by(x) %>% dplyr::count(x,y) %>% 
-      dplyr::mutate(percent = n/sum(n))
-    if(is.null(value)){
-      data1 = dat %>% dplyr::group_by(x) %>% dplyr::count(x,y) %>% 
-        dplyr::mutate(percent = n/sum(n))
-      
-    }else{
-      dat$value = dat[,value]
-      data1 = dat %>% dplyr::group_by(x,y) %>% dplyr::summarise(n = sum(value,na.rm = TRUE)) %>% 
-        dplyr::mutate(percent = n/sum(n))
-      
-    }
-    
-    
-    relative_freq_hist = ggplot(data1, aes(x = data1$x,
-                                           y = data1$percent, 
-                                           fill = data1$y)) +
-      geom_bar(stat = "identity",
-               position = position_stack()) +
-      geom_text(aes(label = paste(as_percent(data1$percent, digits = 3))),
-                size = ifelse(length(data1$x) > 10, 2.1,
-                              ifelse(length(data1$x) > 5, 2.5,
-                                     ifelse(length(data1$x) > 3, 3, 3.3))),
-                vjust = vjust, hjust = hjust, colour = "white",
-                position = position_stack()) +
-      reverse_x +
-      guides(fill = guide_legend(reverse = FALSE)) +
-      ggtitle(paste("Relative Frequency of",x, "-", y)) +
-      ylab("percent") +
-      xlab(x) +
-      scale_fill_manual(values = fill_colors) +
-      pl_theme + 
-      theme(legend.title = element_text(size = pl_theme$legend.text$size + 1))+
-      guides(fill = guide_legend(reverse = FALSE,title = y),color = 
-               guide_legend(reverse = FALSE,title = y)) 
-    
-  } else {
-    dat$y = x
-    dat$x = factor(dat[["x"]], levels = sort(unique(dat[["x"]])))
-    data1 = dat %>% dplyr::group_by(y) %>% dplyr::count(y,
-                                                        x) %>% dplyr::mutate(percent = n/sum(n))
-    relative_freq_hist = ggplot(data1, aes(x = data1$y,
-                                            y = data1$percent, fill = data1$y)) + 
-      geom_bar(stat = "identity",
-               position = position_stack()) +
-      geom_text(aes(label = paste(as_percent(data1$percent,digits = 3))),
-                size = ifelse(length(data1$x) > 10, 2.1,
-                              ifelse(length(data1$x) > 5, 2.5,
-                                     ifelse(length(data1$x) > 3, 3, 3.3))),
-                vjust = vjust,
-                hjust = hjust,
-                colour = "white",
-                position = position_stack()) +
-      guides(fill = guide_legend(reverse = reverse)) +
-      ggtitle(paste("Relative Frequency of", x)) +
-      ylab("percent") +
-      xlab("") +
-      scale_fill_manual(values = fill_colors) +
-      pl_theme + 
-      theme(legend.title = element_text(size = pl_theme$legend.text$size + 1))+
-      guides(fill = guide_legend(reverse = FALSE,title = x),color = 
-               guide_legend(reverse = FALSE,title = x)) +
-      reverse_x 
-  }
-  return(relative_freq_hist)
-}
-#' Plot Distribution
-#'
-#' You can use the \code{plot_distribution_x} to produce the distrbution plot of a variable.
-#' You can use the \code{plot_distribution} to produce the plots of distrbutions of all variables.
-#' @param dat A data.frame with independent variables and target variable.
-#' @param x  The name of an independent variable.
-#' @param x_list Names of independent variables.
-#' @param breaks Splitting points for an independent variable. Default is NULL.
-#' @param breaks_list A table containing a list of splitting points for each independent variable. Default is NULL.
-#' @param g  Number of initial breakpoints for equal frequency binning.
-#' @param m  The outlier cutoff.
-#' @param cut_bin A string, if equal_bins is TRUE, 'equal_depth' or 'equal_width', default is 'equal_depth'.
-#' @param binwidth Windth of bins for histogram.
-#' @param dir_path The path for periodically saved graphic files.
-#' @examples
-#' plot_distribution_x(dat = lendingclub, x = "max_bal_bc", g = 10,
-#'		cut_bin = 'equal_width')
-#' plot_distribution(dat = lendingclub, x_list = c("max_bal_bc", "installment"), 
-#'      g = 10,dir_path = tempdir(),
-#'		cut_bin = 'equal_width')
-#' @import ggplot2
-#' @importFrom dplyr group_by mutate summarize  summarise n  count %>% filter mutate_if distinct ungroup
-#' @export
-
-
-plot_distribution = function(dat, x_list = NULL, dir_path = tempdir(), 
-                              breaks_list = NULL, g = 10, m = 3, 
-                              cut_bin = 'equal_width') {
-  if (is.null(x_list)) {
-    x_list = get_names(dat)
-  }
-  dat = checking_data(dat)
-  for (x in x_list) {
-    if (!is.null(breaks_list)) {
-      if (any(as.character(breaks_list[, "Feature"]) == names(dat[x]))) {
-        breaks = breaks_list[which(as.character(breaks_list[, "Feature"]) == names(dat[x])), "cuts"]
-        
-      } else {
-        breaks = get_breaks(dat = dat, x = x, g = g, equal_bins = TRUE, cut_bin = cut_bin)
-      }
-    } else {
-      breaks = get_breaks(dat = dat, x = x, g = g, equal_bins = TRUE, cut_bin = cut_bin)
-    }
-    if (class(dat[, x]) %in% c("numeric", "double", "integer") && length(unique(dat[, x])) > 10) {
-      densitychart = plot_density(dat = dat, x = x, m = m)
-      barchart = plot_bar(dat = dat, x = x, g_x = g, x_breaks = breaks, cut_bin = cut_bin)
-      distri_plot = multi_grid(grobs = list(densitychart, barchart), ncol = 2, nrow = 1)
-    } else {
-      relative_freqchart = plot_relative_freq_histogram(dat = dat, x = x)
-      barchart = plot_bar(dat = dat, x = x, g_x = g, x_breaks = breaks, cut_bin = cut_bin)
-      distri_plot = multi_grid(grobs = list(relative_freqchart, barchart), ncol = 2, nrow = 1)
-    }
-    ggsave(paste0(dir_path, "/", x, ".png"),
-           plot = distri_plot,
-           width = 9, height = 9 / 2, dpi = "retina")
-  }
-}
-
-
-#' @rdname plot_distribution
-#' @export
-
-
-plot_distribution_x = function(dat, x, breaks = NULL, g = 10, m = 3, cut_bin = 'equal_width', binwidth = NULL) {
-  
-  dat = checking_data(dat)
-  if (class(dat[, x]) %in% c("numeric", "double", "integer") && length(unique(dat[, x])) > 10) {
-    
-    densitychart = plot_density(dat = dat, x = x, m = m, binwidth = binwidth)
-    barchart = plot_bar(dat = dat, x = x, g_x = g, x_breaks = breaks, cut_bin = cut_bin)
-    distri_plot = multi_grid(grobs = list(densitychart, barchart), ncol = 2, nrow = 1)
-  } else {
-    relative_freqchart = plot_relative_freq_histogram(dat = dat, x = x)
-    barchart = plot_bar(dat = dat, x = x, g_x = g, x_breaks = breaks, cut_bin = cut_bin)
-    distri_plot = multi_grid(grobs = list(relative_freqchart, barchart), ncol = 2, nrow = 1)
-  }
-  return(plot(distri_plot))
-}
-
-#' Plot Box
-#'
-#' You can use the \code{plot_box} to produce boxplot.
-#' @param dat A data.frame with independent variables and target variable.
-#' @param x The name of an independent variable.
-#' @param y The name of target variable.
-#' @param g  Number of initial breakpoints for equal frequency binning.
-#' @param x_breaks Breaks points of x.
-#' @param fill_colors colors of x.
-#' @param cut_bin A string, if equal_bins is TRUE, 'equal_depth' or 'equal_width', default is 'equal_depth'.
-#' @param string_bins Whether to process bins of classification variables.
-#' @examples
-#' plot_box(lendingclub, x = "grade", y = "installment", g = 7)
-#' @import ggplot2
-#' @importFrom dplyr group_by mutate summarize  summarise n  count %>% filter mutate_if distinct ungroup
-#' @export
-
-plot_box = function(dat, y, x = NULL, x_breaks = NULL, g = 5,string_bins = FALSE,cut_bin = "equal_depth",
-                    fill_colors = c(love_color(type = "lightnihon_6x1"), 
-                                    love_color(type = "deep"),
-                                    love_color(type = "light"))) {
-  if (!is.null(x)) {
-    
-    if (class(dat[, x]) %in% c("numeric", "double",
-                               "integer")) {
-      if (is.null(x_breaks)) {
-        x_breaks = get_breaks(dat, x = x, g = g, equal_bins = TRUE, cut_bin = cut_bin)
-      }
-      dat$x = split_bins(dat = dat, x = x, breaks = x_breaks, bins_no = TRUE)
-      
-    }else {
-      if (class(dat[, x]) %in% c("Date","POSIXct","POSIXlt")) {
-        if (is.null(x_breaks)) {
-          x_breaks = get_breaks(dat, x = x, g = g, equal_bins = TRUE, cut_bin = cut_bin)
-        }
-        dat$x = split_bins(dat = dat, x = x, breaks = x_breaks, bins_no = FALSE)
-      }else{
-        if(string_bins){
-          dat[, x] = as.character(dat[, x])
-          x_breaks = unique(dat[, x])
-          dat$x = split_bins(dat = dat, x = x, breaks = x_breaks, bins_no = FALSE)
-        }else{
-          dat$x = dat[ ,x]
-        }
-      }
-    }
-    dat = char_to_num(dat, char_list = y, note = FALSE)
-    dat[["y"]] = dat[, y]
-    
-    box_plot = ggplot(dat, aes(y = y, x = x)) +
-      geom_boxplot(position = "identity", aes(fill = x)) + 
-      xlab(x) +
-      scale_fill_manual(values = fill_colors) +
-      ylab(y) +
-      plot_theme()
-  } else {
-    dat = char_to_num(dat, char_list = y, note = FALSE)
-    dat[["y"]] = dat[, y]
-    box_plot = ggplot(dat, aes(y = y)) +
-      geom_boxplot(position = "identity", fill = fill_colors[1]) + 
-      xlab(x) + 
-      ylab(y) +
-      plot_theme()
-  }
-  return(box_plot)
-}
-
 
 
 
@@ -4007,8 +3443,23 @@ outlier_fuc = function(x, m = 1) {
 #' @examples
 #' plot_colors(rgb(158,122,122, maxColorValue = 255 ))
 #' @importFrom graphics image
+#' @importFrom grDevices colorRamp
 #' @export
 plot_colors = function(colors){
   image(seq_along(colors) ,1,as.matrix(seq_along(colors)),col=colors,
         ylab="",xlab="",yaxt="n",xaxt="n",bty="n")
 }
+
+#' @rdname plot_colors
+#' @export
+color_ramp_palette = function (colors) {
+   ramp <- colorRamp(colors)
+   function(n) {
+      x <- ramp(seq.int(0, 1, length.out = n))
+      if (ncol(x) == 4L) 
+         rgb(x[, 1L], x[, 2L], x[, 3L], x[, 4L], maxColorValue = 255)
+      else rgb(x[, 1L], x[, 2L], x[, 3L], maxColorValue = 255)
+   }
+}
+
+

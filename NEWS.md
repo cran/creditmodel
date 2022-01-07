@@ -1,3 +1,9 @@
+# creditmodel-1.3.1
+
+**In this version I have:**
+* Fixed some bugs in `time_transfer`.
+
+
 # creditmodel-1.3.0
 
 **In this version I have:**

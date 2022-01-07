@@ -4,14 +4,19 @@
 \alias{love_color}
 \title{love_color}
 \usage{
-love_color(color = NULL, type = NULL, all = FALSE)
+love_color(color = NULL, type = "Blues", n = 10, ...)
 }
 \arguments{
 \item{color}{The name of colors.}
 
-\item{type}{The type of colors, "deep".}
+\item{type}{The type of colors, "deep", or the name of palette:.
+The sequential palettes names are Blues BuGn BuPu GnBu Greens Greys Oranges OrRd PuBu PuBuGn PuRd Purples RdPu Reds YlGn YlGnBu YlOrBr YlOrRd
+The diverging palettes are BrBG PiYG PRGn PuOr RdBu RdGy RdYlBu RdYlGn Spectral
+The qualitative palettes are Accent, Dark2, Paired, Pastel1, Pastel2, Set1, Set2, Set3}
 
-\item{all}{all of colors.}
+\item{n}{Number of different colors, minimum is 1.}
+
+\item{...}{Other parameters.}
 }
 \description{
 \code{love_color} is for get plots for a  variable.

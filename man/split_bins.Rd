@@ -11,7 +11,8 @@ split_bins(
   bins_no = TRUE,
   as_factor = FALSE,
   labels = NULL,
-  use_NA = TRUE
+  use_NA = TRUE,
+  char_free = FALSE
 )
 }
 \arguments{
@@ -28,6 +29,8 @@ split_bins(
 \item{labels}{Labels of bins.}
 
 \item{use_NA}{Whether to process NAs.}
+
+\item{char_free}{Logical, if TRUE, characters are not splitted.}
 }
 \value{
 A data.frame with Bined x.

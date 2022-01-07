@@ -2,9 +2,12 @@
 % Please edit documentation in R/data_visualization.R
 \name{plot_colors}
 \alias{plot_colors}
+\alias{color_ramp_palette}
 \title{Plot Colors}
 \usage{
 plot_colors(colors)
+
+color_ramp_palette(colors)
 }
 \arguments{
 \item{colors}{A vector of colors.}

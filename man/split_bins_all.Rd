@@ -11,6 +11,8 @@ split_bins_all(
   breaks_list = NULL,
   bins_no = TRUE,
   note = FALSE,
+  return_x = FALSE,
+  char_free = FALSE,
   save_data = FALSE,
   file_name = NULL,
   dir_path = tempdir(),
@@ -29,6 +31,10 @@ split_bins_all(
 \item{bins_no}{Number the generated bins. Default is TRUE.}
 
 \item{note}{Logical, outputs info. Default is TRUE.}
+
+\item{return_x}{Logical, return data.frame containing only variables in x_list.}
+
+\item{char_free}{Logical, if TRUE, characters are not splitted.}
 
 \item{save_data}{Logical, save results in locally specified folder. Default is TRUE}
 
